@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <asset>
+    <contributor>
+      <author>Blender User</author>
+      <authoring_tool>Blender 2.79.0 commit date:2018-02-21, commit time:10:41, hash:8928d99</authoring_tool>
+    </contributor>
+    <created>2018-06-10T18:23:57</created>
+    <modified>2018-06-10T18:23:57</modified>
+    <unit name="meter" meter="1"/>
+    <up_axis>Z_UP</up_axis>
+  </asset>
+  <library_images/>
+  <library_effects>
+    <effect id="Bone-effect">
+      <profile_COMMON>
+        <technique sid="common">
+          <phong>
+            <emission>
+              <color sid="emission">0 0 0 1</color>
+            </emission>
+            <ambient>
+              <color sid="ambient">0 0 0 1</color>
+            </ambient>
+            <diffuse>
+              <color sid="diffuse">0.7878172 0.771821 0.7278312 1</color>
+            </diffuse>
+            <specular>
+              <color sid="specular">0.5 0.5 0.5 1</color>
+            </specular>
+            <shininess>
+              <float sid="shininess">511</float>
+            </shininess>
+            <reflective>
+              <color>1 1 1 1</color>
+            </reflective>
+            <reflectivity>
+              <float>0.2</float>
+            </reflectivity>
+            <index_of_refraction>
+              <float sid="index_of_refraction">1</float>
+            </index_of_refraction>
+          </phong>
+        </technique>
+      </profile_COMMON>
+    </effect>
+  </library_effects>
+  <library_materials>
+    <material id="Bone-material" name="Bone">
+      <instance_effect url="#Bone-effect"/>
+    </material>
+  </library_materials>
+  <library_geometries>
+    <geometry id="mesh_toe_05_a_R-mesh" name="mesh_toe_05_a.R">
+      <mesh>
+        <source id="mesh_toe_05_a_R-mesh-positions">
+          <float_array id="mesh_toe_05_a_R-mesh-positions-array" count="51">-0.01041465 0.002180397 -0.03453022 -0.02544534 -0.008525729 0.04192632 0.007371842 -0.008917272 -0.02523493 0.01314109 -0.01999193 0.09475243 0.002190828 0.03852128 -0.0238735 -0.009714782 0.015419 0.04767298 0.01551115 0.03732943 -0.03563189 -8.12728e-5 -0.0279994 -0.1070734 0.01434123 -0.0165072 -0.1063866 0.006620049 -0.004403769 -0.1143735 -0.003118753 -0.04331135 -0.1310016 -0.00496459 -0.03567427 0.08111858 -0.01919203 -0.03041535 0.0729053 0.008456587 -0.006618559 0.1018605 -0.01135009 -0.01904743 0.09889912 0.01759505 0.01432281 -0.01880037 -0.008892357 -0.001888871 -0.09785312</float_array>
+          <technique_common>
+            <accessor source="#mesh_toe_05_a_R-mesh-positions-array" count="17" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="mesh_toe_05_a_R-mesh-normals">
+          <float_array id="mesh_toe_05_a_R-mesh-normals-array" count="51">-0.9998872 -3.90672e-4 -0.01502156 -0.9716354 -0.2298032 -0.05581545 -0.7700312 -0.6316314 0.08996534 0.4025078 -0.9116767 -0.08266383 -0.4285576 0.8526206 0.298959 -0.3606473 0.9319377 0.03775912 -0.5577701 -0.1279551 0.8200733 0.7643564 -0.4270367 0.4831138 0.3434201 0.425431 0.8373 -0.2072965 -0.8682602 0.4507245 0.5595007 0.8074929 -0.1868535 -0.8731183 0.359808 -0.3289421 0.9524379 -0.2594241 -0.1598787 -0.1602011 -0.7713548 -0.615912 0.2008467 0.6158849 -0.7618047 0.9949818 -0.09873402 0.01621425 0.1017558 -0.9707635 0.2174029</float_array>
+          <technique_common>
+            <accessor source="#mesh_toe_05_a_R-mesh-normals-array" count="17" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="mesh_toe_05_a_R-mesh-map-0">
+          <float_array id="mesh_toe_05_a_R-mesh-map-0-array" count="180">0.7840738 0.6745626 0.8229814 0.7396281 0.8345832 0.6546798 0.8229814 0.7396281 1.066753 0.3902236 0.8345832 0.6546798 0.7840738 0.6745626 0.7618709 0.5774448 0.5804946 0.3490191 0.7840738 0.6745626 0.822858 0.6174616 0.7618709 0.5774448 0.822858 0.6174616 0.8338184 0.5680032 0.8167214 0.5602546 0.1897879 0.3249648 0.487939 0.6159396 0.2684115 0.4564764 0.5804946 0.3490191 0.5340958 0.238471 0.3160113 0.4438855 0.487939 0.6159396 0.3160113 0.4438855 0.2684115 0.4564764 0.2746503 0.3909538 0.2579951 0.4744706 0.2970885 0.3987482 0.2579951 0.4744706 0.2684115 0.4564764 0.3160113 0.4438855 0.5829833 0.3034521 0.8167214 0.5602546 0.8338184 0.5680032 1.066753 0.3902236 0.8483733 0.6230527 0.8345832 0.6546798 0.822858 0.6174616 0.7840738 0.6745626 0.8345832 0.6546798 1.066753 0.3902236 0.5829833 0.3034521 0.8338184 0.5680032 0.8338184 0.5680032 0.8483733 0.6230527 1.066753 0.3902236 0.5340958 0.238471 0.7618709 0.5774448 0.8167214 0.5602546 0.487939 0.6159396 0.7840738 0.6745626 0.5804946 0.3490191 0.822858 0.6174616 0.8167214 0.5602546 0.7618709 0.5774448 0.822858 0.6174616 0.8483733 0.6230527 0.8338184 0.5680032 0.5340958 0.238471 0.2746503 0.3909538 0.2970885 0.3987482 0.2746503 0.3909538 0.5340958 0.238471 0.5829833 0.3034521 0.2684115 0.4564764 0.2746503 0.3909538 0.5829833 0.3034521 0.1897879 0.3249648 0.2684115 0.4564764 0.5829833 0.3034521 0.487939 0.6159396 0.5804946 0.3490191 0.3160113 0.4438855 0.5340958 0.238471 0.2970885 0.3987482 0.3160113 0.4438855 0.3160113 0.4438855 0.2970885 0.3987482 0.2579951 0.4744706 0.2746503 0.3909538 0.2684115 0.4564764 0.2579951 0.4744706 0.8483733 0.6230527 0.822858 0.6174616 0.8345832 0.6546798 0.5829833 0.3034521 0.5340958 0.238471 0.8167214 0.5602546 0.5340958 0.238471 0.5804946 0.3490191 0.7618709 0.5774448</float_array>
+          <technique_common>
+            <accessor source="#mesh_toe_05_a_R-mesh-map-0-array" count="90" stride="2">
+              <param name="S" type="float"/>
+              <param name="T" type="float"/>
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="mesh_toe_05_a_R-mesh-vertices">
+          <input semantic="POSITION" source="#mesh_toe_05_a_R-mesh-positions"/>
+        </vertices>
+        <triangles material="Bone-material" count="30">
+          <input semantic="VERTEX" source="#mesh_toe_05_a_R-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#mesh_toe_05_a_R-mesh-normals" offset="1"/>
+          <input semantic="TEXCOORD" source="#mesh_toe_05_a_R-mesh-map-0" offset="2" set="0"/>
+          <p>1 0 0 0 1 1 12 2 2 0 1 3 2 3 4 12 2 5 1 0 6 5 4 7 4 5 8 1 0 9 14 6 10 5 4 11 14 6 12 3 7 13 13 8 14 2 3 15 0 1 16 7 9 17 4 5 18 6 10 19 16 11 20 0 1 21 16 11 22 7 9 23 8 12 24 10 13 25 9 14 26 10 13 27 7 9 28 16 11 29 15 15 30 13 8 31 3 7 32 2 3 33 11 16 34 12 2 35 14 6 36 1 0 37 12 2 38 2 3 39 15 15 40 3 7 41 3 7 42 11 16 43 2 3 44 6 10 45 5 4 46 13 8 47 0 1 48 1 0 49 4 5 50 14 6 51 13 8 52 5 4 53 14 6 54 11 16 55 3 7 56 6 10 57 8 12 58 9 14 59 8 12 60 6 10 61 15 15 62 7 9 63 8 12 64 15 15 65 2 3 66 7 9 67 15 15 68 0 1 69 4 5 70 16 11 71 6 10 72 9 14 73 16 11 74 16 11 75 9 14 76 10 13 77 8 12 78 7 9 79 10 13 80 11 16 81 14 6 82 12 2 83 15 15 84 6 10 85 13 8 86 6 10 87 4 5 88 5 4 89</p>
+        </triangles>
+      </mesh>
+    </geometry>
+  </library_geometries>
+  <library_controllers/>
+  <library_visual_scenes>
+    <visual_scene id="Scene" name="Scene">
+      <node id="VIS_toe_05_a_R" name="VIS_toe_05_a_R" type="NODE">
+        <instance_geometry url="#mesh_toe_05_a_R-mesh" name="VIS_toe_05_a_R">
+          <bind_material>
+            <technique_common>
+              <instance_material symbol="Bone-material" target="#Bone-material"/>
+            </technique_common>
+          </bind_material>
+        </instance_geometry>
+      </node>
+    </visual_scene>
+  </library_visual_scenes>
+  <scene>
+    <instance_visual_scene url="#Scene"/>
+  </scene>
+</COLLADA>
