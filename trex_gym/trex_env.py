@@ -62,9 +62,9 @@ class TrexBulletEnv(gym.Env):
         self._weight_energy = energy_weight
         self._weight_drift = drift_weight
         self._action_bound = 1
-        self._cam_dist = 1.0
-        self._cam_yaw = 0
-        self._cam_pitch = -30
+        self._cam_dist = 10.0
+        self._cam_yaw = 90.0
+        self._cam_pitch = -30.0
         self._last_frame_time = 0.0
         # PD control needs smaller time step for stability.
         self._time_step /= NUM_SUBSTEPS
@@ -76,6 +76,14 @@ class TrexBulletEnv(gym.Env):
             connection_mode = pybullet.GUI
         self._pybullet_client = bullet_client.BulletClient(
                 connection_mode=connection_mode)
+
+        self._starting_configuration = {'femur_L_joint': -0.6,
+                                        'tibia_L_joint': 0.4,
+                                        'tarsometatarsus_L_joint': -1.2,
+                                        'femur_R_joint': -0.6,
+                                        'tibia_R_joint': 0.4,
+                                        'tarsometatarsus_R_joint': -1.2
+                                        }
 
         self.model = None
         self.np_random = None
@@ -96,11 +104,16 @@ class TrexBulletEnv(gym.Env):
             self._pybullet_client.setGravity(0, 0, -EARTH_GRAVITATIONAL_CONSTANT)
             plane = self._pybullet_client.loadURDF(os.path.join(os.path.dirname(self._urdf_path), FLOOR_URDF_FILENAME))
             self._pybullet_client.changeVisualShape(plane, -1, rgbaColor=[1, 1, 1, 0.9])
-            self.model = trex_robot.TrexRobot(self._pybullet_client, self._urdf_path)
+            origin_xyz = [0., 0., 3.]
+            origin_rpy = [0., 0., 0.]
+            self.model = trex_robot.TrexRobot(self._pybullet_client, self._urdf_path,
+                                              world_origin_xyz=origin_xyz, world_origin_rpy=origin_rpy,
+                                              starting_configuration=self._starting_configuration)
             self.model.reset()
         if self._is_render:
             self._pybullet_client.configureDebugVisualizer(self._pybullet_client.COV_ENABLE_PLANAR_REFLECTION, 0)
-            self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch, [0, 0, 0])
+            self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch,
+                                                             self.model.get_base_position())
         self._env_step_counter = 0
         self._last_base_position = [0.] * 3
         self._pybullet_client.stepSimulation()
@@ -136,10 +149,9 @@ class TrexBulletEnv(gym.Env):
     def render(self, mode='headless', close=False):
         base_position = self.model.get_base_position()
         if mode is 'human':
-            camera_info = self._pybullet_client.getDebugVisualizerCamera()
-            yaw = camera_info[8]
-            pitch = camera_info[9]
-            distance = camera_info[10]
+            distance = self._cam_dist
+            yaw = self._cam_yaw
+            pitch = self._cam_pitch
             self._pybullet_client.resetDebugVisualizerCamera(distance, yaw, pitch, base_position)
         elif mode is 'rgb_array':
             view_matrix = self._pybullet_client.computeViewMatrixFromYawPitchRoll(
