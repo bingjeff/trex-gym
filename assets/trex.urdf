@@ -1,13 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <robot name="stan_t_rex">
-	<joint name="vertebrae_sacral_joint" type="fixed">
-		<origin rpy="-1.5707963705062866 -0.0 0.0" xyz="-0.0171966552734375 -0.24924646317958832 -0.2207697629928589"/>
-		<parent link="root_link"/>
-		<child link="vertebrae_sacral_link"/>
-		<axis xyz="0.0 0.0 1.0"/>
-		<dynamics damping="1.0"/>
-		<limit effort="100.0" lower="1.0" upper="1.0" velocity="1.0"/>
-	</joint>
 	<joint name="femur_R_joint" type="revolute">
 		<origin rpy="-3.141592502593994 -0.0 0.27925267815589905" xyz="0.0171966552734375 -0.2207697629928589 0.2492464929819107"/>
 		<parent link="vertebrae_sacral_link"/>
@@ -638,7 +630,7 @@
 		<child link="vertebra_caudal_10_link"/>
 		<axis xyz="1.0 0.0 0.0"/>
 		<dynamics damping="1.0"/>
-		<limit effort="100.0" lower="-0.3490658503988659" upper="-0.3490658503988659" velocity="1.0"/>
+		<limit effort="100.0" lower="-0.3490658503988659" upper="0.3490658503988659" velocity="1.0"/>
 	</joint>
 	<joint name="vertebra_caudal_11_joint" type="fixed">
 		<origin rpy="-0.0872664526104927 -0.0 0.0" xyz="-1.632303714416139e-08 0.17552588880062103 -2.7522837342530693e-09"/>
@@ -760,6 +752,7 @@
 		<dynamics damping="1.0"/>
 		<limit effort="100.0" lower="1.0" upper="1.0" velocity="1.0"/>
 	</joint>
+<!--
 	<joint name="vertebra_caudal_26_joint" type="fixed">
 		<origin rpy="0.0872664526104927 -0.0 0.0" xyz="-1.1396958043974337e-08 0.12284772843122482 -6.741020186495916e-09"/>
 		<parent link="vertebra_caudal_25_link"/>
@@ -912,6 +905,7 @@
 		<dynamics damping="1.0"/>
 		<limit effort="100.0" lower="1.0" upper="1.0" velocity="1.0"/>
 	</joint>
+-->
 	<joint name="femur_L_joint" type="revolute">
 		<origin rpy="3.141592502593994 -0.0 0.27925267815589905" xyz="0.01719667762517929 -0.2207697629928589 -0.24924658238887787"/>
 		<parent link="vertebrae_sacral_link"/>
@@ -1064,7 +1058,6 @@
 		<dynamics damping="1.0"/>
 		<limit effort="100.0" lower="1.0" upper="1.0" velocity="1.0"/>
 	</joint>
-	<link name="root_link"/>
 	<link name="vertebrae_sacral_link">
 		<inertial>
 			<origin rpy="-1.5707964897155762 -1.570796012878418 0.0" xyz="-0.019029762595891953 0.01056528091430664 -9.14121210371377e-06"/>
@@ -3080,6 +3073,7 @@
 			</geometry>
 		</visual>
 	</link>
+<!--
 	<link name="vertebra_caudal_26_link">
 		<inertial>
 			<origin rpy="2.6354477405548096 -1.3242985232864157e-06 3.884224213379639e-07" xyz="0.0021934674587100744 0.062177181243896484 -0.02571868523955345"/>
@@ -3375,6 +3369,7 @@
 			</geometry>
 		</visual>
 	</link>
+-->
 	<link name="femur_L_link">
 		<inertial>
 			<origin rpy="0.8123132586479187 1.570798397064209 -0.34761086106300354" xyz="0.05960584804415703 0.5642221570014954 0.1702679991722107"/>
@@ -3676,5 +3671,4 @@
 			</geometry>
 		</visual>
 	</link>
-	<gazebo/>
 </robot>
