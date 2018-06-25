@@ -1,4 +1,4 @@
-"""This implements the gym for a planar t-rex model.
+"""This implements the gym for a t-rex model.
 
 """
 
@@ -8,6 +8,7 @@ from pybullet_envs.bullet import bullet_client
 
 import gym
 from gym import spaces
+from gym import logger
 from gym.utils import seeding
 import numpy as np
 import os
@@ -24,10 +25,10 @@ RENDER_WIDTH = 960
 class TrexBulletEnv(gym.Env):
     """The gym environment for the T-rex model.
 
-    This simulates the standing of a Tyrannosaurus as a planar model.
+    This simulates the standing of a Tyrannosaurus model.
     The observation space is expected to be the joint angles, velocities and torques.
     The action space is a desired joint angle and stiffness.
-    The cost is formulated on a time penalty on raising the center of mass, maintaining it and utilizing minimum energy.
+    The cost is formulated on raising the center of mass, maintaining it and utilizing minimum energy.
 
     """
     metadata = {
@@ -115,7 +116,7 @@ class TrexBulletEnv(gym.Env):
             self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch,
                                                              self.model.get_base_position())
         self._env_step_counter = 0
-        self._last_base_position = [0.] * 3
+        self._last_base_position = self.model.get_base_position()
         self._pybullet_client.stepSimulation()
         return self.model.get_observations()
 
@@ -144,7 +145,8 @@ class TrexBulletEnv(gym.Env):
             self._pybullet_client.stepSimulation()
 
         self._env_step_counter += 1
-        return self.model.get_observations(), self.compute_reward(), self.should_terminate(), {}
+        self._observation = self.model.get_observations()
+        return self._observation, self.compute_reward(), self.should_terminate(), {}
 
     def render(self, mode='headless', close=False):
         base_position = self.model.get_base_position()
@@ -179,11 +181,13 @@ class TrexBulletEnv(gym.Env):
         current_base_position = self.model.get_base_position()
         station_keeping_penalty = np.sqrt(current_base_position[0]**2 + current_base_position[1]**2)
         lifting_com_reward = current_base_position[2] - self._last_base_position[2]
-        energy_penalty = 0.
+        energy_penalty = self.model.get_total_joint_power()
         self._last_base_position = current_base_position
         reward = (
                 self._weight_distance * lifting_com_reward -
                 self._weight_drift * station_keeping_penalty -
                 self._weight_energy * energy_penalty
         )
+        logger.info('lifting_reward: %8.4g station_keeping: %8.4g energy: %8.4g = %8.4g',
+                    lifting_com_reward, station_keeping_penalty, energy_penalty, reward)
         return reward

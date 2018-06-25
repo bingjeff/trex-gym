@@ -350,6 +350,16 @@ class TrexRobot(BulletRobotBase):
         joint_states = self.get_joint_states(self._revolute_joint_indices)
         return joint_states['jointPosition'] + joint_states['jointVelocity'] + joint_states['appliedJointMotorTorque']
 
+    def get_total_joint_power(self):
+        """Get the instantaneous total power of the joints.
+
+        Calculates the sum of the absolute value of joint torque times joint velocity, e.g. sum_i abs(q_i * tau_i).
+
+        :return: a float representing the total power in Joules (N-m/s).
+        """
+        joint_states = self.get_joint_states(self._revolute_joint_indices)
+        return np.sum(np.fabs(np.multiply(joint_states['jointVelocity'], joint_states['appliedJointMotorTorque'])))
+
     def _set_joint_tracking(self, theta, kp):
         """Internal method for setting the joint controller.
 
