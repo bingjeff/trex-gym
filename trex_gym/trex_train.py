@@ -16,11 +16,11 @@ from baselines.common.vec_env import dummy_vec_env
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_bool('train', 'Whether to start training.', True)
-flags.DEFINE_bool('play', 'Whether to run the policy after training.', False)
-flags.DEFINE_bool('debug_render', 'Whether to show the bullet debug render.', False)
-flags.DEFINE_integer('num_timesteps', 'Number of time step iterations.', 1e6)
-flags.DEFINE_integer('random_seed', 'Seed to use for random initialization.', 0)
+flags.DEFINE_bool('train', True, 'Whether to start training.')
+flags.DEFINE_bool('play', False, 'Whether to run the policy after training.')
+flags.DEFINE_bool('debug_render', False, 'Whether to show the bullet debug render.')
+flags.DEFINE_integer('num_timesteps', 1e6, 'Number of time step iterations.')
+flags.DEFINE_integer('random_seed', 0, 'Seed to use for random initialization.')
 
 _NUM_CPUS = 1
 _URDF_PATH = './assets/trex.urdf'
