@@ -19,7 +19,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_bool('train', True, 'Whether to start training.')
 flags.DEFINE_bool('play', False, 'Whether to run the policy after training.')
 flags.DEFINE_bool('debug_render', False, 'Whether to show the bullet debug render.')
-flags.DEFINE_integer('num_timesteps', 1e6, 'Number of time step iterations.')
+flags.DEFINE_integer('num_timesteps', int(1e6), 'Number of time step iterations.')
 flags.DEFINE_integer('random_seed', 0, 'Seed to use for random initialization.')
 
 _NUM_CPUS = 1
