@@ -9,5 +9,5 @@ setup(
     license='MIT',
     author='Jeffrey T. Bingham',
     author_email='bingjeff@gmail.com',
-    description=''
+    description='', install_requires=['numpy', 'tensorflow', 'absl-py', 'baselines', 'pybullet', 'gym']
 )
