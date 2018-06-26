@@ -69,6 +69,9 @@ def main(argv):
                                               energy_weight=0.005,
                                               drift_weight=0.002,
                                               render=FLAGS.debug_render)
+        logger.log("--num actions: {}".format(len(training_env.model.get_action_limits()[0])))
+        logger.log("--num joints: {}".format(len(training_env.model._revolute_joint_indices)))
+        logger.log("--total mass: {}".format(training_env.model._total_mass))
         model, env = train(training_env, num_timesteps=FLAGS.num_timesteps, seed=FLAGS.random_seed)
 
     if FLAGS.train and FLAGS.play:

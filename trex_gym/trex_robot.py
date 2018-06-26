@@ -157,7 +157,11 @@ class BulletRobotBase(object):
         result = {}
         for joint_index in range(self.client.getNumJoints(self.body_handle)):
             joint_info = self.get_joint_info(joint_index)
-            result[joint_info['jointName']] = joint_info['jointIndex']
+            joint_name = joint_info['jointName']
+            if type(joint_name) is bytes:
+                joint_name = joint_name.decode()
+            joint_index = joint_info['jointIndex']
+            result[joint_name] = joint_index
         return result
 
     def get_link_info(self, link_index):
@@ -304,7 +308,7 @@ class TrexRobot(BulletRobotBase):
         self.remove_joint_control()
         # Grab the revolute joints and add them to the cache.
         joints = self._get_joints_by_type(pybullet.JOINT_REVOLUTE)
-        joint_names = joints.keys()
+        joint_names = list(joints.keys())
         joint_names.sort()
         self._revolute_joint_indices = [joints[name] for name in joint_names]
         # Calculate the model mass.
@@ -382,6 +386,8 @@ class TrexRobot(BulletRobotBase):
         """
         num_joints = len(self._revolute_joint_indices)
         max_torque = [self._MAX_JOINT_TORQUE_IN_NM] * num_joints
+        if any([k < 0 for k in kp]):
+            print('Bad K, man: {}'.format(kp))
         damping_gain = np.sqrt(2.0 * self._total_mass * np.array(kp))
         vec_zero = [0.0] * num_joints
         control_mode = self.client.POSITION_CONTROL
