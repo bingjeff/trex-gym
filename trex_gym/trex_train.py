@@ -51,7 +51,8 @@ def train(training_env, num_timesteps, seed):
                        ent_coef=0.0,
                        lr=3e-4,
                        cliprange=0.2,
-                       total_timesteps=num_timesteps)
+                       total_timesteps=num_timesteps,
+                       save_interval=10)
 
     return model, env
 

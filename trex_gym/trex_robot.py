@@ -386,9 +386,8 @@ class TrexRobot(BulletRobotBase):
         """
         num_joints = len(self._revolute_joint_indices)
         max_torque = [self._MAX_JOINT_TORQUE_IN_NM] * num_joints
-        if any([k < 0 for k in kp]):
-            print('Bad K, man: {}'.format(kp))
-        damping_gain = np.sqrt(2.0 * self._total_mass * np.array(kp))
+        stiffness_gain = [max(0.0, k) for k in kp]
+        damping_gain = np.sqrt(2.0 * self._total_mass * np.array(stiffness_gain))
         vec_zero = [0.0] * num_joints
         control_mode = self.client.POSITION_CONTROL
         self.client.setJointMotorControlArray(self.body_handle,
@@ -397,7 +396,7 @@ class TrexRobot(BulletRobotBase):
                                               targetPositions=theta,
                                               targetVelocities=vec_zero,
                                               forces=max_torque,
-                                              positionGains=kp,
+                                              positionGains=stiffness_gain,
                                               velocityGains=damping_gain.tolist())
 
     def set_actions(self, actions):
@@ -418,5 +417,5 @@ class TrexRobot(BulletRobotBase):
         num_joints = len(self._revolute_joint_indices)
         lower_limit, upper_limit = self._get_joint_limits()
         lower_limit.extend([0.0] * num_joints)
-        upper_limit.extend([np.inf] * num_joints)
+        upper_limit.extend([1.0e12] * num_joints)
         return np.array(lower_limit), np.array(upper_limit)
