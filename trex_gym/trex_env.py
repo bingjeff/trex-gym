@@ -2,7 +2,7 @@
 
 """
 
-import trex_robot
+from . import trex_robot
 from pybullet_envs.bullet import bullet_client
 
 
@@ -170,6 +170,7 @@ class TrexBulletEnv(gym.Env):
                 width=RENDER_WIDTH, height=RENDER_HEIGHT, viewMatrix=view_matrix,
                 projectionMatrix=proj_matrix, renderer=pybullet.ER_BULLET_HARDWARE_OPENGL)
             rgb_array = np.array(px)
+            rgb_array = np.reshape(rgb_array, (RENDER_HEIGHT, RENDER_WIDTH, 4))
             rgb_array = rgb_array[:, :, :3]
             return rgb_array
         return np.array([])
