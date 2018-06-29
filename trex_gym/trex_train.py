@@ -130,7 +130,7 @@ def main(argv):
         for frame_idx in range(FLAGS.num_play_timesteps):
             actions = model.step(obs)[0]
             obs[:] = env.step(actions)[0]
-            rgb_img = env.render(mode='rgb_array')
+            rgb_img = env.render()
             im = Image.fromarray(rgb_img.astype(np.uint8))
             im.save(os.path.join(logger.get_dir(), '{:05d}-of-{:05d}.png'.format(frame_idx, FLAGS.num_play_timesteps)))
 

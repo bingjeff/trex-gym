@@ -148,7 +148,7 @@ class TrexBulletEnv(gym.Env):
         self._observation = self.model.get_observations()
         return self._observation, self.compute_reward(), self.should_terminate(), {}
 
-    def render(self, mode='headless', close=False):
+    def render(self, mode='rgb_array', close=False):
         base_position = self.model.get_base_position()
         if mode is 'human':
             distance = self._cam_dist
