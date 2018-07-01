@@ -140,8 +140,12 @@ class TrexBulletEnv(gym.Env):
           ValueError: The action dimension is not the same as the number of motors.
           ValueError: The magnitude of actions is out of bounds.
         """
+        # Clipping the action here is a hack, because PPO2 does not believe in using the action space :(.
+        action_scaled = action
+        action_scaled[(len(action)//2):] *= 1.0e-3
+        clipped_action = np.clip(action_scaled, self.action_space.low, self.action_space.high)
         for _ in range(self._action_repeat):
-            self.model.set_actions(action)
+            self.model.set_actions(clipped_action)
             self._pybullet_client.stepSimulation()
 
         self._env_step_counter += 1
