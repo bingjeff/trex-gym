@@ -342,8 +342,8 @@ class TrexRobot(BulletRobotBase):
         """
         num_joints = len(self._revolute_joint_indices)
         lower_limit, upper_limit = self._get_joint_limits()
-        lower_limit.extend([-np.inf] * 2 * num_joints)
-        upper_limit.extend([np.inf] * 2 * num_joints)
+        lower_limit.extend([-1.0e12] * 2 * num_joints)
+        upper_limit.extend([1.0e12] * 2 * num_joints)
         return np.array(lower_limit), np.array(upper_limit)
 
     def get_observations(self):
@@ -417,5 +417,5 @@ class TrexRobot(BulletRobotBase):
         num_joints = len(self._revolute_joint_indices)
         lower_limit, upper_limit = self._get_joint_limits()
         lower_limit.extend([0.0] * num_joints)
-        upper_limit.extend([1.0e12] * num_joints)
+        upper_limit.extend([1.0e-3] * num_joints)
         return np.array(lower_limit), np.array(upper_limit)

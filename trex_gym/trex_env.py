@@ -2,7 +2,7 @@
 
 """
 
-from . import trex_robot
+import trex_robot
 from pybullet_envs.bullet import bullet_client
 
 

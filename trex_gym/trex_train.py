@@ -4,7 +4,7 @@ import numpy as np
 import os
 import tensorflow as tf
 
-from . import trex_env
+import trex_env
 
 from absl import app
 from absl import flags
@@ -130,7 +130,7 @@ def main(argv):
         for frame_idx in range(FLAGS.num_play_timesteps):
             actions = model.step(obs)[0]
             obs[:] = env.step(actions)[0]
-            rgb_img = env.render()
+            rgb_img = env.render(mode='rgb_array')[0]
             im = Image.fromarray(rgb_img.astype(np.uint8))
             im.save(os.path.join(logger.get_dir(), '{:05d}-of-{:05d}.png'.format(frame_idx, FLAGS.num_play_timesteps)))
 
