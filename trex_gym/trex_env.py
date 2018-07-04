@@ -2,7 +2,7 @@
 
 """
 
-import trex_robot
+from . import trex_robot
 from pybullet_envs.bullet import bullet_client
 
 
@@ -100,9 +100,6 @@ class TrexBulletEnv(gym.Env):
             self.model.reset()
         else:
             self._pybullet_client.resetSimulation()
-            self._pybullet_client.setPhysicsEngineParameter(numSolverIterations=int(self._num_bullet_solver_iterations))
-            self._pybullet_client.setTimeStep(self._time_step)
-            self._pybullet_client.setGravity(0, 0, -EARTH_GRAVITATIONAL_CONSTANT)
             plane = self._pybullet_client.loadURDF(os.path.join(os.path.dirname(self._urdf_path), FLOOR_URDF_FILENAME))
             self._pybullet_client.changeVisualShape(plane, -1, rgbaColor=[1, 1, 1, 0.9])
             origin_xyz = [0., 0., 3.]
@@ -115,6 +112,9 @@ class TrexBulletEnv(gym.Env):
             self._pybullet_client.configureDebugVisualizer(self._pybullet_client.COV_ENABLE_PLANAR_REFLECTION, 0)
             self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw, self._cam_pitch,
                                                              self.model.get_base_position())
+        self._pybullet_client.setPhysicsEngineParameter(numSolverIterations=int(self._num_bullet_solver_iterations))
+        self._pybullet_client.setTimeStep(self._time_step)
+        self._pybullet_client.setGravity(0, 0, -EARTH_GRAVITATIONAL_CONSTANT)
         self._env_step_counter = 0
         self._last_base_position = self.model.get_base_position()
         self._pybullet_client.stepSimulation()
@@ -185,14 +185,14 @@ class TrexBulletEnv(gym.Env):
     def compute_reward(self):
         current_base_position = self.model.get_base_position()
         station_keeping_penalty = np.sqrt(current_base_position[0]**2 + current_base_position[1]**2)
-        lifting_com_reward = current_base_position[2] - self._last_base_position[2]
+        lifting_com_penalty = np.abs(2.5 - current_base_position[2])
         energy_penalty = self.model.get_total_joint_power()
         self._last_base_position = current_base_position
         reward = (
-                self._weight_distance * lifting_com_reward -
+                -self._weight_distance * lifting_com_penalty -
                 self._weight_drift * station_keeping_penalty -
                 self._weight_energy * energy_penalty
         )
-        logger.info('lifting_reward: %8.4g station_keeping: %8.4g energy: %8.4g = %8.4g',
-                    lifting_com_reward, station_keeping_penalty, energy_penalty, reward)
+        logger.info('lifting_com_penalty: %8.4g station_keeping: %8.4g energy: %8.4g = %8.4g',
+                    lifting_com_penalty, station_keeping_penalty, energy_penalty, reward)
         return reward
