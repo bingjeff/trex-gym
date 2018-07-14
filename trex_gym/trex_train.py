@@ -63,7 +63,7 @@ def train(training_env, num_timesteps, seed):
     return model, env
 
 
-def build_environment(action_repeat=1, distance_weight=1.0e2, energy_weight=1.0e-6, drift_weight=1.0e-2, render=False):
+def build_environment(action_repeat=1, distance_weight=1.0e3, energy_weight=1.0e-6, drift_weight=1.0e-2, render=False):
     return trex_env.TrexBulletEnv(_URDF_PATH,
                                   action_repeat=action_repeat,
                                   distance_weight=distance_weight,
@@ -127,6 +127,7 @@ def main(argv):
         logger.log("Running trained model.")
         obs = np.zeros((env.num_envs,) + env.observation_space.shape)
         obs[:] = env.reset()
+        print(env._pybullet_client.getPhysicsEngineParameters())
         for frame_idx in range(FLAGS.num_play_timesteps):
             actions = model.step(obs)[0]
             obs[:] = env.step(actions)[0]

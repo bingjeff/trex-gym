@@ -311,8 +311,6 @@ class TrexRobot(BulletRobotBase):
         joints = self._get_joints_by_type(pybullet.JOINT_REVOLUTE)
         joint_names = list(joints.keys())
         joint_names.sort()
-        for n in joint_names:
-            print(n)
         self._revolute_joint_indices = [joints[name] for name in joint_names]
         # Get the head link index.
         self._head_link_index = self.get_link_map()[b'atlas_axis_link']
@@ -400,7 +398,7 @@ class TrexRobot(BulletRobotBase):
         max_torque = [self._MAX_JOINT_TORQUE_IN_NM] * num_joints
         stiffness_gain = [max(0.0, k) for k in kp]
         # damping_gain = np.sqrt(2.0 * self._total_mass * np.array(stiffness_gain))
-        damping_gain = np.sqrt(2.0 * 10.0 * np.array(stiffness_gain))
+        damping_gain = np.sqrt(2.0 * 2.0 * np.array(stiffness_gain))
         vec_zero = [0.0] * num_joints
         control_mode = self.client.POSITION_CONTROL
         self.client.setJointMotorControlArray(self.body_handle,
@@ -420,7 +418,7 @@ class TrexRobot(BulletRobotBase):
         num_joints = len(self._revolute_joint_indices)
         theta = actions[:num_joints]
         # kp = actions[num_joints:]
-        kp = [5.e-2 for _ in theta]
+        kp = [1.e-3 for _ in theta]
         self._set_joint_tracking(theta, kp)
 
     def get_action_limits(self):
