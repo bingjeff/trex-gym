@@ -2,13 +2,13 @@
 
 """
 
-from . import trex_robot
+import trex_robot
 from pybullet_envs.bullet import bullet_client
 
+from baselines import logger
 
 import gym
 from gym import spaces
-from gym import logger
 from gym.utils import seeding
 import numpy as np
 import os
@@ -142,7 +142,7 @@ class TrexBulletEnv(gym.Env):
         """
         # Clipping the action here is a hack, because PPO2 does not believe in using the action space :(.
         action_scaled = action
-        action_scaled[(len(action)//2):] *= 1.0e-3
+        # action_scaled[(len(action)//2):] *= 1.0e-3
         clipped_action = np.clip(action_scaled, self.action_space.low, self.action_space.high)
         for _ in range(self._action_repeat):
             self.model.set_actions(clipped_action)
@@ -183,16 +183,13 @@ class TrexBulletEnv(gym.Env):
         return False
 
     def compute_reward(self):
-        current_base_position = self.model.get_base_position()
-        station_keeping_penalty = np.sqrt(current_base_position[0]**2 + current_base_position[1]**2)
-        lifting_com_penalty = np.abs(2.5 - current_base_position[2])
-        energy_penalty = self.model.get_total_joint_power()
+        current_base_position = self.model.get_head_position()
+        station_keeping_penalty = self._weight_drift * (current_base_position[0]**2 + current_base_position[1]**2)
+        lifting_com_penalty = self._weight_distance * (2.5 - current_base_position[2])**2
+        energy_penalty = self._weight_energy * self.model.get_total_joint_power()
         self._last_base_position = current_base_position
-        reward = (
-                -self._weight_distance * lifting_com_penalty -
-                self._weight_drift * station_keeping_penalty -
-                self._weight_energy * energy_penalty
-        )
-        logger.info('lifting_com_penalty: %8.4g station_keeping: %8.4g energy: %8.4g = %8.4g',
-                    lifting_com_penalty, station_keeping_penalty, energy_penalty, reward)
+        reward = -lifting_com_penalty - station_keeping_penalty - energy_penalty
+        logger.logkv('penalty_lifting_com', lifting_com_penalty)
+        logger.logkv('penalty_station_keeping', station_keeping_penalty)
+        logger.logkv('penalty_energy', energy_penalty)
         return reward

@@ -628,9 +628,9 @@
 		<origin rpy="0.05235988274216652 -0.0 0.0" xyz="-1.791526216265993e-08 0.17420564591884613 2.9312907656731113e-09"/>
 		<parent link="vertebra_caudal_09_link"/>
 		<child link="vertebra_caudal_10_link"/>
-		<axis xyz="1.0 0.0 0.0"/>
+		<axis xyz="0.0 0.0 1.0"/>
 		<dynamics damping="1.0"/>
-		<limit effort="100.0" lower="-0.3490658503988659" upper="0.3490658503988659" velocity="1.0"/>
+		<limit effort="100.0" lower="-1.3490658503988659" upper="1.3490658503988659" velocity="1.0"/>
 	</joint>
 	<joint name="vertebra_caudal_11_joint" type="fixed">
 		<origin rpy="-0.0872664526104927 -0.0 0.0" xyz="-1.632303714416139e-08 0.17552588880062103 -2.7522837342530693e-09"/>

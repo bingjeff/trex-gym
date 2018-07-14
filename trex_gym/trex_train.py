@@ -63,7 +63,7 @@ def train(training_env, num_timesteps, seed):
     return model, env
 
 
-def build_environment(action_repeat=1, distance_weight=1.0, energy_weight=0.005, drift_weight=0.002, render=False):
+def build_environment(action_repeat=1, distance_weight=1.0e2, energy_weight=1.0e-6, drift_weight=1.0e-2, render=False):
     return trex_env.TrexBulletEnv(_URDF_PATH,
                                   action_repeat=action_repeat,
                                   distance_weight=distance_weight,
