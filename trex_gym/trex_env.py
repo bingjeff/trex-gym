@@ -118,6 +118,7 @@ class TrexBulletEnv(gym.Env):
         self._env_step_counter = 0
         self._last_base_position = self.model.get_base_position()
         self._pybullet_client.stepSimulation()
+        print(self._pybullet_client.getPhysicsEngineParameters())
         return self.model.get_observations()
 
     def seed(self, seed=None):

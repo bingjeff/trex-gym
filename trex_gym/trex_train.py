@@ -127,7 +127,6 @@ def main(argv):
         logger.log("Running trained model.")
         obs = np.zeros((env.num_envs,) + env.observation_space.shape)
         obs[:] = env.reset()
-        print(env._pybullet_client.getPhysicsEngineParameters())
         for frame_idx in range(FLAGS.num_play_timesteps):
             actions = model.step(obs)[0]
             obs[:] = env.step(actions)[0]
