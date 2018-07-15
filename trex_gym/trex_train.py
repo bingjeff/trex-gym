@@ -24,8 +24,8 @@ FLAGS = flags.FLAGS
 flags.DEFINE_bool('train', True, 'Whether to start training.')
 flags.DEFINE_bool('play', True, 'Whether to run the policy after training.')
 flags.DEFINE_bool('debug_render', False, 'Whether to show the bullet debug render.')
-flags.DEFINE_integer('num_timesteps', int(1e6), 'Number of time step iterations.')
-flags.DEFINE_integer('num_play_timesteps', int(1e3), 'Number of time step iterations to render.')
+flags.DEFINE_integer('num_timesteps', int(5e6), 'Number of time step iterations.')
+flags.DEFINE_integer('num_play_timesteps', int(2e3), 'Number of time step iterations to render.')
 flags.DEFINE_integer('random_seed', 0, 'Seed to use for random initialization.')
 
 _NUM_CPUS = 1
@@ -48,11 +48,11 @@ def train(training_env, num_timesteps, seed):
     policy = policies.MlpPolicy
     model = ppo2.learn(policy=policy,
                        env=env,
-                       nsteps=2048,
+                       nsteps=4096,
                        nminibatches=32,
                        lam=0.95,
                        gamma=0.99,
-                       noptepochs=10,
+                       noptepochs=32,
                        log_interval=1,
                        ent_coef=0.0,
                        lr=3e-4,
