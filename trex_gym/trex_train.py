@@ -63,7 +63,7 @@ def train(training_env, num_timesteps, seed):
     return model, env
 
 
-def build_environment(action_repeat=1, distance_weight=1.0e3, energy_weight=1.0e-6, drift_weight=1.0e-2, render=False):
+def build_environment(action_repeat=1, distance_weight=2.0e2, energy_weight=1.0e-6, drift_weight=1.0e-2, render=False):
     return trex_env.TrexBulletEnv(_URDF_PATH,
                                   action_repeat=action_repeat,
                                   distance_weight=distance_weight,
@@ -133,6 +133,7 @@ def main(argv):
             rgb_img = env.render(mode='rgb_array')[0]
             im = Image.fromarray(rgb_img.astype(np.uint8))
             im.save(os.path.join(logger.get_dir(), '{:05d}-of-{:05d}.png'.format(frame_idx, FLAGS.num_play_timesteps)))
+        os.system("ffmpeg -r 50 -i {}/%05d-of-01000.png -y {}/movie.mp4".format(logger.get_dir(), logger.get_dir()))
 
 
 
