@@ -3,6 +3,8 @@
 # Code modified from: 
 # https://github.com/pycollada/pycollada/blob/master/examples/daeview/renderer/OldStyleRenderer.py
 
+import numpy as np
+
 from pyglet.gl import gl
 from pyglet.gl import glu
 
@@ -42,8 +44,13 @@ class DaeRenderer:
         self.displist = gl.glGenLists(1)
         # compile the display list, store a triangle in it
         gl.glNewList(self.displist, gl.GL_COMPILE)
-        self.draw_primitives()
-        # self.draw_sphere()
+        gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_LINE)
+        # self.draw_primitives()
+        # self.draw_test()
+        self.draw_capsule(5.0, 15.0, 10, 20)
+        # self.draw_tube(10.0, 1.0, 10, num_stacks=4)
+        # self.draw_hemi_sphere(10.0, 10, 20, lo_phi=0, hi_phi=0.5*np.pi, z_offset=10.0)
+        gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_FILL)
         gl.glEndList()
         print('done. Ready to render.')
 
@@ -74,13 +81,87 @@ class DaeRenderer:
         self.z_max = 0.1
         gl.glEnd()
 
-    def draw_sphere(self):
+    def draw_glu_sphere(self):
         sphere = glu.gluNewQuadric()
         radius, slices, stacks = (10.0, 10, 10)
         glu.gluSphere(sphere, radius, slices, stacks)
         self.z_min = -radius
         self.z_max = radius
 
+    def draw_capsule(self, radius, length, num_sectors, num_stacks):
+        self.draw_hemi_sphere(radius, num_sectors, num_stacks, lo_phi=-0.5*np.pi, hi_phi=0.0, z_offset=-0.5*length)
+        self.draw_tube(radius, length, num_sectors, num_stacks=2)
+        self.draw_hemi_sphere(radius, num_sectors, num_stacks, lo_phi=0.0, hi_phi=0.5*np.pi, z_offset=0.5*length)
+
+    def draw_tube(self, radius, length, num_sectors, num_stacks, z_offset=0.0):
+        theta = np.linspace(0.0, 2 * np.pi, num_sectors)
+        phi = np.linspace(-0.5 * length, 0.5 * length, num_stacks)
+
+        diffuse_color = (gl.GLfloat * 4)(0.3, 0.3, 0.3, 0.0)
+        def add_vertex(vx, vy, vz):
+            gl.glMaterialfv(gl.GL_FRONT, gl.GL_DIFFUSE, diffuse_color)
+            gl.glVertex3fv((gl.GLfloat * 3)(vx, vy, vz))
+            self.z_max = np.max((self.z_max, vz))
+            self.z_min = np.min((self.z_min, vz))
+
+        def add_uv_vertex(u, v):
+            x = radius * np.cos(theta[u])
+            y = radius * np.sin(theta[u])
+            z = phi[v] + z_offset
+            add_vertex(x, y, z)
+
+        def add_tl_triangle(u, v):
+            add_uv_vertex(u - 1, v - 1)
+            add_uv_vertex(u, v)
+            add_uv_vertex(u - 1, v)
+
+        def add_br_triangle(u, v):
+            add_uv_vertex(u - 1, v - 1)
+            add_uv_vertex(u, v - 1)
+            add_uv_vertex(u, v)
+
+        gl.glBegin(gl.GL_TRIANGLES)
+        for u in range(1, num_sectors):
+            for v in range(1, num_stacks):
+                add_tl_triangle(u, v)
+                add_br_triangle(u, v)
+        self.get_gl_error()
+        gl.glEnd()
+
+    def draw_hemi_sphere(self, radius, num_sectors, num_stacks, lo_phi=0.0, hi_phi=1.5, z_offset=0.0):
+        theta = np.linspace(0.0, 2 * np.pi, num_sectors)
+        phi = np.linspace(lo_phi, hi_phi, num_stacks)
+
+        diffuse_color = (gl.GLfloat * 4)(0.3, 0.3, 0.3, 0.0)
+        def add_vertex(vx, vy, vz):
+            gl.glMaterialfv(gl.GL_FRONT, gl.GL_DIFFUSE, diffuse_color)
+            gl.glVertex3fv((gl.GLfloat * 3)(vx, vy, vz))
+            self.z_max = np.max((self.z_max, vz))
+            self.z_min = np.min((self.z_min, vz))
+
+        def add_uv_vertex(u, v):
+            x = radius * np.cos(phi[v]) * np.cos(theta[u])
+            y = radius * np.cos(phi[v]) * np.sin(theta[u])
+            z = radius * np.sin(phi[v]) + z_offset
+            add_vertex(x, y, z)
+
+        def add_tl_triangle(u, v):
+            add_uv_vertex(u - 1, v - 1)
+            add_uv_vertex(u, v)
+            add_uv_vertex(u - 1, v)
+
+        def add_br_triangle(u, v):
+            add_uv_vertex(u - 1, v - 1)
+            add_uv_vertex(u, v - 1)
+            add_uv_vertex(u, v)
+
+        gl.glBegin(gl.GL_TRIANGLES)
+        for u in range(1, num_sectors):
+            for v in range(1, num_stacks):
+                add_tl_triangle(u, v)
+                add_br_triangle(u, v)
+        self.get_gl_error()
+        gl.glEnd()
 
     def draw_primitives(self):
         if self.dae.scene is None:
@@ -135,10 +216,10 @@ class DaeRenderer:
             glu.gluPerspective(100, self.window.width / self.window.height, 1.0, 5000.0)
         gl.glMatrixMode(gl.GL_MODELVIEW) # Select The Model View Matrix
         gl.glLoadIdentity()
-        z_offset = self.z_min - (self.z_max - self.z_min) * 3
+        z_offset = self.z_min - (self.z_max - self.z_min) * 1
         light_pos = (gl.GLfloat * 3)(100.0, 100.0, 100.0 * -z_offset)
         gl.glLightfv(gl.GL_LIGHT0, gl.GL_POSITION, light_pos)
-        gl.glTranslatef(0, 0, z_offset)
+        gl.glTranslatef(0, -10, z_offset)
         gl.glRotatef(rotate_x, 1.0, 0.0, 0.0)
         gl.glRotatef(rotate_y, 0.0, 1.0, 0.0)
         gl.glRotatef(rotate_z, 0.0, 0.0, 1.0)

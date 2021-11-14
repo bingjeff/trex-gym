@@ -9,6 +9,7 @@ absl-py = "*"
 pyglet = "*"
 pycollada = "*"
 ipython = "*"
+autopep8 = "*"
 
 [dev-packages]
 ipython = "*"

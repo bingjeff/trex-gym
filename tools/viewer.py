@@ -16,9 +16,10 @@ except pyglet.window.NoSuchConfigException:
     # Fall back to no multisampling for old hardware
     window = pyglet.window.Window(resizable=False)
 
-window.rotate_x  = 0.0
+window.rotate_x = 0.0
 window.rotate_y = 0.0
 window.rotate_z = 0.0
+daerender = None
 
 
 @window.event
@@ -71,8 +72,8 @@ if __name__ == '__main__':
 
     print(f'Renderer created: {daerender.dae.filename}')
 	
-    window.width = 1024
-    window.height = 768
+    window.width = 400
+    window.height = 400
     
     print('Starting OpenGL context...')
     pyglet.app.run()
