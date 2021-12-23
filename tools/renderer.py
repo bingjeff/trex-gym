@@ -26,6 +26,11 @@ def to_floatv4x4(mat):
 def from_floatv4x4(floatv):
     return np.reshape(floatv, (4, 4), order='F')
 
+def get_gl_error():
+    error_id = gl.glGetError()
+    if error_id != 0:
+        raise RuntimeError(f'GL Error ({error_id}): {glu.gluErrorString(error_id)}')
+
 def get_model_view_matrix():
     return_val = floatv4x4()
     gl.glGetFloatv(gl.GL_MODELVIEW_MATRIX, return_val)
@@ -48,8 +53,6 @@ class Camera:
         camera_direction = self._normalize(self.origin - self.target)
         camera_right = self._normalize(np.cross(self.up, camera_direction))
         camera_up = self._normalize(np.cross(camera_direction, camera_right))
-        print(f'o: {self.origin} t: {self.target}')
-        print(f'{camera_direction} {camera_right} {camera_up}')
         self.view[0, :3] = camera_right
         self.view[1, :3] = camera_up
         self.view[2, :3] = camera_direction
@@ -103,60 +106,6 @@ class DaeRenderer:
         gl.glTexParameterf(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST)
         gl.glTexParameterf(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_NEAREST)
 
-
-    def get_gl_error(self):
-        error_id = gl.glGetError()
-        if error_id != 0:
-            raise RuntimeError(f'GL Error ({error_id}): {glu.gluErrorString(error_id)}')
-
-    def draw_test(self):
-        gl.glBegin(gl.GL_TRIANGLES)
-        diffuse_color = (gl.GLfloat * 4)(1.0, 0.0, 0.0, 1.0)
-
-        # Triangle 0.
-        # T0 - Vertex 0.
-        gl.glMaterialfv(gl.GL_FRONT, gl.GL_DIFFUSE, diffuse_color)
-        gl.glNormal3fv((gl.GLfloat * 3)(0.0, 0.0, 1.0))
-        gl.glVertex3fv((gl.GLfloat * 3)(0.0, 1.0, 0.0))
-        # T0 - Vertex 1.
-        gl.glMaterialfv(gl.GL_FRONT, gl.GL_DIFFUSE, diffuse_color)
-        gl.glNormal3fv((gl.GLfloat * 3)(0.0, 0.0, 1.0))
-        gl.glVertex3fv((gl.GLfloat * 3)(-0.5, 0.0, 0.0))
-        # T0 - Vertex 2.
-        gl.glMaterialfv(gl.GL_FRONT, gl.GL_DIFFUSE, diffuse_color)
-        gl.glNormal3fv((gl.GLfloat * 3)(0.0, 0.0, 1.0))
-        gl.glVertex3fv((gl.GLfloat * 3)(0.5, 0.0, 0.0))
-
-        self.z_min = -1.0
-        self.z_max = 1.0
-        gl.glEnd()
-
-    def draw_test_cw(self):
-        gl.glBegin(gl.GL_TRIANGLES)
-        diffuse_color = (gl.GLfloat * 4)(1.0, 0.0, 0.0, 1.0)
-
-        # Triangle 0.
-        # T0 - Vertex 0.
-        gl.glMaterialfv(gl.GL_FRONT, gl.GL_DIFFUSE, diffuse_color)
-        gl.glVertex3fv((gl.GLfloat * 3)(0.0, 1.0, 0.0))
-        # T0 - Vertex 2.
-        gl.glMaterialfv(gl.GL_FRONT, gl.GL_DIFFUSE, diffuse_color)
-        gl.glVertex3fv((gl.GLfloat * 3)(0.5, 0.0, 0.0))
-        # T0 - Vertex 1.
-        gl.glMaterialfv(gl.GL_FRONT, gl.GL_DIFFUSE, diffuse_color)
-        gl.glVertex3fv((gl.GLfloat * 3)(-0.5, 0.0, 0.0))
-
-        self.z_min = -1.0
-        self.z_max = 1.0
-        gl.glEnd()
-
-    def draw_glu_sphere(self):
-        sphere = glu.gluNewQuadric()
-        radius, slices, stacks = (10.0, 10, 10)
-        glu.gluSphere(sphere, radius, slices, stacks)
-        self.z_min = -radius
-        self.z_max = radius
-
     def draw_capsule(self, radius, length, num_sectors, num_stacks, color=None):
         self.draw_hemi_sphere(radius, num_sectors, num_stacks, lo_phi=-0.5*np.pi, hi_phi=0.0, z_offset=-0.5*length, color=color)
         self.draw_tube(radius, length, num_sectors, num_stacks=2, color=color)
@@ -194,7 +143,7 @@ class DaeRenderer:
             for v in range(1, num_stacks):
                 add_tl_triangle(u, v)
                 add_br_triangle(u, v)
-        self.get_gl_error()
+        get_gl_error()
         gl.glEnd()
 
     def draw_hemi_sphere(self, radius, num_sectors, num_stacks, lo_phi=0.0, hi_phi=1.5, z_offset=0.0, color=None):
@@ -229,7 +178,7 @@ class DaeRenderer:
             for v in range(1, num_stacks):
                 add_br_triangle(u, v)
                 add_tl_triangle(u, v)
-        self.get_gl_error()
+        get_gl_error()
         gl.glEnd()
 
     def draw_primitives(self):
@@ -271,7 +220,7 @@ class DaeRenderer:
                             self.z_max = vz
                         elif vz < self.z_min:
                             self.z_min = vz
-        self.get_gl_error()
+        get_gl_error()
         gl.glEnd()
 
     def clear_and_setup_window(self):
