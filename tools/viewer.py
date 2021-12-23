@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+
+# When running on Windows, suggest using XLaunch/VcXsrv.
+# Start the xserver using "disable access control". 
+# Just don't leave the server running, since that is a bit sketchy.
+
 import collada
 import sys
 import renderer
@@ -75,7 +80,7 @@ if __name__ == '__main__':
     window.width = 400
     window.height = 400
     
-    print('Starting OpenGL context...')
+    print('Running OpenGL context...')
     pyglet.app.run()
     print('Cleaning up...')
     daerender.cleanup()
