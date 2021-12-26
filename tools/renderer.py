@@ -184,7 +184,24 @@ class CapsuleMesh(TriangleMeshShape):
         self.bot_cap.draw()
         self.max_xyz = np.max([self.max_xyz, self.top_cap.max_xyz, self.tube.max_xyz, self.bot_cap.max_xyz], axis=0)
         self.min_xyz = np.min([self.min_xyz, self.top_cap.min_xyz, self.tube.min_xyz, self.bot_cap.min_xyz], axis=0)
-    
+
+def get_principle_axes(points):
+    xyz = np.array(points) if np.shape(points)[1] == 3 else np.transpose(points)
+    centroid = np.mean(xyz, axis=0)
+    xyz -= centroid
+    moment = xyz.T @ xyz
+    # Axes are sorted x, y, z; make z the dominate axis.
+    u, _, _ = np.linalg.svd(moment)
+    z = u[:, 0]
+    y = u[:, 1]
+    x = np.cross(y, z)
+    axes = np.vstack([x, y, z]).T
+    aligned_xyz = (axes.T @ xyz.T).T
+    aligned_center = 0.5 * (np.max(aligned_xyz, axis=0) + np.min(aligned_xyz, axis=0))
+    aligned_lhw = np.max(aligned_xyz, axis=0) - np.min(aligned_xyz, axis=0)
+    center = axes @ aligned_center + centroid
+    return axes, center, aligned_lhw
+
 def get_fitting_capsule(mesh, num_sectors=10, num_stacks=10, color=None):
     centroid = 0.5 * (mesh.max_xyz + mesh.min_xyz)
     hwl = mesh.max_xyz - mesh.min_xyz
