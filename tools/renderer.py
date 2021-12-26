@@ -133,7 +133,7 @@ class UvMeshShape(TriangleMeshShape):
 
 
 class SphereMesh(UvMeshShape):
-    def __init__(self, radius, num_sectors, num_stacks, lo_phi=0.0, hi_phi=1.5, z_offset=0.0, color=None):
+    def __init__(self, radius, num_sectors=10, num_stacks=10, lo_phi=-0.5*np.pi, hi_phi=0.5*np.pi, z_offset=0.0, color=None):
         super().__init__(color=color)
         self.theta = np.linspace(0.0, 2 * np.pi, num_sectors)
         self.phi = np.linspace(lo_phi, hi_phi, num_stacks)
@@ -154,7 +154,7 @@ class SphereMesh(UvMeshShape):
 
 
 class TubeMesh(UvMeshShape):
-    def __init__(self, radius, length, num_sectors, num_stacks, z_offset=0.0, color=None):
+    def __init__(self, radius, length, num_sectors=10, num_stacks=2, z_offset=0.0, color=None):
         super().__init__(color=color)
         self.theta = np.linspace(0.0, 2 * np.pi, num_sectors)
         self.phi = np.linspace(-0.5 * length, 0.5 * length, num_stacks)
@@ -172,7 +172,7 @@ class TubeMesh(UvMeshShape):
 
 
 class CapsuleMesh(TriangleMeshShape):
-    def __init__(self, radius, length, num_sectors, num_stacks, color=None):
+    def __init__(self, radius, length, num_sectors=10, num_stacks=10, color=None):
         super().__init__(color=color)
         self.top_cap = SphereMesh(radius, num_sectors, num_stacks, lo_phi=-0.5*np.pi, hi_phi=0.0, z_offset=-0.5*length, color=self.diffuse_color)
         self.tube = TubeMesh(radius, length, num_sectors, num_stacks=2, color=self.diffuse_color)
@@ -185,6 +185,13 @@ class CapsuleMesh(TriangleMeshShape):
         self.max_xyz = np.max([self.max_xyz, self.top_cap.max_xyz, self.tube.max_xyz, self.bot_cap.max_xyz], axis=0)
         self.min_xyz = np.min([self.min_xyz, self.top_cap.min_xyz, self.tube.min_xyz, self.bot_cap.min_xyz], axis=0)
     
+def get_fitting_capsule(mesh, num_sectors=10, num_stacks=10, color=None):
+    centroid = 0.5 * (mesh.max_xyz + mesh.min_xyz)
+    hwl = mesh.max_xyz - mesh.min_xyz
+    xyz = 0.5 * hwl + np.abs(centroid)
+    radius = np.linalg.norm(xyz[:2])
+    length = np.max([radius, xyz[2] - 2 * radius])
+    return CapsuleMesh(radius, length, num_sectors=num_sectors, num_stacks=num_stacks, color=color)
 
 class Camera:
     def __init__(self, origin=None, target=None, up_vector=None):
@@ -213,28 +220,27 @@ class Camera:
 class DaeRenderer: 
 
     def __init__(self, dae, window):
+        # Store the initial parameters.
         self.dae = dae
         self.window = window
-        # to calculate model boundary
-        self.z_max = -100000.0
-        self.z_min = 100000.0
-        self.textures = {}
+        self.z_max = -1000
+        self.z_min = 1000
         # Initialize the OpenGL parameters.
         self._init_gl_parameters()
 
         # create one display list
-        capsule = CapsuleMesh(radius=5.0, length=15.0, num_sectors=10, num_stacks=20, color=[1.0, 0.0, 0.0, 1.0])
+        mesh = DaeMesh(dae)
         print('Creating display list, could take a while...')
         self.displist = gl.glGenLists(1)
         # compile the display list, store a triangle in it
         gl.glNewList(self.displist, gl.GL_COMPILE)
         gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_FILL)
-        # gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_LINE)
-        # self.draw_primitives()
+        mesh.draw()
+        gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_LINE)
+        capsule = get_fitting_capsule(mesh, color = [0,1,0, 1])
         capsule.draw()
         self.z_max = capsule.max_xyz[2]
         self.z_min = capsule.min_xyz[2]
-        # self.draw_capsule(5.0, 15.0, 10, 20, color=[1,0,0, 0])
         gl.glEndList()
         print('...display list created. Ready to render.')
         print(f'z-range=[{self.z_min}, {self.z_max}]')
@@ -259,48 +265,6 @@ class DaeRenderer:
         gl.glTexParameterf(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST)
         gl.glTexParameterf(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_NEAREST)
 
-    def draw_primitives(self):
-        if self.dae.scene is None:
-            print('Empty scene.')
-            return
-        gl.glBegin(gl.GL_TRIANGLES)
-        for geometry in self.dae.scene.objects('geometry'):
-            for primitive in geometry.primitives():
-                diffuse_color = (gl.GLfloat * 4)(0.3, 0.3, 0.3, 0.0)
-                
-                # use primitive-specific ways to get triangles
-                primitive_type = type(primitive).__name__
-                if primitive_type == 'BoundTriangleSet':
-                    triangles = primitive
-                elif primitive_type == 'BoundPolylist':
-                    triangles = primitive.triangleset()
-                else:
-                    print('Unsupported mesh used:', primitive_type)
-                    break
-
-                # add triangles to the display list
-                for t in triangles:
-                    nidx = 0
-
-                    for vidx in t.indices:
-                        gl.glMaterialfv(gl.GL_FRONT, gl.GL_DIFFUSE, diffuse_color)
-
-                        if not t.normals is None:
-                            gl.glNormal3fv((gl.GLfloat * 3)(*t.normals[nidx]))
-
-                        nidx += 1
-
-                        vx, vy, vz = primitive.vertex[vidx]
-                        gl.glVertex3fv((gl.GLfloat * 3)(vx, vy, vz))
-
-                        # Calculate max and min Z coordinate
-                        if vz > self.z_max:
-                            self.z_max = vz
-                        elif vz < self.z_min:
-                            self.z_min = vz
-        get_gl_error()
-        gl.glEnd()
-
     def clear_and_setup_window(self):
         gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
         gl.glMatrixMode(gl.GL_PROJECTION) # Select The Projection Matrix
@@ -323,6 +287,7 @@ class DaeRenderer:
     def render(self, rotate_x, rotate_y, rotate_z):
         self.clear_and_setup_window()
 
+        # Create the "camera location" to start drawing from.
         gl.glMatrixMode(gl.GL_MODELVIEW) # Select The Model View Matrix
         gl.glLoadIdentity()
         z_radius = 1.5 * np.max(np.abs([self.z_min, self.z_max]))
