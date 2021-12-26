@@ -100,81 +100,75 @@ class DaeMesh(TriangleMeshShape):
         get_gl_error()
         gl.glEnd()
 
+class UvMeshShape(TriangleMeshShape):
+    def __init__(self, color=None):
+        super().__init__(color=color)
+        self.num_u = 0
+        self.num_v = 0
 
-class SphereMesh(TriangleMeshShape):
+    def get_vertex_normal(self, u, v):
+        return [0, 0, 0], [0, 0, 1]
+
+    def draw(self):
+        def add_uv_vertex(u, v):
+            self.add_vertex(*self.get_vertex_normal(u, v))
+
+        def add_tl_triangle(u, v):
+            add_uv_vertex(u - 1, v - 1)
+            add_uv_vertex(u, v)
+            add_uv_vertex(u - 1, v)
+
+        def add_br_triangle(u, v):
+            add_uv_vertex(u - 1, v - 1)
+            add_uv_vertex(u, v - 1)
+            add_uv_vertex(u, v)
+
+        gl.glBegin(gl.GL_TRIANGLES)
+        for u in range(1, self.num_u):
+            for v in range(1, self.num_v):
+                add_br_triangle(u, v)
+                add_tl_triangle(u, v)
+        get_gl_error()
+        gl.glEnd()
+
+
+class SphereMesh(UvMeshShape):
     def __init__(self, radius, num_sectors, num_stacks, lo_phi=0.0, hi_phi=1.5, z_offset=0.0, color=None):
         super().__init__(color=color)
+        self.theta = np.linspace(0.0, 2 * np.pi, num_sectors)
+        self.phi = np.linspace(lo_phi, hi_phi, num_stacks)
         self.radius = radius
-        self.num_sectors = num_sectors
-        self.num_stacks = num_stacks
-        self.lo_phi = lo_phi
-        self.hi_phi = hi_phi
+        self.num_u = num_sectors
+        self.num_v = num_stacks
         self.z_offset = z_offset
 
-    def draw(self):
-        theta = np.linspace(0.0, 2 * np.pi, self.num_sectors)
-        phi = np.linspace(self.lo_phi, self.hi_phi, self.num_stacks)
-
-        def add_uv_vertex(u, v):
-            normal = np.array([np.cos(phi[v]) * np.cos(theta[u]), np.cos(phi[v]) * np.sin(theta[u]), np.sin(phi[v])])
-            vertex = self.radius * normal
-            vertex[2] += self.z_offset
-            self.add_vertex(vertex, normal)
-
-        def add_tl_triangle(u, v):
-            add_uv_vertex(u - 1, v - 1)
-            add_uv_vertex(u, v)
-            add_uv_vertex(u - 1, v)
-
-        def add_br_triangle(u, v):
-            add_uv_vertex(u - 1, v - 1)
-            add_uv_vertex(u, v - 1)
-            add_uv_vertex(u, v)
-
-        gl.glBegin(gl.GL_TRIANGLES)
-        for u in range(1, self.num_sectors):
-            for v in range(1, self.num_stacks):
-                add_br_triangle(u, v)
-                add_tl_triangle(u, v)
-        get_gl_error()
-        gl.glEnd()
+    def get_vertex_normal(self, u, v):
+        phi = self.phi[v]
+        theta = self.theta[u]
+        normal = np.array([np.cos(phi) * np.cos(theta),
+                           np.cos(phi) * np.sin(theta),
+                           np.sin(phi)])
+        vertex = self.radius * normal
+        vertex[2] += self.z_offset
+        return vertex, normal
 
 
-class TubeMesh(TriangleMeshShape):
+class TubeMesh(UvMeshShape):
     def __init__(self, radius, length, num_sectors, num_stacks, z_offset=0.0, color=None):
         super().__init__(color=color)
+        self.theta = np.linspace(0.0, 2 * np.pi, num_sectors)
+        self.phi = np.linspace(-0.5 * length, 0.5 * length, num_stacks)
         self.radius = radius
-        self.length = length
-        self.num_sectors = num_sectors
-        self.num_stacks = num_stacks
+        self.num_u = num_sectors
+        self.num_v = num_stacks
         self.z_offset = z_offset
 
-    def draw(self):
-        theta = np.linspace(0.0, 2 * np.pi, self.num_sectors)
-        phi = np.linspace(-0.5 * self.length, 0.5 * self.length, self.num_stacks)
-
-        def add_uv_vertex(u, v):
-            normal = [np.cos(theta[u]), np.sin(theta[u]), 0.0]
-            vertex = [self.radius * normal[0], self.radius * normal[1], phi[v] + self.z_offset]
-            self.add_vertex(vertex, normal)
-
-        def add_tl_triangle(u, v):
-            add_uv_vertex(u - 1, v - 1)
-            add_uv_vertex(u, v)
-            add_uv_vertex(u - 1, v)
-
-        def add_br_triangle(u, v):
-            add_uv_vertex(u - 1, v - 1)
-            add_uv_vertex(u, v - 1)
-            add_uv_vertex(u, v)
-
-        gl.glBegin(gl.GL_TRIANGLES)
-        for u in range(1, self.num_sectors):
-            for v in range(1, self.num_stacks):
-                add_tl_triangle(u, v)
-                add_br_triangle(u, v)
-        get_gl_error()
-        gl.glEnd()
+    def get_vertex_normal(self, u, v):
+        phi = self.phi[v]
+        theta = self.theta[u]
+        normal = [np.cos(theta), np.sin(theta), 0.0]
+        vertex = [self.radius * normal[0], self.radius * normal[1], phi + self.z_offset]
+        return vertex, normal
 
 
 class CapsuleMesh(TriangleMeshShape):
@@ -229,6 +223,7 @@ class DaeRenderer:
         self._init_gl_parameters()
 
         # create one display list
+        capsule = CapsuleMesh(radius=5.0, length=15.0, num_sectors=10, num_stacks=20, color=[1.0, 0.0, 0.0, 1.0])
         print('Creating display list, could take a while...')
         self.displist = gl.glGenLists(1)
         # compile the display list, store a triangle in it
@@ -236,7 +231,10 @@ class DaeRenderer:
         gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_FILL)
         # gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_LINE)
         # self.draw_primitives()
-        self.draw_capsule(5.0, 15.0, 10, 20, color=[1,0,0, 0])
+        capsule.draw()
+        self.z_max = capsule.max_xyz[2]
+        self.z_min = capsule.min_xyz[2]
+        # self.draw_capsule(5.0, 15.0, 10, 20, color=[1,0,0, 0])
         gl.glEndList()
         print('...display list created. Ready to render.')
         print(f'z-range=[{self.z_min}, {self.z_max}]')
@@ -248,7 +246,7 @@ class DaeRenderer:
         gl.glEnable(gl.GL_DEPTH_TEST) # Enables Depth Testing
         gl.glDepthFunc(gl.GL_LEQUAL) # The Type Of Depth Testing To Do
         
-        gl.glEnable(gl.GL_MULTISAMPLE);
+        gl.glEnable(gl.GL_MULTISAMPLE)
 
         gl.glEnable(gl.GL_LIGHTING)
         gl.glEnable(gl.GL_LIGHT0)
@@ -260,81 +258,6 @@ class DaeRenderer:
         gl.glEnable(gl.GL_TEXTURE_2D) # Enable Texture Mapping
         gl.glTexParameterf(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST)
         gl.glTexParameterf(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_NEAREST)
-
-    def draw_capsule(self, radius, length, num_sectors, num_stacks, color=None):
-        self.draw_hemi_sphere(radius, num_sectors, num_stacks, lo_phi=-0.5*np.pi, hi_phi=0.0, z_offset=-0.5*length, color=color)
-        self.draw_tube(radius, length, num_sectors, num_stacks=2, color=color)
-        self.draw_hemi_sphere(radius, num_sectors, num_stacks, lo_phi=0.0, hi_phi=0.5*np.pi, z_offset=0.5*length, color=color)
-
-    def draw_tube(self, radius, length, num_sectors, num_stacks, z_offset=0.0, color=None):
-        theta = np.linspace(0.0, 2 * np.pi, num_sectors)
-        phi = np.linspace(-0.5 * length, 0.5 * length, num_stacks)
-
-        diffuse_color = to_floatv4(color if color is not None else [1.0, 1.0, 1.0, 1.0])
-
-        def add_uv_vertex(u, v):
-            nx = np.cos(theta[u])
-            ny = np.sin(theta[u])
-            nz = 0.0
-            vx, vy, vz = (radius * nx, radius * ny, phi[v] + z_offset)
-            gl.glMaterialfv(gl.GL_FRONT, gl.GL_DIFFUSE, diffuse_color)
-            gl.glNormal3fv((gl.GLfloat * 3)(nx, ny, nz))
-            gl.glVertex3fv((gl.GLfloat * 3)(vx, vy, vz))
-            self.z_max = np.max((self.z_max, vz))
-            self.z_min = np.min((self.z_min, vz))
-
-        def add_tl_triangle(u, v):
-            add_uv_vertex(u - 1, v - 1)
-            add_uv_vertex(u, v)
-            add_uv_vertex(u - 1, v)
-
-        def add_br_triangle(u, v):
-            add_uv_vertex(u - 1, v - 1)
-            add_uv_vertex(u, v - 1)
-            add_uv_vertex(u, v)
-
-        gl.glBegin(gl.GL_TRIANGLES)
-        for u in range(1, num_sectors):
-            for v in range(1, num_stacks):
-                add_tl_triangle(u, v)
-                add_br_triangle(u, v)
-        get_gl_error()
-        gl.glEnd()
-
-    def draw_hemi_sphere(self, radius, num_sectors, num_stacks, lo_phi=0.0, hi_phi=1.5, z_offset=0.0, color=None):
-        theta = np.linspace(0.0, 2 * np.pi, num_sectors)
-        phi = np.linspace(lo_phi, hi_phi, num_stacks)
-
-        diffuse_color = to_floatv4(color if color is not None else [1.0, 1.0, 1.0, 1.0])
-
-        def add_uv_vertex(u, v):
-            nx = np.cos(phi[v]) * np.cos(theta[u])
-            ny = np.cos(phi[v]) * np.sin(theta[u])
-            nz = np.sin(phi[v])
-            vx, vy, vz = (radius * nx, radius * ny, radius * nz + z_offset)
-            gl.glMaterialfv(gl.GL_FRONT, gl.GL_DIFFUSE, diffuse_color)
-            gl.glNormal3fv((gl.GLfloat * 3)(nx, ny, nz))
-            gl.glVertex3fv((gl.GLfloat * 3)(vx, vy, vz))
-            self.z_max = np.max((self.z_max, vz))
-            self.z_min = np.min((self.z_min, vz))
-
-        def add_tl_triangle(u, v):
-            add_uv_vertex(u - 1, v - 1)
-            add_uv_vertex(u, v)
-            add_uv_vertex(u - 1, v)
-
-        def add_br_triangle(u, v):
-            add_uv_vertex(u - 1, v - 1)
-            add_uv_vertex(u, v - 1)
-            add_uv_vertex(u, v)
-
-        gl.glBegin(gl.GL_TRIANGLES)
-        for u in range(1, num_sectors):
-            for v in range(1, num_stacks):
-                add_br_triangle(u, v)
-                add_tl_triangle(u, v)
-        get_gl_error()
-        gl.glEnd()
 
     def draw_primitives(self):
         if self.dae.scene is None:
