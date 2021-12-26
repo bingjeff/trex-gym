@@ -3,10 +3,20 @@
 # Code modified from: 
 # https://github.com/pycollada/pycollada/blob/master/examples/daeview/renderer/OldStyleRenderer.py
 
+import logging
 import numpy as np
 
 from pyglet.gl import gl
 from pyglet.gl import glu
+
+def floatv3():
+    return (gl.GLfloat * 3)(*[0]*3)
+
+def to_floatv3(vec):
+    return (gl.GLfloat * 3)(*vec)
+
+def from_floatv3(floatv):
+    return np.reshape(floatv, (3, 1), order='F')
 
 def floatv4():
     return (gl.GLfloat * 4)(*[0]*4)
@@ -36,6 +46,151 @@ def get_model_view_matrix():
     gl.glGetFloatv(gl.GL_MODELVIEW_MATRIX, return_val)
     return from_floatv4x4(return_val)
 
+
+class TriangleMeshShape:
+    def __init__(self, color=None):
+        self.diffuse_color = to_floatv4(color if color is not None else [0.3, 0.3, 0.3, 1.0])
+        self.min_xyz = [np.inf] * 3
+        self.max_xyz = [-np.inf] * 3
+
+    def add_vertex(self, vertex, normal):
+        gl.glMaterialfv(gl.GL_FRONT, gl.GL_DIFFUSE, self.diffuse_color)
+        gl.glNormal3fv(to_floatv3(normal))
+        gl.glVertex3fv(to_floatv3(vertex))
+        self.min_xyz = np.min((self.min_xyz, vertex), axis=0)
+        self.max_xyz = np.max((self.max_xyz, vertex), axis=0)
+
+    def draw(self):
+        pass
+
+
+class DaeMesh(TriangleMeshShape):
+    def __init__(self, dae_object, color=None):
+        super().__init__(color=color)
+        self.dae = dae_object
+    
+    def draw(self):
+        if self.dae.scene is None:
+            logging.debug('Empty draw, DAE has no scene.')
+            return
+        gl.glBegin(gl.GL_TRIANGLES)
+        normal = [0.0, 0.0, 1.0]
+        for geometry in self.dae.scene.objects('geometry'):
+            for primitive in geometry.primitives():                
+                # Use primitive-specific ways to get triangles.
+                primitive_type = type(primitive).__name__
+                if primitive_type == 'BoundTriangleSet':
+                    triangles = primitive
+                elif primitive_type == 'BoundPolylist':
+                    triangles = primitive.triangleset()
+                else:
+                    logging.warning(f'Unsupported mesh used: {primitive_type}')
+                    break
+
+                # Add triangles to the display list.
+                for triangle in triangles:
+                    nidx = 0
+                    for vidx in triangle.indices:
+                        if triangle.normals is None:
+                            normal = [0.0, 0.0, 1.0]
+                        else:
+                            normal = triangle.normals[nidx]
+                        nidx += 1
+                        self.add_vertex(primitive.vertex[vidx], normal)
+        get_gl_error()
+        gl.glEnd()
+
+
+class SphereMesh(TriangleMeshShape):
+    def __init__(self, radius, num_sectors, num_stacks, lo_phi=0.0, hi_phi=1.5, z_offset=0.0, color=None):
+        super().__init__(color=color)
+        self.radius = radius
+        self.num_sectors = num_sectors
+        self.num_stacks = num_stacks
+        self.lo_phi = lo_phi
+        self.hi_phi = hi_phi
+        self.z_offset = z_offset
+
+    def draw(self):
+        theta = np.linspace(0.0, 2 * np.pi, self.num_sectors)
+        phi = np.linspace(self.lo_phi, self.hi_phi, self.num_stacks)
+
+        def add_uv_vertex(u, v):
+            normal = np.array([np.cos(phi[v]) * np.cos(theta[u]), np.cos(phi[v]) * np.sin(theta[u]), np.sin(phi[v])])
+            vertex = self.radius * normal
+            vertex[2] += self.z_offset
+            self.add_vertex(vertex, normal)
+
+        def add_tl_triangle(u, v):
+            add_uv_vertex(u - 1, v - 1)
+            add_uv_vertex(u, v)
+            add_uv_vertex(u - 1, v)
+
+        def add_br_triangle(u, v):
+            add_uv_vertex(u - 1, v - 1)
+            add_uv_vertex(u, v - 1)
+            add_uv_vertex(u, v)
+
+        gl.glBegin(gl.GL_TRIANGLES)
+        for u in range(1, self.num_sectors):
+            for v in range(1, self.num_stacks):
+                add_br_triangle(u, v)
+                add_tl_triangle(u, v)
+        get_gl_error()
+        gl.glEnd()
+
+
+class TubeMesh(TriangleMeshShape):
+    def __init__(self, radius, length, num_sectors, num_stacks, z_offset=0.0, color=None):
+        super().__init__(color=color)
+        self.radius = radius
+        self.length = length
+        self.num_sectors = num_sectors
+        self.num_stacks = num_stacks
+        self.z_offset = z_offset
+
+    def draw(self):
+        theta = np.linspace(0.0, 2 * np.pi, self.num_sectors)
+        phi = np.linspace(-0.5 * self.length, 0.5 * self.length, self.num_stacks)
+
+        def add_uv_vertex(u, v):
+            normal = [np.cos(theta[u]), np.sin(theta[u]), 0.0]
+            vertex = [self.radius * normal[0], self.radius * normal[1], phi[v] + self.z_offset]
+            self.add_vertex(vertex, normal)
+
+        def add_tl_triangle(u, v):
+            add_uv_vertex(u - 1, v - 1)
+            add_uv_vertex(u, v)
+            add_uv_vertex(u - 1, v)
+
+        def add_br_triangle(u, v):
+            add_uv_vertex(u - 1, v - 1)
+            add_uv_vertex(u, v - 1)
+            add_uv_vertex(u, v)
+
+        gl.glBegin(gl.GL_TRIANGLES)
+        for u in range(1, self.num_sectors):
+            for v in range(1, self.num_stacks):
+                add_tl_triangle(u, v)
+                add_br_triangle(u, v)
+        get_gl_error()
+        gl.glEnd()
+
+
+class CapsuleMesh(TriangleMeshShape):
+    def __init__(self, radius, length, num_sectors, num_stacks, color=None):
+        super().__init__(color=color)
+        self.top_cap = SphereMesh(radius, num_sectors, num_stacks, lo_phi=-0.5*np.pi, hi_phi=0.0, z_offset=-0.5*length, color=self.diffuse_color)
+        self.tube = TubeMesh(radius, length, num_sectors, num_stacks=2, color=self.diffuse_color)
+        self.bot_cap = SphereMesh(radius, num_sectors, num_stacks, lo_phi=0.0, hi_phi=0.5*np.pi, z_offset=0.5*length, color=self.diffuse_color)
+
+    def draw(self):
+        self.top_cap.draw()
+        self.tube.draw()
+        self.bot_cap.draw()
+        self.max_xyz = np.max([self.max_xyz, self.top_cap.max_xyz, self.tube.max_xyz, self.bot_cap.max_xyz], axis=0)
+        self.min_xyz = np.min([self.min_xyz, self.top_cap.min_xyz, self.tube.min_xyz, self.bot_cap.min_xyz], axis=0)
+    
 
 class Camera:
     def __init__(self, origin=None, target=None, up_vector=None):
