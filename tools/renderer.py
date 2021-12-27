@@ -185,6 +185,29 @@ class CapsuleMesh(TriangleMeshShape):
         self.max_xyz = np.max([self.max_xyz, self.top_cap.max_xyz, self.tube.max_xyz, self.bot_cap.max_xyz], axis=0)
         self.min_xyz = np.min([self.min_xyz, self.top_cap.min_xyz, self.tube.min_xyz, self.bot_cap.min_xyz], axis=0)
 
+def get_aligned_xyz(points, rotation, translation):
+    xyz = np.array(points) if np.shape(points)[1] == 3 else np.transpose(points)
+    return (rotation @ (xyz + translation).T).T
+
+def get_octant_xyz(points, min_points=100):
+    xyz = np.array(points) if np.shape(points)[1] == 3 else np.transpose(points)
+    x = xyz[:, 0] >= 0
+    y = xyz[:, 1] >= 0
+    z = xyz[:, 2] >= 0
+    octants = []
+    def check(logical_indices):
+        if logical_indices.sum() > min_points:
+            octants.append(points[logical_indices])
+    check(x &  y &  z)
+    check(x & ~y &  z)
+    check(x & ~y & ~z)
+    check(x &  y & ~z)
+    check(~x &  y &  z)
+    check(~x & ~y &  z)
+    check(~x & ~y & ~z)
+    check(~x &  y & ~z)
+    return octants
+
 def get_principle_axes(points):
     xyz = np.array(points) if np.shape(points)[1] == 3 else np.transpose(points)
     centroid = np.mean(xyz, axis=0)
@@ -198,9 +221,9 @@ def get_principle_axes(points):
     axes = np.vstack([x, y, z]).T
     aligned_xyz = (axes.T @ xyz.T).T
     aligned_center = 0.5 * (np.max(aligned_xyz, axis=0) + np.min(aligned_xyz, axis=0))
-    aligned_lhw = np.max(aligned_xyz, axis=0) - np.min(aligned_xyz, axis=0)
+    aligned_hwl = np.max(aligned_xyz, axis=0) - np.min(aligned_xyz, axis=0)
     center = axes @ aligned_center + centroid
-    return axes, center, aligned_lhw
+    return axes, center, aligned_hwl
 
 def get_fitting_capsule(mesh, num_sectors=10, num_stacks=10, color=None):
     centroid = 0.5 * (mesh.max_xyz + mesh.min_xyz)
@@ -245,19 +268,11 @@ class DaeRenderer:
         # Initialize the OpenGL parameters.
         self._init_gl_parameters()
 
-        # create one display list
-        mesh = DaeMesh(dae)
+        # Create a display list to store all the geometry in.
         print('Creating display list, could take a while...')
         self.displist = gl.glGenLists(1)
-        # compile the display list, store a triangle in it
         gl.glNewList(self.displist, gl.GL_COMPILE)
-        gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_FILL)
-        mesh.draw()
-        gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_LINE)
-        capsule = get_fitting_capsule(mesh, color = [0,1,0, 1])
-        capsule.draw()
-        self.z_max = capsule.max_xyz[2]
-        self.z_min = capsule.min_xyz[2]
+        self.draw()
         gl.glEndList()
         print('...display list created. Ready to render.')
         print(f'z-range=[{self.z_min}, {self.z_max}]')
@@ -291,6 +306,36 @@ class DaeRenderer:
         z_clip_near = 0.1
         z_clip_far = 1000.0
         glu.gluPerspective(field_of_view_y, aspect_ratio, z_clip_near, z_clip_far)
+
+    def draw_simplified(self, xyz, num_divisions=0, division=0):
+        diffuse_color = [0,1,0, 1]
+        axes, center, hwl = get_principle_axes(xyz)
+        gl.glPushMatrix()
+        local_matrix = np.eye(4)
+        local_matrix[:3, :3] = axes
+        local_matrix[:3, 3] = center
+        gl.glMultMatrixf(to_floatv4x4(local_matrix))
+        if division < num_divisions:
+            xyz_aligned = get_aligned_xyz(xyz, axes.T, -center)
+            for xyz_partition in get_octant_xyz(xyz_aligned):
+                self.draw_simplified(xyz_partition, num_divisions=num_divisions, division=division+1)
+        else:
+            radius = np.linalg.norm(0.5 * hwl[:2])
+            length = hwl[2] - 2.0 * radius
+            if length > 0.0:
+                CapsuleMesh(radius, length, color=diffuse_color).draw()
+            else:
+                SphereMesh(radius, color=diffuse_color)
+        gl.glPopMatrix()
+
+    def draw(self):
+        gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_FILL)
+        mesh = DaeMesh(self.dae)
+        mesh.draw()
+        gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_LINE)
+        self.draw_simplified(self.dae.geometries[0].primitives[0].vertex, num_divisions=2)
+        self.z_max = mesh.max_xyz[2]
+        self.z_min = mesh.min_xyz[2]
         
     def set_camera(self, origin, look_at_point):
         pass
@@ -307,7 +352,7 @@ class DaeRenderer:
         # Create the "camera location" to start drawing from.
         gl.glMatrixMode(gl.GL_MODELVIEW) # Select The Model View Matrix
         gl.glLoadIdentity()
-        z_radius = 1.5 * np.max(np.abs([self.z_min, self.z_max]))
+        z_radius = 3.0 * np.max(np.abs([self.z_min, self.z_max]))
         angle = np.deg2rad(rotate_y)
         origin = z_radius * np.array([np.sin(angle), 0.0, np.cos(angle)])
         self.set_light_position([0, 0, 0])
