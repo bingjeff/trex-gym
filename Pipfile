@@ -5,14 +5,20 @@ name = "pypi"
 
 [packages]
 numpy = "*"
-absl-py = "*"
-pyglet = "*"
-pycollada = "*"
+pygfx = "*"
+# pyglet = "*" -- To be added back.
+# pycollada = "*" -- To be added back.
 ipython = "*"
-autopep8 = "*"
+glfw = "*"
+notebook = "*"
+jupyter-rfb = "*"
+mujoco = "*"
+mediapy = "*"
+matplotlib = "*"
+black = "*"
 
 [dev-packages]
 ipython = "*"
 
 [requires]
-python_version = "3.8"
+python_version = "3.10"
