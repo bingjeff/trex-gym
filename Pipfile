@@ -16,6 +16,7 @@ mujoco = "*"
 mediapy = "*"
 matplotlib = "*"
 black = "*"
+scipy = "*"
 
 [dev-packages]
 ipython = "*"
