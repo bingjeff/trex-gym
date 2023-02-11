@@ -12,52 +12,11 @@
 import dataclasses
 import numpy as np
 
+import geometry
+
 from collections import defaultdict
 from scipy.spatial import transform
 from xml.etree import ElementTree
-
-
-@dataclasses.dataclass
-class Frame:
-    translation: np.ndarray = dataclasses.field(
-        default_factory=lambda: np.array([0.0, 0.0, 0.0])
-    )
-    rotation: transform.Rotation = dataclasses.field(
-        default_factory=transform.Rotation.identity
-    )
-
-
-def _inf_bounds():
-    return np.array([-np.inf, np.inf])
-
-
-@dataclasses.dataclass
-class MotionLimits:
-    position: np.ndarray = dataclasses.field(default_factory=_inf_bounds)
-    velocity: np.ndarray = dataclasses.field(default_factory=_inf_bounds)
-    acceleration: np.ndarray = dataclasses.field(default_factory=_inf_bounds)
-
-
-@dataclasses.dataclass
-class Geometry:
-    _: dataclasses.KW_ONLY
-    origin: Frame = Frame()
-
-
-@dataclasses.dataclass
-class GeometryMesh(Geometry):
-    filename: str
-
-
-@dataclasses.dataclass
-class GeometrySphere(Geometry):
-    radius: float
-
-
-@dataclasses.dataclass
-class GeometryCapsule(Geometry):
-    radius: float
-    length: float
 
 
 @dataclasses.dataclass
@@ -68,24 +27,30 @@ class UrdfJoint:
     axis: np.ndarray = dataclasses.field(
         default_factory=lambda: np.array([0.0, 0.0, 1.0])
     )
-    origin: Frame = dataclasses.field(default_factory=Frame)
+    origin: geometry.Frame = dataclasses.field(default_factory=geometry.Frame)
     type: str = "fixed"
-    limits: MotionLimits = dataclasses.field(default_factory=MotionLimits)
+    limits: geometry.MotionLimits = dataclasses.field(
+        default_factory=geometry.MotionLimits
+    )
 
 
 @dataclasses.dataclass
 class UrdfInertial:
     mass: float = 0.0
-    origin: Frame = dataclasses.field(default_factory=Frame)
-    inertia: np.ndarray = dataclasses.field(default_factory=lambda:np.eye(3))
+    origin: geometry.Frame = dataclasses.field(default_factory=geometry.Frame)
+    inertia: np.ndarray = dataclasses.field(default_factory=lambda: np.eye(3))
 
 
 @dataclasses.dataclass
 class UrdfLink:
     name: str
     inertia: UrdfInertial = dataclasses.field(default_factory=UrdfInertial)
-    visual_shapes: list[Geometry] = dataclasses.field(default_factory=list)
-    collision_shapes: list[Geometry] = dataclasses.field(default_factory=list)
+    visual_shapes: list[geometry.Geometry] = dataclasses.field(
+        default_factory=list
+    )
+    collision_shapes: list[geometry.Geometry] = dataclasses.field(
+        default_factory=list
+    )
 
 
 @dataclasses.dataclass
@@ -225,14 +190,14 @@ def convert_rpy(vec_string: str) -> transform.Rotation:
     return transform.Rotation.from_euler("xyz", rpy)
 
 
-def convert_origin(node: ElementTree.Element) -> Frame:
+def convert_origin(node: ElementTree.Element) -> geometry.Frame:
     origin = node.find("origin")
     if origin is not None:
         xyz = convert_vec3(origin.get("xyz"))
         rpy = convert_rpy(origin.get("rpy"))
-        return Frame(translation=xyz, rotation=rpy)
+        return geometry.Frame(translation=xyz, rotation=rpy)
     else:
-        return Frame()
+        return geometry.Frame()
 
 
 def convert_inertia(node: ElementTree.Element) -> np.ndarray:
@@ -263,15 +228,17 @@ def convert_inertial(node: ElementTree.Element) -> UrdfInertial:
         return UrdfInertial(0.0)
 
 
-def convert_shape(node: ElementTree.Element) -> Geometry:
+def convert_shape(node: ElementTree.Element) -> geometry.Geometry:
     origin = convert_origin(node)
     geometry = node.find("geometry")
     if geometry is not None:
         mesh = geometry.find("mesh")
         if mesh is not None:
-            return GeometryMesh(filename=mesh.get("filename"), origin=origin)
+            return geometry.GeometryMesh(
+                filename=mesh.get("filename"), origin=origin
+            )
     else:
-        return Geometry()
+        return geometry.Geometry()
 
 
 def convert_link(node: ElementTree.Element) -> UrdfLink:
@@ -291,9 +258,9 @@ def convert_axis(node: ElementTree.Element) -> np.ndarray:
         return np.array([0.0, 0.0, 1.0])
 
 
-def convert_limit(node: ElementTree.Element) -> MotionLimits:
+def convert_limit(node: ElementTree.Element) -> geometry.MotionLimits:
     limit = node.find("limit")
-    motion_limits = MotionLimits()
+    motion_limits = geometry.MotionLimits()
     if limit is not None:
         motion_limits.position[0] = lookup_float(limit, "lower", -np.inf)
         motion_limits.position[1] = lookup_float(limit, "upper", np.inf)
