@@ -1,4 +1,7 @@
 {
+    "python.analysis.extraPaths": [
+        "./tools",
+    ],
     "python.testing.unittestArgs": [
         "-v",
         "-s",
@@ -9,6 +12,6 @@
     "python.testing.pytestEnabled": false,
     "python.testing.unittestEnabled": true,
     "editor.rulers": [
-    80
+        80
     ]
 }
