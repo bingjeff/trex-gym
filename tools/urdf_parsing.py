@@ -12,8 +12,7 @@
 import dataclasses
 import numpy as np
 
-import geometry
-
+from . import geometry
 from collections import defaultdict
 from scipy.spatial import transform
 from xml.etree import ElementTree
@@ -27,7 +26,9 @@ class UrdfJoint:
     axis: np.ndarray = dataclasses.field(
         default_factory=lambda: np.array([0.0, 0.0, 1.0])
     )
-    origin: geometry.Frame = dataclasses.field(default_factory=geometry.Frame)
+    origin: geometry.Transform = dataclasses.field(
+        default_factory=geometry.Transform
+    )
     type: str = "fixed"
     limits: geometry.MotionLimits = dataclasses.field(
         default_factory=geometry.MotionLimits
@@ -37,7 +38,9 @@ class UrdfJoint:
 @dataclasses.dataclass
 class UrdfInertial:
     mass: float = 0.0
-    origin: geometry.Frame = dataclasses.field(default_factory=geometry.Frame)
+    origin: geometry.Transform = dataclasses.field(
+        default_factory=geometry.Transform
+    )
     inertia: np.ndarray = dataclasses.field(default_factory=lambda: np.eye(3))
 
 
@@ -190,14 +193,14 @@ def convert_rpy(vec_string: str) -> transform.Rotation:
     return transform.Rotation.from_euler("xyz", rpy)
 
 
-def convert_origin(node: ElementTree.Element) -> geometry.Frame:
+def convert_origin(node: ElementTree.Element) -> geometry.Transform:
     origin = node.find("origin")
     if origin is not None:
         xyz = convert_vec3(origin.get("xyz"))
         rpy = convert_rpy(origin.get("rpy"))
-        return geometry.Frame(translation=xyz, rotation=rpy)
+        return geometry.Transform(translation=xyz, rotation=rpy)
     else:
-        return geometry.Frame()
+        return geometry.Transform()
 
 
 def convert_inertia(node: ElementTree.Element) -> np.ndarray:

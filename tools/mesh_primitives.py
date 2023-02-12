@@ -2,53 +2,213 @@
 
 import numpy as np
 
-from dataclasses import dataclass
-from typing import Optional, Tuple
+from . import geometry
+from scipy.spatial import transform
 
 
-@dataclass
-class GeometrySummary:
-    axes: np.ndarray
-    origin: np.ndarray
-    size_xyz: np.ndarray
-
-    @property
-    def radius(self) -> float:
-        return np.linalg.norm(0.5 * self.size_xyz[:2])
+class UvMesh:
+    def __init__(self):
+        self._vertices = []
+        self._normals = []
+        self._triangles = []
+        self._num_u = 0
+        self._num_v = 0
 
     @property
-    def length(self) -> float:
-        waist = self.size_xyz[2] - 2.0 * self.radius
-        return waist if waist > 0.0 else 0.0
+    def vertices(self) -> np.ndarray:
+        return np.array(self._vertices)
 
     @property
-    def matrix(self) -> np.ndarray:
-        parent_t_child = np.eye(4)
-        parent_t_child[:3, :3] = self.axes
-        parent_t_child[:3, 3] = self.origin
-        return parent_t_child
+    def normals(self) -> np.ndarray:
+        return np.array(self._normals)
 
-    def transform(self, world_t_root: np.ndarray) -> "GeometrySummary":
-        world_t_this = world_t_root @ self.matrix
-        return GeometrySummary(
-            world_t_this[:3, :3], world_t_this[:3, 3], np.array(self.size_xyz)
+    @property
+    def triangles(self) -> np.ndarray:
+        return np.array(self._triangles)
+
+    def get_vertex_normal(
+        self, u: int, v: int
+    ) -> tuple[list[float], list[float]]:
+        del u, v
+        return [0, 0, 0], [0, 0, 1]
+
+    def get_index(self, u: int, v: int) -> int:
+        return self._num_u * u + v
+
+    def get_br_triangle(self, u: int, v: int) -> list[int]:
+        return [
+            self.get_index(u - 1, v - 1),
+            self.get_index(u, v - 1),
+            self.get_index(u, v),
+        ]
+
+    def get_tl_triangle(self, u: int, v: int) -> list[int]:
+        return [
+            self.get_index(u - 1, v - 1),
+            self.get_index(u, v),
+            self.get_index(u - 1, v),
+        ]
+
+    def _draw(self):
+        # Create a grid of points and insert them u-major.
+        for u in range(self._num_u):
+            for v in range(self._num_v):
+                vertex, normal = self.get_vertex_normal(u, v)
+                self._vertices.append(vertex)
+                self._normals.append(normal)
+        # Create the strip of triangles for each quadrangle.
+        for u in range(1, self._num_u):
+            for v in range(1, self._num_v):
+                self._triangles.append(self.get_br_triangle(u, v))
+                self._triangles.append(self.get_tl_triangle(u, v))
+
+
+class SphereMesh(UvMesh):
+    def __init__(
+        self,
+        radius: float,
+        num_sectors: int = 10,
+        num_stacks: int = 10,
+        lo_phi: float = -0.5 * np.pi,
+        hi_phi: float = 0.5 * np.pi,
+        z_offset: float = 0.0,
+    ):
+        super().__init__()
+        self.radius = radius
+        self.z_offset = z_offset
+        self._theta = np.linspace(0.0, 2 * np.pi, num_sectors)
+        self._phi = np.linspace(lo_phi, hi_phi, num_stacks)
+        self._num_u = num_sectors
+        self._num_v = num_stacks
+        self._draw()
+
+    def get_vertex_normal(
+        self, u: int, v: int
+    ) -> tuple[list[float], list[float]]:
+        phi = self._phi[v]
+        theta = self._theta[u]
+        normal = [
+            np.cos(phi) * np.cos(theta),
+            np.cos(phi) * np.sin(theta),
+            np.sin(phi),
+        ]
+        vertex = [self.radius * n for n in normal]
+        vertex[2] += self.z_offset
+        return vertex, normal
+
+
+class TubeMesh(UvMesh):
+    def __init__(
+        self,
+        radius: float,
+        length: float,
+        num_sectors: int = 10,
+        num_stacks: int = 10,
+        z_offset: float = 0.0,
+    ):
+        super().__init__()
+        self.radius = radius
+        self.length = length
+        self.z_offset = z_offset
+        self._theta = np.linspace(0.0, 2 * np.pi, num_sectors)
+        self._z = np.linspace(-0.5 * length, 0.5 * length, num_stacks)
+        self._num_u = num_sectors
+        self._num_v = num_stacks
+        self._draw()
+
+    def get_vertex_normal(
+        self, u: int, v: int
+    ) -> tuple[list[float], list[float]]:
+        z = self._z[v]
+        theta = self._theta[u]
+        normal = [np.cos(theta), np.sin(theta), 0.0]
+        vertex = [
+            self.radius * normal[0],
+            self.radius * normal[1],
+            z + self.z_offset,
+        ]
+        return vertex, normal
+
+
+class CapsuleMesh(UvMesh):
+    def __init__(
+        self,
+        radius: float,
+        length: float,
+        num_sectors: int = 10,
+        num_stacks: int = 10,
+    ):
+        self.radius = radius
+        self.length = length
+        self.top_cap = SphereMesh(
+            radius,
+            num_sectors,
+            num_stacks,
+            lo_phi=-0.5 * np.pi,
+            hi_phi=0.0,
+            z_offset=-0.5 * length,
+        )
+        self.tube = TubeMesh(radius, length, num_sectors, num_stacks=2)
+        self.bot_cap = SphereMesh(
+            radius,
+            num_sectors,
+            num_stacks,
+            lo_phi=0.0,
+            hi_phi=0.5 * np.pi,
+            z_offset=0.5 * length,
+        )
+        self._num_u = num_sectors
+        self._num_v = (
+            self.bot_cap._num_v + self.tube._num_v + self.top_cap._num_v
         )
 
+    @property
+    def vertices(self) -> np.ndarray:
+        return np.vstack(
+            (self.bot_cap.vertices, self.tube.vertices, self.top_cap.vertices)
+        )
 
-def copy_points(points: np.ndarray) -> np.ndarray:
-    _, cols = np.shape(points)
-    return np.array(points) if cols == 3 else np.transpose(points)
+    @property
+    def normals(self) -> np.ndarray:
+        return np.vstack(
+            (self.bot_cap.normals, self.tube.normals, self.top_cap.normals)
+        )
 
+    @property
+    def triangles(self) -> np.ndarray:
+        return np.vstack(
+            (
+                self.bot_cap.triangles,
+                self.tube.triangles,
+                self.top_cap.triangles,
+            )
+        )
 
-def get_aligned_xyz(points: np.ndarray, rotation: np.ndarray, translation:np.ndarray) -> np.ndarray:
-    xyz = copy_points(points)
-    return (rotation @ (xyz + translation).T).T
+    def get_vertex_normal(
+        self, u: int, v: int
+    ) -> tuple[list[float], list[float]]:
+        index = self.get_index(u, v)
+        return self.vertices[index, :], self.normals[index, :]
+
+    def get_index(self, u: int, v: int) -> int:
+        v_bottom = self.top_cap._num_v
+        v_middle = v_bottom + self.tube._num_v
+        if v < v_bottom:
+            return self.bot_cap.get_index(u, v)
+        elif v < v_middle:
+            return self.tube.get_index(u, v - v_bottom)
+        else:
+            return self.top_cap.get_index(u, v - v_middle)
+
+    def _draw(self):
+        pass
 
 
 def get_octant_xyz(
     points: np.ndarray, min_points: np.ndarray = 100
 ) -> list[np.ndarray]:
-    xyz = copy_points(points)
+    _, cols = np.shape(points)
+    xyz = np.array(points) if cols == 3 else np.transpose(points)
     x = xyz[:, 0] >= 0
     y = xyz[:, 1] >= 0
     z = xyz[:, 2] >= 0
@@ -69,8 +229,9 @@ def get_octant_xyz(
     return octants
 
 
-def get_principle_axes(points: np.ndarray) -> GeometrySummary:
-    xyz = copy_points(points)
+def get_axis_aligned_bounding_box(points: np.ndarray) -> geometry.GeometryBox:
+    _, cols = np.shape(points)
+    xyz = np.array(points) if cols == 3 else np.transpose(points)
     centroid = np.mean(xyz, axis=0)
     xyz -= centroid
     moment = xyz.T @ xyz
@@ -86,33 +247,58 @@ def get_principle_axes(points: np.ndarray) -> GeometrySummary:
     )
     aligned_hwl = np.max(aligned_xyz, axis=0) - np.min(aligned_xyz, axis=0)
     center = axes @ aligned_center + centroid
-    return GeometrySummary(axes, center, aligned_hwl)
+    world_t_box = geometry.Frame(
+        translation=center, rotation=transform.Rotation.from_matrix(axes)
+    )
+    return geometry.GeometryBox(size_xyz=aligned_hwl, origin=world_t_box)
 
 
-def get_fitting_geometry(
-    points: np.ndarray,
+def get_sphere_or_capsule(
+    box: geometry.GeometryBox, world_t_parent: geometry.Transform | None = None
+) -> geometry.GeometryCapsule | geometry.GeometrySphere:
+    capsule_radius = 0.5 * np.max(box.size_xyz[:2])
+    capsule_length = box.length_z - 2.0 * capsule_radius
+    world_t_child = (
+        world_t_parent * box.origin if world_t_parent else world_t_parent
+    )
+    if capsule_length > 0.0:
+        return geometry.GeometryCapsule(
+            radius=capsule_radius, length=capsule_radius, origin=world_t_child
+        )
+    else:
+        return geometry.GeometrySphere(
+            radius=capsule_radius, origin=world_t_child
+        )
+
+
+def subdivide_points_to_geometry(
+    parent_xyz: np.ndarray,
     max_radius: float,
     max_divisions: int = 4,
-    world_t_parent: Optional[np.ndarray] = None,
+    world_t_parent: geometry.Transform | None = None,
     division_count: int = 0,
-) -> list[GeometrySummary]:
+) -> list[geometry.GeometryBox]:
     geometries = []
     # Calculate the initial bounding box and orientation.
-    child = get_principle_axes(points)
-    # Rotate the points into an aligned frame to begin subdivision.
-    xyz_aligned = get_aligned_xyz(points, child.axes.T, -child.origin)
-    world_t_child = (
-        np.array(world_t_parent) @ child.matrix
-        if world_t_parent is not None
-        else child.matrix
-    )
-    # Subdivide until bounding geometry is smaller than desired radius.
-    for xyz_partition in get_octant_xyz(xyz_aligned):
-        geometry = get_principle_axes(xyz_partition)
-        if geometry.radius > max_radius and division_count < max_divisions:
-            # Need to keep subdividing.
+    parent_aabb = get_axis_aligned_bounding_box(parent_xyz)
+    # Check if subdivision is necessary.
+    sphere_or_capsule = get_sphere_or_capsule(parent_aabb, world_t_parent)
+    if (
+        sphere_or_capsule.radius > max_radius
+        and division_count < max_divisions
+    ):
+        # Rotate the points into an aligned frame to begin subdivision.
+        child_xyz = parent_aabb.origin.inverse().apply(parent_xyz)
+        # Keep track of the accumulated transform into the world frame.
+        world_t_child = (
+            world_t_parent * parent_aabb.origin
+            if world_t_parent
+            else parent_aabb.origin
+        )
+        # Subdivide and find fitting geometries.
+        for xyz_partition in get_octant_xyz(child_xyz):
             geometries.extend(
-                get_fitting_geometry(
+                subdivide_points_to_geometry(
                     xyz_partition,
                     max_radius,
                     max_divisions,
@@ -120,6 +306,6 @@ def get_fitting_geometry(
                     division_count + 1,
                 )
             )
-        else:
-            geometries.append(geometry.transform(world_t_child))
+    else:
+        geometries.append(sphere_or_capsule)
     return geometries
