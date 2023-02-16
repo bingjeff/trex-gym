@@ -23,18 +23,17 @@ class Transform:
     def inverse(self) -> "Transform":
         inv_rotation = self.rotation.inv()
         return Transform(
-            translation=-self.rotation.apply(self.translation),
+            translation=-inv_rotation.apply(self.translation),
             rotation=inv_rotation,
         )
 
     def apply(self, vectors: np.ndarray) -> np.ndarray:
-        _, cols = np.shape(vectors)
-        if cols == 3:
+        if len(vectors) == 3:
             return (
-                (self.rotation.as_matrix() @ vectors.T) + self.translation
+                (self.rotation.as_matrix() @ vectors).T + self.translation
             ).T
         else:
-            return (self.rotation.as_matrix() @ vectors) + self.translation
+            return (self.rotation.as_matrix() @ vectors.T).T + self.translation
 
 
 def _inf_bounds():

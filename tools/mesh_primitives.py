@@ -247,7 +247,7 @@ def get_axis_aligned_bounding_box(points: np.ndarray) -> geometry.GeometryBox:
     )
     aligned_hwl = np.max(aligned_xyz, axis=0) - np.min(aligned_xyz, axis=0)
     center = axes @ aligned_center + centroid
-    world_t_box = geometry.Frame(
+    world_t_box = geometry.Transform(
         translation=center, rotation=transform.Rotation.from_matrix(axes)
     )
     return geometry.GeometryBox(size_xyz=aligned_hwl, origin=world_t_box)
