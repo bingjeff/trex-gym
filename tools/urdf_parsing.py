@@ -34,6 +34,18 @@ class UrdfJoint:
         default_factory=geometry.MotionLimits
     )
 
+    @classmethod
+    def from_element(cls, node: ElementTree.Element) -> "UrdfJoint":
+        return cls(
+            name=node.get("name"),
+            parent_name=lookup_str(node.find("parent"), "link"),
+            child_name=lookup_str(node.find("child"), "link"),
+            axis=from_axis(node),
+            origin=from_origin(node),
+            type=node.get("type"),
+            limits=from_limit(node),
+        )
+
 
 @dataclasses.dataclass
 class UrdfInertial:
@@ -42,6 +54,17 @@ class UrdfInertial:
         default_factory=geometry.Transform
     )
     inertia: np.ndarray = dataclasses.field(default_factory=lambda: np.eye(3))
+
+    @classmethod
+    def from_element(cls, node: ElementTree.Element) -> "UrdfInertial":
+        inertial = node.find("inertial")
+        if inertial is not None:
+            origin = from_origin(inertial)
+            mass = lookup_float(inertial, "mass")
+            inertia = from_inertia(inertial)
+            return cls(mass=mass, origin=origin, inertia=inertia)
+        else:
+            return cls(0.0)
 
 
 @dataclasses.dataclass
@@ -55,12 +78,111 @@ class UrdfLink:
         default_factory=list
     )
 
+    @classmethod
+    def from_element(cls, node: ElementTree.Element) -> "UrdfLink":
+        return cls(
+            name=node.get("name"),
+            inertia=UrdfInertial.from_element(node),
+            visual_shapes=[from_shape(e) for e in node.findall("visual")],
+            collision_shapes=[
+                from_shape(e) for e in node.findall("collision")
+            ],
+        )
+
 
 @dataclasses.dataclass
 class Urdf:
     name: str
     joints: dict[str, UrdfJoint] = dataclasses.field(default_factory=dict)
     links: dict[str, UrdfLink] = dataclasses.field(default_factory=dict)
+
+    @property
+    def root_link_names(self) -> list[str]:
+        parent_names = set([j.parent_name for j in self.joints.values()])
+        child_names = set([j.child_name for j in self.joints.values()])
+        return list(parent_names.difference(child_names))
+
+    @property
+    def branch_link_names(self) -> list[str]:
+        accumulator = []
+        branch_names = set()
+        for joint in self.joints.values():
+            if joint.parent_name and joint.parent_name in accumulator:
+                branch_names.add(joint.parent_name)
+            accumulator.append(joint.parent_name)
+        return list(branch_names)
+
+    @property
+    def child_link_name_to_joint(self) -> dict[str, UrdfJoint]:
+        return {j.child_name: j for j in self.joints.values()}
+
+    @property
+    def parent_link_name_to_joint(self) -> dict[str, UrdfJoint]:
+        link_map = defaultdict(list)
+        for joint in self.joints.values():
+            if joint.parent_name:
+                link_map[joint.parent_name].append(joint)
+        return link_map
+
+    @property
+    def joint_chains(self) -> dict[str, list[UrdfJoint]]:
+        all_chains = []
+        link_map = self.parent_link_name_to_joint
+        for root_name in self.root_link_names:
+            all_chains.extend(self.get_joint_chains(root_name, link_map))
+        return {f'{c[0].parent_name}->{c[-1].child_name}':c for c in all_chains}
+
+    def get_joint_chains(
+        self,
+        parent_link_name: str,
+        parent_link_map: dict[str, UrdfJoint] | None = None,
+        previous_joint: UrdfJoint | None = None,
+    ) -> list[list[UrdfJoint]]:
+        link_map = parent_link_map or self.parent_link_name_to_joint
+        chain = [previous_joint] if previous_joint else []
+        all_chains = []
+        for _ in self.joints:
+            if parent_link_name in link_map:
+                joints = link_map[parent_link_name]
+                if len(joints) > 1:
+                    if chain:
+                        all_chains.append(chain)
+                    for joint in joints:
+                        all_chains.extend(
+                            self.get_joint_chains(
+                                joint.child_name, link_map, joint
+                            )
+                        )
+                    break
+                else:
+                    chain.append(joints[0])
+                    parent_link_name = joints[0].child_name
+            else:
+                all_chains.append(chain)
+                break
+        return all_chains
+
+    def split_joint_chain(
+        self, link_name: str, joint_chain: list[UrdfJoint]
+    ) -> list[list[UrdfJoint]]:
+        for k, joint in enumerate(joint_chain):
+            if joint.child_name == link_name and k + 1 < len(joint_chain):
+                return [joint_chain[: k + 1], joint_chain[k + 1 :]]
+        return [joint_chain]
+
+    @classmethod
+    def from_element(cls, node: ElementTree.Element) -> "Urdf":
+        return cls(
+            name=node.get("name"),
+            joints={
+                j.get("name"): UrdfJoint.from_element(j)
+                for j in node.findall("joint")
+            },
+            links={
+                k.get("name"): UrdfLink.from_element(k)
+                for k in node.findall("link")
+            },
+        )
 
 
 def read_root_node_from_urdf(urdf_path: str) -> ElementTree.Element:
@@ -172,15 +294,15 @@ def get_chain(urdf_root, root_link_name, tip_link_name):
 def lookup_float(
     node: ElementTree.Element | None, key: str, default=0.0
 ) -> float:
-    if node:
-        value = node.get("key")
+    if node is not None:
+        value = node.get(key)
         return default if value is None else float(value)
     return default
 
 
 def lookup_str(node: ElementTree.Element | None, key: str, default="") -> str:
-    if node:
-        return node.get("key") or ""
+    if node is not None:
+        return node.get(key) or default
     return default
 
 
@@ -193,7 +315,7 @@ def convert_rpy(vec_string: str) -> transform.Rotation:
     return transform.Rotation.from_euler("xyz", rpy)
 
 
-def convert_origin(node: ElementTree.Element) -> geometry.Transform:
+def from_origin(node: ElementTree.Element) -> geometry.Transform:
     origin = node.find("origin")
     if origin is not None:
         xyz = convert_vec3(origin.get("xyz"))
@@ -203,7 +325,7 @@ def convert_origin(node: ElementTree.Element) -> geometry.Transform:
         return geometry.Transform()
 
 
-def convert_inertia(node: ElementTree.Element) -> np.ndarray:
+def from_inertia(node: ElementTree.Element) -> np.ndarray:
     output = np.eye(3)
     inertia = node.find("inertia")
     if inertia is not None:
@@ -220,40 +342,20 @@ def convert_inertia(node: ElementTree.Element) -> np.ndarray:
     return output
 
 
-def convert_inertial(node: ElementTree.Element) -> UrdfInertial:
-    inertial = node.find("inertial")
-    if inertial is not None:
-        origin = convert_origin(inertial)
-        mass = lookup_float(inertial, "mass")
-        inertia = convert_inertia(inertial)
-        return UrdfInertial(mass=mass, origin=origin, inertia=inertia)
-    else:
-        return UrdfInertial(0.0)
-
-
-def convert_shape(node: ElementTree.Element) -> geometry.Geometry:
-    origin = convert_origin(node)
-    geometry = node.find("geometry")
-    if geometry is not None:
-        mesh = geometry.find("mesh")
-        if mesh is not None:
+def from_shape(node: ElementTree.Element) -> geometry.Geometry:
+    origin = from_origin(node)
+    geometry_node = node.find("geometry")
+    if geometry_node is not None:
+        mesh_node = geometry_node.find("mesh")
+        if mesh_node is not None:
             return geometry.GeometryMesh(
-                filename=mesh.get("filename"), origin=origin
+                filename=mesh_node.get("filename"), origin=origin
             )
     else:
         return geometry.Geometry()
 
 
-def convert_link(node: ElementTree.Element) -> UrdfLink:
-    return UrdfLink(
-        name=node.find("name"),
-        inertia=convert_inertial(node),
-        visual_shapes=[convert_shape(e) for e in node.findall("visual")],
-        collision_shapes=[convert_shape(e) for e in node.findall("collision")],
-    )
-
-
-def convert_axis(node: ElementTree.Element) -> np.ndarray:
+def from_axis(node: ElementTree.Element) -> np.ndarray:
     axis = node.find("axis")
     if axis is not None:
         return convert_vec3(axis.get("xyz"))
@@ -261,32 +363,10 @@ def convert_axis(node: ElementTree.Element) -> np.ndarray:
         return np.array([0.0, 0.0, 1.0])
 
 
-def convert_limit(node: ElementTree.Element) -> geometry.MotionLimits:
+def from_limit(node: ElementTree.Element) -> geometry.MotionLimits:
     limit = node.find("limit")
     motion_limits = geometry.MotionLimits()
     if limit is not None:
         motion_limits.position[0] = lookup_float(limit, "lower", -np.inf)
         motion_limits.position[1] = lookup_float(limit, "upper", np.inf)
     return motion_limits
-
-
-def convert_joint(node: ElementTree.Element) -> UrdfJoint:
-    return UrdfJoint(
-        name=node.get("name"),
-        parent_name=lookup_str(node.find("parent"), "link"),
-        child_name=lookup_str(node.find("child"), "link"),
-        axis=convert_axis(node),
-        origin=convert_origin(node),
-        type=node.get("type"),
-        limits=convert_limit(node),
-    )
-
-
-def convert_urdf(node: ElementTree.Element) -> Urdf:
-    return Urdf(
-        name=node.get("name"),
-        joints={
-            j.get("name"): convert_joint(j) for j in node.findall("joint")
-        },
-        links={k.get("name"): convert_link(k) for k in node.findall("link")},
-    )
