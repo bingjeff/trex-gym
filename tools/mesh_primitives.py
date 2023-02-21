@@ -2,8 +2,53 @@
 
 import numpy as np
 
+import collada
+import dataclasses
+import os
+
 from . import geometry
 from scipy.spatial import transform
+
+
+@dataclasses.dataclass
+class ObjMesh:
+    vertices: np.ndarray = dataclasses.field(
+        default_factory=lambda: np.array([])
+    )
+    texcoords: np.ndarray = dataclasses.field(
+        default_factory=lambda: np.array([])
+    )
+    normals: np.ndarray = dataclasses.field(
+        default_factory=lambda: np.array([])
+    )
+    triangles: list[
+        tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None]
+    ] = dataclasses.field(default_factory=list)
+
+    def to_string(self) -> str:
+        def tri(v, vt, vn, i):
+            def check(s):
+                if s is not None:
+                    return f'{s[i]}' if s[i] is not None else ''
+                return ''
+            return f"{check(v)}/{check(vt)}/{check(vn)}"
+
+        out = f"# Vertices - count={len(self.vertices)}.\n"
+        for v in self.vertices:
+            out += f"v {v[0]} {v[1]} {v[2]}\n"
+        out += f"# Texture coordinates - count={len(self.texcoords)}.\n"
+        for v in self.texcoords:
+            out += f"vt {v[0]} {v[1]}\n"
+        out += f"# Normals - count={len(self.normals)}.\n"
+        for v in self.normals:
+            out += f"vn {v[0]} {v[1]} {v[2]}\n"
+        out += f"# Triangles - count={len(self.triangles)}.\n"
+        for v, vt, vn in self.triangles:
+            out += f"f {tri(v, vt, vn, 0)}"
+            out += f" {tri(v, vt, vn, 1)}"
+            out += f" {tri(v, vt, vn, 2)}\n"
+
+        return out
 
 
 class UvMesh:
@@ -259,11 +304,11 @@ def get_sphere_or_capsule(
     capsule_radius = 0.5 * np.max(box.size_xyz[:2])
     capsule_length = box.length_z - 2.0 * capsule_radius
     world_t_child = (
-        world_t_parent * box.origin if world_t_parent else world_t_parent
+        world_t_parent * box.origin if world_t_parent else box.origin
     )
     if capsule_length > 0.0:
         return geometry.GeometryCapsule(
-            radius=capsule_radius, length=capsule_radius, origin=world_t_child
+            radius=capsule_radius, length=capsule_length, origin=world_t_child
         )
     else:
         return geometry.GeometrySphere(
@@ -277,7 +322,7 @@ def subdivide_points_to_geometry(
     max_divisions: int = 4,
     world_t_parent: geometry.Transform | None = None,
     division_count: int = 0,
-) -> list[geometry.GeometryBox]:
+) -> list[geometry.Geometry]:
     geometries = []
     # Calculate the initial bounding box and orientation.
     parent_aabb = get_axis_aligned_bounding_box(parent_xyz)
@@ -308,4 +353,74 @@ def subdivide_points_to_geometry(
             )
     else:
         geometries.append(sphere_or_capsule)
+    return geometries
+
+
+def convert_dae_to_obj(collada_mesh: collada.Collada) -> list[ObjMesh]:
+    obj_meshes = []
+    for shape in collada_mesh.geometries:
+        for primitive in shape.primitives:
+            triangles = []
+            for v, vn in zip(primitive.vertex_index, primitive.normal_index):
+                triangles.append([v + 1, None, vn + 1])
+            obj_meshes.append(
+                ObjMesh(
+                    vertices=np.array(primitive.vertex),
+                    normals=np.array(primitive.normal),
+                    triangles=triangles,
+                )
+            )
+    return obj_meshes
+
+def convert_dae_to_binary_stl(collada_mesh: collada.Collada) -> bytes:
+    # Create initial 80 character preamble
+    binary_preamble = np.array([0] * 80, dtype=np.uint8).tobytes()
+    # Create triangle blob.
+    num_triangles = 0
+    def normal(v1, v2, v3):
+        e1 = v2 - v1
+        e2 = v3 - v1
+        n = np.cross(e1, e2)
+        length = np.linalg.norm(n)
+        if length >  1.0e-12:
+            return n / length
+        return np.zeros(3)
+    binary_faces = b''
+    binary_terminator = np.array([0]*2, dtype=np.uint8).tobytes()
+    for shape in collada_mesh.geometries:
+        for primitive in shape.primitives:
+            for (i0, i1, i2) in primitive.vertex_index:
+                v1 = primitive.vertex[i0]
+                v2 = primitive.vertex[i1]
+                v3 = primitive.vertex[i2]
+                n = normal(v1, v2, v3)
+                binary_faces += n.astype(np.float32).tobytes()
+                binary_faces += v1.astype(np.float32).tobytes()
+                binary_faces += v2.astype(np.float32).tobytes()
+                binary_faces += v3.astype(np.float32).tobytes()
+                binary_faces += binary_terminator
+                num_triangles += 1
+    binary_count = np.array([num_triangles], dtype=np.uint32).tobytes()
+    return binary_preamble + binary_count + binary_faces + binary_terminator
+
+
+
+def convert_mesh_to_capsule_or_sphere(
+    mesh: geometry.GeometryMesh,
+    max_radius: float,
+    max_divisions: int = 0,
+    base_path: str = "",
+) -> list[geometry.Geometry]:
+    collada_mesh = collada.Collada(
+        os.path.join(base_path, mesh.filename),
+        ignore=[collada.DaeUnsupportedError, collada.DaeBrokenRefError],
+    )
+    geometries = []
+    for shape in collada_mesh.geometries:
+        for primitive in shape.primitives:
+            geometries.extend(
+                subdivide_points_to_geometry(
+                    primitive.vertex, max_radius, max_divisions, mesh.origin
+                )
+            )
     return geometries
