@@ -15,6 +15,7 @@ import numpy as np
 from . import geometry
 from collections import defaultdict
 from scipy.spatial import transform
+from xml.dom import minidom
 from xml.etree import ElementTree
 
 
@@ -33,6 +34,17 @@ class UrdfJoint:
     limits: geometry.MotionLimits = dataclasses.field(
         default_factory=geometry.MotionLimits
     )
+
+    def to_element(self) -> ElementTree.Element:
+        joint = ElementTree.Element(
+            "joint", {"name": self.name, "type": self.type}
+        )
+        joint.append(ElementTree.Element("parent", {"link": self.parent_name}))
+        joint.append(ElementTree.Element("child", {"link": self.child_name}))
+        joint.append(to_axis(self.axis))
+        joint.append(to_origin(self.origin))
+        joint.append(to_limit(self.limits))
+        return joint
 
     @classmethod
     def from_element(cls, node: ElementTree.Element) -> "UrdfJoint":
@@ -54,6 +66,13 @@ class UrdfInertial:
         default_factory=geometry.Transform
     )
     inertia: np.ndarray = dataclasses.field(default_factory=lambda: np.eye(3))
+
+    def to_element(self) -> ElementTree.Element:
+        inertial = ElementTree.Element("inertial")
+        inertial.append(to_origin(self.origin))
+        inertial.append(ElementTree.Element("mass", {"value": f"{self.mass}"}))
+        inertial.append(to_inertia(self.inertia))
+        return inertial
 
     @classmethod
     def from_element(cls, node: ElementTree.Element) -> "UrdfInertial":
@@ -77,6 +96,21 @@ class UrdfLink:
     collision_shapes: list[geometry.Geometry] = dataclasses.field(
         default_factory=list
     )
+
+    def to_element(self) -> ElementTree.Element:
+        link = ElementTree.Element("link", {"name": self.name})
+        link.append(self.inertia.to_element())
+        for shape in self.visual_shapes:
+            visual = ElementTree.Element("visual")
+            visual.append(to_origin(shape.origin))
+            visual.append(to_shape(shape))
+            link.append(visual)
+        for shape in self.collision_shapes:
+            collision = ElementTree.Element("collision")
+            collision.append(to_origin(shape.origin))
+            collision.append(to_shape(shape))
+            link.append(collision)
+        return link
 
     @classmethod
     def from_element(cls, node: ElementTree.Element) -> "UrdfLink":
@@ -130,7 +164,9 @@ class Urdf:
         link_map = self.parent_link_name_to_joint
         for root_name in self.root_link_names:
             all_chains.extend(self.get_joint_chains(root_name, link_map))
-        return {f'{c[0].parent_name}->{c[-1].child_name}':c for c in all_chains}
+        return {
+            f"{c[0].parent_name}->{c[-1].child_name}": c for c in all_chains
+        }
 
     def get_joint_chains(
         self,
@@ -170,6 +206,20 @@ class Urdf:
                 return [joint_chain[: k + 1], joint_chain[k + 1 :]]
         return [joint_chain]
 
+    def to_element(self) -> ElementTree.Element:
+        urdf = ElementTree.Element("robot", {"name": self.name})
+        for joint in self.joints.values():
+            urdf.append(joint.to_element())
+        for link in self.links.values():
+            urdf.append(link.to_element())
+        return urdf
+
+    def to_string(self) -> str:
+        node = self.to_element()
+        return minidom.parseString(
+            ElementTree.tostring(node, encoding="utf")
+        ).toprettyxml(indent="  ")
+
     @classmethod
     def from_element(cls, node: ElementTree.Element) -> "Urdf":
         return cls(
@@ -183,6 +233,10 @@ class Urdf:
                 for k in node.findall("link")
             },
         )
+
+    @classmethod
+    def from_string(cls, urdf_string: str) -> "Urdf":
+        return cls.from_element(ElementTree.fromstring(urdf_string))
 
 
 def read_root_node_from_urdf(urdf_path: str) -> ElementTree.Element:
@@ -206,20 +260,20 @@ def lookup_str(node: ElementTree.Element | None, key: str, default="") -> str:
     return default
 
 
-def convert_vec3(vec_string: str) -> np.ndarray:
+def from_vec3(vec_string: str) -> np.ndarray:
     return np.array([float(x) for x in vec_string.split(" ") if x])[:3]
 
 
-def convert_rpy(vec_string: str) -> transform.Rotation:
-    rpy = convert_vec3(vec_string)
+def from_rpy(vec_string: str) -> transform.Rotation:
+    rpy = from_vec3(vec_string)
     return transform.Rotation.from_euler("xyz", rpy)
 
 
 def from_origin(node: ElementTree.Element) -> geometry.Transform:
     origin = node.find("origin")
     if origin is not None:
-        xyz = convert_vec3(origin.get("xyz"))
-        rpy = convert_rpy(origin.get("rpy"))
+        xyz = from_vec3(origin.get("xyz"))
+        rpy = from_rpy(origin.get("rpy"))
         return geometry.Transform(translation=xyz, rotation=rpy)
     else:
         return geometry.Transform()
@@ -258,7 +312,7 @@ def from_shape(node: ElementTree.Element) -> geometry.Geometry:
 def from_axis(node: ElementTree.Element) -> np.ndarray:
     axis = node.find("axis")
     if axis is not None:
-        return convert_vec3(axis.get("xyz"))
+        return from_vec3(axis.get("xyz"))
     else:
         return np.array([0.0, 0.0, 1.0])
 
@@ -270,3 +324,60 @@ def from_limit(node: ElementTree.Element) -> geometry.MotionLimits:
         motion_limits.position[0] = lookup_float(limit, "lower", -np.inf)
         motion_limits.position[1] = lookup_float(limit, "upper", np.inf)
     return motion_limits
+
+
+def to_vec3(vec: np.ndarray) -> str:
+    return f"{vec[0]} {vec[1]} {vec[2]}"
+
+
+def to_rpy(rotation: transform.Rotation) -> str:
+    rpy = rotation.as_euler("xyz")
+    return to_vec3(rpy)
+
+
+def to_origin(origin: geometry.Transform) -> ElementTree.Element:
+    return ElementTree.Element(
+        "origin",
+        {"xyz": to_vec3(origin.translation), "rpy": to_rpy(origin.rotation)},
+    )
+
+
+def to_inertia(inertia: np.ndarray) -> geometry.Geometry:
+    return ElementTree.Element(
+        "inertia",
+        {
+            "ixx": f"{inertia[0,0]}",
+            "ixy": f"{inertia[0,1]}",
+            "ixz": f"{inertia[0,2]}",
+            "iyy": f"{inertia[1,1]}",
+            "iyz": f"{inertia[1,2]}",
+            "izz": f"{inertia[2,2]}",
+        },
+    )
+
+
+def to_shape(shape: geometry.Geometry) -> ElementTree.Element:
+    geometry_node = ElementTree.Element("geometry")
+    if isinstance(shape, geometry.GeometryMesh):
+        geometry_node.append(
+            ElementTree.Element(
+                "mesh", {"filename": shape.filename, "scale": "1.0 1.0 1.0"}
+            )
+        )
+    else:
+        raise ValueError(f"Unknown geometry shape type: {type(shape)}")
+    return geometry_node
+
+
+def to_axis(axis: np.ndarray) -> ElementTree.Element:
+    return ElementTree.Element(
+        "axis",
+        {"xyz": to_vec3(axis)},
+    )
+
+
+def to_limit(limits: geometry.MotionLimits) -> ElementTree.Element:
+    return ElementTree.Element(
+        "limit",
+        {"lower": f"{limits.position[0]}", "upper": f"{limits.position[1]}"},
+    )
