@@ -5,6 +5,7 @@ import numpy as np
 import collada
 import dataclasses
 import os
+import re
 
 from . import geometry
 from scipy.spatial import transform
@@ -22,15 +23,60 @@ class ObjMesh:
         default_factory=lambda: np.array([])
     )
     triangles: list[
-        tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None]
+        tuple[list[int] | None, list[int] | None, list[int] | None]
     ] = dataclasses.field(default_factory=list)
+
+    @classmethod
+    def from_string(cls, obj_string: str) -> "ObjMesh":
+        rgx = re.compile("([0-9]*)/([0-9]*)/([0-9]*)")
+        vertices = []
+        texcoords = []
+        normals = []
+        triangles = []
+        for line in obj_string.split("\n"):
+            key = line[0] if line else ''
+            if key == "v":
+                elements = line.split(" ")
+                vector = np.array([float(x) for x in elements[1:] if x])
+                if elements[0] == "v":
+                    vertices.append(vector)
+                elif elements[0] == "vt":
+                    texcoords.append(vector)
+                elif elements[0] == "vn":
+                    normals.append(vector)
+            elif key == "f":
+                elements = line.split(" ")
+                verts = [rgx.match(e).groups() for e in elements[1:] if e]
+                v = (
+                    [int(c[0]) - 1 for c in verts]
+                    if verts[0][0]
+                    else None
+                )
+                vt = (
+                    [int(c[1]) - 1 for c in verts]
+                    if verts[0][1]
+                    else None
+                )
+                vn = (
+                    [int(c[2]) - 1 for c in verts]
+                    if verts[0][2]
+                    else None
+                )
+                triangles.append((v, vt, vn))
+        return cls(
+            np.array(vertices),
+            np.array(texcoords),
+            np.array(normals),
+            triangles,
+        )
 
     def to_string(self) -> str:
         def tri(v, vt, vn, i):
             def check(s):
                 if s is not None:
-                    return f'{s[i]}' if s[i] is not None else ''
-                return ''
+                    return f"{s[i] + 1}" if s[i] is not None else ""
+                return ""
+
             return f"{check(v)}/{check(vt)}/{check(vn)}"
 
         out = f"# Vertices - count={len(self.vertices)}.\n"
@@ -372,24 +418,27 @@ def convert_dae_to_obj(collada_mesh: collada.Collada) -> list[ObjMesh]:
             )
     return obj_meshes
 
+
 def convert_dae_to_binary_stl(collada_mesh: collada.Collada) -> bytes:
     # Create initial 80 character preamble
     binary_preamble = np.array([0] * 80, dtype=np.uint8).tobytes()
     # Create triangle blob.
     num_triangles = 0
+
     def normal(v1, v2, v3):
         e1 = v2 - v1
         e2 = v3 - v1
         n = np.cross(e1, e2)
         length = np.linalg.norm(n)
-        if length >  1.0e-12:
+        if length > 1.0e-12:
             return n / length
         return np.zeros(3)
-    binary_faces = b''
-    binary_terminator = np.array([0]*2, dtype=np.uint8).tobytes()
+
+    binary_faces = b""
+    binary_terminator = np.array([0] * 2, dtype=np.uint8).tobytes()
     for shape in collada_mesh.geometries:
         for primitive in shape.primitives:
-            for (i0, i1, i2) in primitive.vertex_index:
+            for i0, i1, i2 in primitive.vertex_index:
                 v1 = primitive.vertex[i0]
                 v2 = primitive.vertex[i1]
                 v3 = primitive.vertex[i2]
@@ -402,7 +451,6 @@ def convert_dae_to_binary_stl(collada_mesh: collada.Collada) -> bytes:
                 num_triangles += 1
     binary_count = np.array([num_triangles], dtype=np.uint32).tobytes()
     return binary_preamble + binary_count + binary_faces + binary_terminator
-
 
 
 def convert_mesh_to_capsule_or_sphere(
