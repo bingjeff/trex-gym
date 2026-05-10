@@ -52,6 +52,9 @@ class TestMujocoParsing(unittest.TestCase):
         self.assertEqual(
             3, len(urdf.links["link_tarsometatarsus_left"].collision_shapes)
         )
+        self.assertEqual(0, len(urdf.links["link_vertebrae_sacral"].collision_shapes))
+        self.assertEqual(1, len(urdf.links["link_femur_right"].collision_shapes))
+        self.assertEqual(1, len(urdf.links["link_femur_left"].collision_shapes))
         mujoco_xml = mujoco_parsing.to_string(mujoco_parsing.urdf_to_mujoco(urdf))
         mujoco_node = ElementTree.fromstring(mujoco_xml)
         mujoco = mujoco_parsing.parse_mujoco(mujoco_node)

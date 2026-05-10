@@ -88,9 +88,14 @@ CAPSULE_FIT_SPECS = (
     + tuple(_foot_specs("left"))
     + (
         CapsuleFitSpec(
-            name="pelvis",
-            owner_link="link_vertebrae_sacral",
-            source_links=("link_vertebrae_sacral",),
+            name="femur_right",
+            owner_link="link_femur_right",
+            source_links=("link_femur_right",),
+        ),
+        CapsuleFitSpec(
+            name="femur_left",
+            owner_link="link_femur_left",
+            source_links=("link_femur_left",),
         ),
         CapsuleFitSpec(
             name="torso_rear",

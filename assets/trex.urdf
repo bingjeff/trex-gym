@@ -1253,12 +1253,6 @@
 		</visual>
 
 
-		<collision name="collision_capsule_pelvis">
-			<origin rpy="-1.4014599519690965 1.5700424693775132 0.543494147046744" xyz="0.08503302506048542 -0.6125059916705595 -0.0016031952616827765" />
-			<geometry>
-				<capsule radius="1.0419539665370925" length="0.4099513036342905" />
-			</geometry>
-		</collision>
 	</link>
 	<link name="link_femur_right">
 		<inertial>
@@ -1275,6 +1269,12 @@
 				<mesh filename="meshes/femur_right.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_femur_right">
+			<origin rpy="-1.7004183502082153 -0.48418512351756204 0.08844740109020188" xyz="0.03188890610670872 0.5670640884201922 -0.1809476773262332" />
+			<geometry>
+				<capsule radius="0.21451770675865311" length="1.1135891817381736" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_tibia_right">
 		<inertial>
@@ -4025,6 +4025,12 @@
 				<mesh filename="meshes/femur_left.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_femur_left">
+			<origin rpy="1.4411194150843087 -0.4665536298972901 -3.0563886582135984" xyz="0.03122455378951896 0.5673552963364482 0.18165092350603615" />
+			<geometry>
+				<capsule radius="0.2161464748064217" length="1.1038630702242727" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_tibia_left">
 		<inertial>
