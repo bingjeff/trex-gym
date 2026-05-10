@@ -29,9 +29,7 @@ class Transform:
 
     def apply(self, vectors: np.ndarray) -> np.ndarray:
         if len(vectors) == 3:
-            return (
-                (self.rotation.as_matrix() @ vectors).T + self.translation
-            ).T
+            return ((self.rotation.as_matrix() @ vectors).T + self.translation).T
         else:
             return (self.rotation.as_matrix() @ vectors.T).T + self.translation
 
@@ -50,7 +48,7 @@ class MotionLimits:
 @dataclasses.dataclass
 class Geometry:
     _: dataclasses.KW_ONLY
-    origin: Transform = Transform()
+    origin: Transform = dataclasses.field(default_factory=Transform)
 
 
 @dataclasses.dataclass

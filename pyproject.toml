@@ -5,38 +5,23 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "trex-gym"
 version = "0.1.0"
-description = "OpenAI Gym environment using pybullet for a Tyrannosaur."
+description = "Tyrannosaur model tooling."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.13"
 license = "MIT"
 authors = [
     { name = "Jeffrey T. Bingham", email = "bingjeff@gmail.com" },
 ]
 dependencies = [
-    "absl-py",
-    "baselines",
-    "glfw",
-    "gym",
-    "joblib",
-    "jupyter-rfb",
-    "matplotlib",
-    "mediapy",
     "mujoco",
     "numpy",
-    "pillow",
-    "pybullet",
     "pycollada",
-    "pygfx",
-    "pyglet",
     "scipy",
-    "tensorflow",
 ]
 
 [dependency-groups]
 dev = [
     "black",
-    "ipython",
-    "notebook",
 ]
 
 [tool.setuptools.packages.find]
@@ -44,4 +29,4 @@ include = ["trex_gym*"]
 
 [tool.black]
 line-length = 88
-target-version = ["py310"]
+target-version = ["py313"]
