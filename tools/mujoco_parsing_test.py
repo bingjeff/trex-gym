@@ -55,6 +55,23 @@ class TestMujocoParsing(unittest.TestCase):
         self.assertEqual(0, len(urdf.links["link_vertebrae_sacral"].collision_shapes))
         self.assertEqual(1, len(urdf.links["link_femur_right"].collision_shapes))
         self.assertEqual(1, len(urdf.links["link_femur_left"].collision_shapes))
+        linked_dof_links = set()
+        for side in ("right", "left"):
+            adduction = urdf.joints[f"joint_hip_adduction_{side}"]
+            flexion = urdf.joints[f"joint_femur_{side}"]
+            self.assertIn(f"link_hip_adduction_{side}", urdf.links)
+            self.assertEqual("link_vertebrae_sacral", adduction.parent_name)
+            self.assertEqual(f"link_hip_adduction_{side}", adduction.child_name)
+            self.assertEqual(f"link_femur_{side}", adduction.linked_dof_body)
+            np.testing.assert_allclose([1.0, 0.0, 0.0], adduction.axis)
+            np.testing.assert_allclose(
+                [-0.7853981633974483, 0.7853981633974483],
+                adduction.limits.position,
+            )
+            self.assertEqual(f"link_hip_adduction_{side}", flexion.parent_name)
+            self.assertEqual(f"link_femur_{side}", flexion.child_name)
+            np.testing.assert_allclose([0.0, 0.0, 1.0], flexion.axis)
+            linked_dof_links.add(adduction.child_name)
         mujoco_xml = mujoco_parsing.to_string(mujoco_parsing.urdf_to_mujoco(urdf))
         mujoco_node = ElementTree.fromstring(mujoco_xml)
         mujoco = mujoco_parsing.parse_mujoco(mujoco_node)
@@ -64,8 +81,23 @@ class TestMujocoParsing(unittest.TestCase):
         mujoco_poses = mujoco_parsing.mujoco_forward_kinematics(mujoco, joint_positions)
 
         self.assertEqual(["world"], urdf.root_link_names)
-        self.assertEqual(set(urdf.links) - {"world"}, set(mujoco_poses))
+        self.assertEqual(
+            set(urdf.links) - {"world"} - linked_dof_links, set(mujoco_poses)
+        )
         self.assertNotIn("world", mujoco.body_map)
+        self.assertTrue(linked_dof_links.isdisjoint(mujoco.body_map))
+        for side in ("right", "left"):
+            femur_joints = mujoco.body_map[f"link_femur_{side}"].joints
+            self.assertEqual(
+                [f"joint_hip_adduction_{side}", f"joint_femur_{side}"],
+                [joint.name for joint in femur_joints],
+            )
+            np.testing.assert_allclose([1.0, 0.0, 0.0], femur_joints[0].axis)
+            np.testing.assert_allclose(
+                [-0.7853981633974483, 0.7853981633974483],
+                femur_joints[0].limits.position,
+            )
+            np.testing.assert_allclose([0.0, 0.0, 1.0], femur_joints[1].axis)
         self.assertEqual(
             "joint_world_to_sacrum",
             mujoco_node.find("./worldbody/body/freejoint").get("name"),
@@ -121,7 +153,7 @@ class TestMujocoParsing(unittest.TestCase):
         self.assertTrue(all(geom.get("mesh") is None for geom in collision_geoms))
 
         for link_name, urdf_pose in urdf_poses.items():
-            if link_name == "world":
+            if link_name == "world" or link_name in linked_dof_links:
                 continue
             mujoco_pose = mujoco_poses[link_name]
             np.testing.assert_allclose(

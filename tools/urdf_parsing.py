@@ -31,9 +31,13 @@ class UrdfJoint:
     limits: geometry.MotionLimits = dataclasses.field(
         default_factory=geometry.MotionLimits
     )
+    linked_dof_body: str | None = None
 
     def to_element(self) -> ElementTree.Element:
-        joint = ElementTree.Element("joint", {"name": self.name, "type": self.type})
+        attributes = {"name": self.name, "type": self.type}
+        if self.linked_dof_body:
+            attributes["linked_dof_body"] = self.linked_dof_body
+        joint = ElementTree.Element("joint", attributes)
         joint.append(ElementTree.Element("parent", {"link": self.parent_name}))
         joint.append(ElementTree.Element("child", {"link": self.child_name}))
         joint.append(to_axis(self.axis))
@@ -51,6 +55,7 @@ class UrdfJoint:
             origin=from_origin(node),
             type=node.get("type"),
             limits=from_limit(node),
+            linked_dof_body=node.get("linked_dof_body"),
         )
 
 

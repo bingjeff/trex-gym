@@ -1,8 +1,10 @@
 """URDF to MuJoCo XML conversion helpers.
 
-The converter keeps URDF link frames as MuJoCo body frames. A URDF joint is
-represented as the pose of the child body relative to its parent body, with a
-MuJoCo hinge joint added for revolute/continuous joints.
+The converter keeps URDF link frames as MuJoCo body frames except for
+`linked_dof_body` marker links, which are collapsed into an additional joint on
+their target body. A URDF joint is otherwise represented as the pose of the
+child body relative to its parent body, with a MuJoCo hinge joint added for
+revolute/continuous joints.
 """
 
 import dataclasses
@@ -38,8 +40,12 @@ class MujocoBody:
     transform: geometry.Transform = dataclasses.field(
         default_factory=geometry.Transform
     )
-    joint: MujocoJoint | None = None
+    joints: list[MujocoJoint] = dataclasses.field(default_factory=list)
     children: list["MujocoBody"] = dataclasses.field(default_factory=list)
+
+    @property
+    def joint(self) -> MujocoJoint | None:
+        return self.joints[0] if self.joints else None
 
 
 @dataclasses.dataclass
@@ -136,10 +142,11 @@ def mujoco_forward_kinematics(
 
     def visit(body: MujocoBody, parent_pose: geometry.Transform):
         body_pose = parent_pose * body.transform
-        if body.joint and body.joint.type == "hinge":
-            body_pose = body_pose * _axis_rotation(
-                body.joint.axis, joint_positions.get(body.joint.name, 0.0)
-            )
+        for joint in body.joints:
+            if joint.type == "hinge":
+                body_pose = body_pose * _axis_rotation(
+                    joint.axis, joint_positions.get(joint.name, 0.0)
+                )
         poses[body.name] = body_pose
         for child in body.children:
             visit(child, body_pose)
@@ -194,11 +201,53 @@ def _link_to_body(
     urdf: urdf_parsing.Urdf,
     parent_joint: urdf_parsing.UrdfJoint | None,
 ) -> ElementTree.Element:
+    if parent_joint is not None and parent_joint.linked_dof_body:
+        return _linked_dof_body_to_body(parent_joint, urdf)
     link = urdf.links[link_name]
     body = ElementTree.Element("body", {"name": link.name})
     if parent_joint is not None:
         _set_transform_attributes(body, parent_joint.origin)
         _maybe_append(body, _joint_to_element(parent_joint))
+    _append_link_contents_and_children(body, link_name, urdf)
+    return body
+
+
+def _linked_dof_body_to_body(
+    linked_joint: urdf_parsing.UrdfJoint,
+    urdf: urdf_parsing.Urdf,
+) -> ElementTree.Element:
+    target_link_name = linked_joint.linked_dof_body
+    child_joints = [
+        joint
+        for joint in urdf.parent_link_name_to_joint.get(linked_joint.child_name, [])
+        if joint.child_name == target_link_name
+    ]
+    if len(child_joints) != 1:
+        raise ValueError(
+            f"Expected exactly one child joint from {linked_joint.child_name!r} "
+            f"to linked DOF body {target_link_name!r}."
+        )
+    target_joint = child_joints[0]
+    if not np.allclose(target_joint.origin.translation, 0.0) or not np.allclose(
+        target_joint.origin.rotation.as_rotvec(), 0.0
+    ):
+        raise ValueError(
+            f"Linked DOF target joint {target_joint.name!r} must have an identity "
+            "origin so it can be collapsed into one MuJoCo body."
+        )
+    target_link = urdf.links[target_link_name]
+    body = ElementTree.Element("body", {"name": target_link.name})
+    _set_transform_attributes(body, linked_joint.origin * target_joint.origin)
+    _maybe_append(body, _joint_to_element(linked_joint))
+    _maybe_append(body, _joint_to_element(target_joint))
+    _append_link_contents_and_children(body, target_link.name, urdf)
+    return body
+
+
+def _append_link_contents_and_children(
+    body: ElementTree.Element, link_name: str, urdf: urdf_parsing.Urdf
+):
+    link = urdf.links[link_name]
     _maybe_append(body, _inertial_to_element(link.inertia))
     for shape_index, shape in enumerate(link.visual_shapes):
         _maybe_append(
@@ -220,7 +269,6 @@ def _link_to_body(
         )
     for child_joint in urdf.parent_link_name_to_joint.get(link_name, []):
         body.append(_link_to_body(child_joint.child_name, urdf, child_joint))
-    return body
 
 
 def _asset_node(urdf: urdf_parsing.Urdf) -> ElementTree.Element:
@@ -329,7 +377,7 @@ def _body_from_element(node: ElementTree.Element) -> MujocoBody:
     return MujocoBody(
         name=node.get("name", ""),
         transform=_transform_from_element(node),
-        joint=joints[0] if joints else None,
+        joints=joints,
         children=[_body_from_element(body) for body in node.findall("body")],
     )
 

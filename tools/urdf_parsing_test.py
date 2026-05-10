@@ -7,7 +7,7 @@ from tools import urdf_parsing
 
 _TEST_URDF = """<?xml version="1.0" encoding="utf-8"?>
 <robot name="stan_t_rex">
-  <joint name="joint_femur_right" type="revolute">
+  <joint name="joint_femur_right" type="revolute" linked_dof_body="link_tibia_right">
     <origin rpy="-3.141592502593994 -0.0 0.27925267815589905"
       xyz="0.0171966552734375 -0.2207697629928589 0.2492464929819107" />
     <parent link="link_vertebrae_sacral" />
@@ -86,6 +86,7 @@ class TestUrdfParsing(unittest.TestCase):
             r = urdf_roundtrip.joints[name]
             self.assertEqual(o.child_name, r.child_name)
             self.assertEqual(o.parent_name, r.parent_name)
+            self.assertEqual(o.linked_dof_body, r.linked_dof_body)
             self.assertEqual(o.type, r.type)
             np.testing.assert_allclose(o.axis, r.axis)
             np.testing.assert_allclose(o.limits.position, r.limits.position)

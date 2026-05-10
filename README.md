@@ -35,6 +35,11 @@ Launch the generated model in the MuJoCo viewer:
 uv run python -m mujoco.viewer --mjcf=assets/trex.xml
 ```
 
+The URDF represents hip adduction with intermediate `link_hip_adduction_*`
+links. Their adduction joints use `linked_dof_body="link_femur_*"` so the
+MuJoCo converter collapses those marker links and emits the adduction hinge as
+an additional DOF on each femur body.
+
 ## Collision Capsules
 The URDF stores generated collision geometry as custom capsule elements under
 `<collision>` blocks. Visual mesh geoms remain visual-only in MuJoCo, while
