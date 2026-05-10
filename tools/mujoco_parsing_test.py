@@ -5,6 +5,8 @@ from xml.etree import ElementTree
 import numpy as np
 
 from tools import mujoco_parsing
+from tools import generate_collision_capsules
+from tools import geometry
 from tools import urdf_parsing
 
 _NP_TOLERANCE = 1.0e-10
@@ -30,6 +32,19 @@ class TestMujocoParsing(unittest.TestCase):
     def test_trex_urdf_to_mujoco_kinematics_round_trip(self):
         urdf = urdf_parsing.Urdf.from_element(
             urdf_parsing.read_root_node_from_urdf(str(_ASSET_DIR / "trex.urdf"))
+        )
+        collision_shapes = [
+            shape for link in urdf.links.values() for shape in link.collision_shapes
+        ]
+        self.assertEqual(
+            len(generate_collision_capsules.CAPSULE_FIT_SPECS),
+            len(collision_shapes),
+        )
+        self.assertTrue(
+            all(
+                isinstance(shape, geometry.GeometryCapsule)
+                for shape in collision_shapes
+            )
         )
         mujoco_xml = mujoco_parsing.to_string(mujoco_parsing.urdf_to_mujoco(urdf))
         mujoco_node = ElementTree.fromstring(mujoco_xml)
@@ -71,6 +86,12 @@ class TestMujocoParsing(unittest.TestCase):
         self.assertIsNotNone(visual_default)
         self.assertEqual("0", visual_default.get("contype"))
         self.assertEqual("0", visual_default.get("conaffinity"))
+        self.assertEqual("1", visual_default.get("group"))
+        contact_default = mujoco_node.find("./default/default[@class='contact']/geom")
+        self.assertIsNotNone(contact_default)
+        self.assertEqual("1", contact_default.get("contype"))
+        self.assertEqual("1", contact_default.get("conaffinity"))
+        self.assertEqual("2", contact_default.get("group"))
         self.assertTrue(
             all(
                 geom.get("class") == "visual"
@@ -78,6 +99,16 @@ class TestMujocoParsing(unittest.TestCase):
                 if "_visual_" in geom.get("name", "")
             )
         )
+        collision_geoms = [
+            geom
+            for geom in mujoco_node.findall(".//geom")
+            if geom.get("name", "").startswith("link_")
+            and "_collision_" in geom.get("name", "")
+        ]
+        self.assertEqual(len(collision_shapes), len(collision_geoms))
+        self.assertTrue(all(geom.get("class") == "contact" for geom in collision_geoms))
+        self.assertTrue(all(geom.get("type") == "capsule" for geom in collision_geoms))
+        self.assertTrue(all(geom.get("mesh") is None for geom in collision_geoms))
 
         for link_name, urdf_pose in urdf_poses.items():
             if link_name == "world":
@@ -93,6 +124,14 @@ class TestMujocoParsing(unittest.TestCase):
                 mujoco_pose.rotation.as_matrix(),
                 atol=_NP_TOLERANCE,
             )
+
+    def test_generated_capsules_enclose_source_mesh_vertices(self):
+        fits = generate_collision_capsules.generate_capsule_fits(
+            _ASSET_DIR / "trex.urdf"
+        )
+        self.assertEqual(len(generate_collision_capsules.CAPSULE_FIT_SPECS), len(fits))
+        for fit in fits:
+            self.assertLessEqual(fit.max_outside_distance, _NP_TOLERANCE)
 
 
 if __name__ == "__main__":

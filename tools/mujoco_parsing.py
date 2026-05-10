@@ -19,6 +19,7 @@ from . import urdf_parsing
 _WORLD_LINK_NAME = "world"
 _FLOATING_JOINT_TYPES = ("floating",)
 _VISUAL_GEOM_CLASS = "visual"
+_CONTACT_GEOM_CLASS = "contact"
 
 
 @dataclasses.dataclass
@@ -172,6 +173,18 @@ def _default_node() -> ElementTree.Element:
             "group": "1",
         },
     )
+    contact = ElementTree.SubElement(
+        defaults, "default", {"class": _CONTACT_GEOM_CLASS}
+    )
+    ElementTree.SubElement(
+        contact,
+        "geom",
+        {
+            "contype": "1",
+            "conaffinity": "1",
+            "group": "2",
+        },
+    )
     return defaults
 
 
@@ -281,17 +294,29 @@ def _principal_inertia(
 def _shape_to_geom(
     shape: geometry.Geometry, name: str, visual: bool
 ) -> ElementTree.Element | None:
-    if not isinstance(shape, geometry.GeometryMesh):
-        return None
     attributes = {
         "name": name,
-        "type": "mesh",
-        "mesh": _mesh_name(shape.filename),
         "pos": _to_vec3(shape.origin.translation),
         "quat": _to_quat(shape.origin.rotation),
     }
+    if isinstance(shape, geometry.GeometryMesh):
+        attributes.update({"type": "mesh", "mesh": _mesh_name(shape.filename)})
+    elif isinstance(shape, geometry.GeometryCapsule):
+        attributes.update(
+            {
+                "type": "capsule",
+                "size": f"{_format_float(shape.radius)} "
+                f"{_format_float(0.5 * shape.length)}",
+            }
+        )
+    elif isinstance(shape, geometry.GeometrySphere):
+        attributes.update({"type": "sphere", "size": _format_float(shape.radius)})
+    else:
+        return None
     if visual:
         attributes["class"] = _VISUAL_GEOM_CLASS
+    else:
+        attributes["class"] = _CONTACT_GEOM_CLASS
     return ElementTree.Element("geom", attributes)
 
 

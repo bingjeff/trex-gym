@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 
+from tools import geometry
 from tools import urdf_parsing
 
 _TEST_URDF = """<?xml version="1.0" encoding="utf-8"?>
@@ -62,6 +63,12 @@ _TEST_URDF = """<?xml version="1.0" encoding="utf-8"?>
         <mesh filename="meshes/fibula_right.obj" scale="1.0 1.0 1.0" />
       </geometry>
     </visual>
+    <collision name="collision_capsule_tibia_right">
+      <origin rpy="0.1 0.2 0.3" xyz="0.4 0.5 0.6" />
+      <geometry>
+        <capsule radius="0.7" length="0.8" />
+      </geometry>
+    </collision>
   </link>
 </robot>
 """
@@ -82,9 +89,7 @@ class TestUrdfParsing(unittest.TestCase):
             self.assertEqual(o.type, r.type)
             np.testing.assert_allclose(o.axis, r.axis)
             np.testing.assert_allclose(o.limits.position, r.limits.position)
-            np.testing.assert_allclose(
-                o.origin.translation, r.origin.translation
-            )
+            np.testing.assert_allclose(o.origin.translation, r.origin.translation)
             np.testing.assert_allclose(
                 o.origin.rotation.as_rotvec(), r.origin.rotation.as_rotvec()
             )
@@ -103,19 +108,18 @@ class TestUrdfParsing(unittest.TestCase):
             )
             for os, rs in zip(o.visual_shapes, r.visual_shapes):
                 self.assertEqual(type(os), type(rs))
-                np.testing.assert_allclose(
-                    os.origin.translation, rs.origin.translation
-                )
+                np.testing.assert_allclose(os.origin.translation, rs.origin.translation)
                 np.testing.assert_allclose(
                     os.origin.rotation.as_rotvec(),
                     rs.origin.rotation.as_rotvec(),
                 )
             for os, rs in zip(o.collision_shapes, r.collision_shapes):
                 self.assertEqual(type(os), type(rs))
-                np.testing.assert_allclose(
-                    os.origin.translation, rs.origin.translation
-                )
+                np.testing.assert_allclose(os.origin.translation, rs.origin.translation)
                 np.testing.assert_allclose(
                     os.origin.rotation.as_rotvec(),
                     rs.origin.rotation.as_rotvec(),
                 )
+                if isinstance(os, geometry.GeometryCapsule):
+                    self.assertAlmostEqual(os.radius, rs.radius)
+                    self.assertAlmostEqual(os.length, rs.length)

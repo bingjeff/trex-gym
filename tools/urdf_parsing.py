@@ -4,8 +4,7 @@
 # TODO:
 #  * Error handling when parsing the URDF, current behavior is "silent on
 #    missing fields" and makes some dubious assumptions.
-#  * Parsing of geometry fields only looks for `mesh` and assumes no
-#    composition.
+#  * Parsing of geometry fields assumes no geometry composition.
 #  * Parsing of joints really only covers revolute joints.
 #  * Parsing of limits and special joint fields are largely ignored.
 
@@ -285,6 +284,19 @@ def from_shape(node: ElementTree.Element) -> geometry.Geometry:
             return geometry.GeometryMesh(
                 filename=mesh_node.get("filename"), origin=origin
             )
+        capsule_node = geometry_node.find("capsule")
+        if capsule_node is not None:
+            return geometry.GeometryCapsule(
+                radius=lookup_float(capsule_node, "radius"),
+                length=lookup_float(capsule_node, "length"),
+                origin=origin,
+            )
+        sphere_node = geometry_node.find("sphere")
+        if sphere_node is not None:
+            return geometry.GeometrySphere(
+                radius=lookup_float(sphere_node, "radius"),
+                origin=origin,
+            )
     else:
         return geometry.Geometry()
 
@@ -343,6 +355,17 @@ def to_shape(shape: geometry.Geometry) -> ElementTree.Element:
             ElementTree.Element(
                 "mesh", {"filename": shape.filename, "scale": "1.0 1.0 1.0"}
             )
+        )
+    elif isinstance(shape, geometry.GeometryCapsule):
+        geometry_node.append(
+            ElementTree.Element(
+                "capsule",
+                {"radius": f"{shape.radius}", "length": f"{shape.length}"},
+            )
+        )
+    elif isinstance(shape, geometry.GeometrySphere):
+        geometry_node.append(
+            ElementTree.Element("sphere", {"radius": f"{shape.radius}"})
         )
     else:
         raise ValueError(f"Unknown geometry shape type: {type(shape)}")

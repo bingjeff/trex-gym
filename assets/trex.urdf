@@ -1253,6 +1253,12 @@
 		</visual>
 
 
+		<collision name="collision_capsule_pelvis">
+			<origin rpy="-1.4014599519690965 1.5700424693775132 0.543494147046744" xyz="0.08503302506048542 -0.6125059916705595 -0.0016031952616827765" />
+			<geometry>
+				<capsule radius="1.0419539665370925" length="0.4099513036342905" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_femur_right">
 		<inertial>
@@ -1308,6 +1314,12 @@
 				<mesh filename="meshes/tarsometatarsus_right.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_tarsometatarsus_right">
+			<origin rpy="1.525807802079915 -0.0026224274010473447 -0.08649017217877208" xyz="0.0010984080556107952 0.3695019259426233 -0.018034568546377937" />
+			<geometry>
+				<capsule radius="0.1961608907276992" length="0.4204948843738786" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_01_a_right">
 		<inertial>
@@ -1324,6 +1336,12 @@
 				<mesh filename="meshes/toe_01_a_right.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_01_a_right">
+			<origin rpy="-1.3653139279805107 1.2804936123977941 -3.0132476872564355" xyz="-0.00781553544801804 0.046974712805798916 0.005341484742740716" />
+			<geometry>
+				<capsule radius="0.03732940617741446" length="0.09893455985318592" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_01_b_right">
 		<inertial>
@@ -1340,6 +1358,12 @@
 				<mesh filename="meshes/toe_01_b_right.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_01_b_right">
+			<origin rpy="-1.5525825575438077 0.8310347387318431 0.0635372726620207" xyz="-0.0035085077073252363 0.05815631646010952 0.012024656529601612" />
+			<geometry>
+				<capsule radius="0.03334301962394471" length="0.09516667710736464" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_01_c_right">
 		<inertial>
@@ -1356,6 +1380,12 @@
 				<mesh filename="meshes/toe_01_c_right.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_01_c_right">
+			<origin rpy="1.9814555961234572 1.0503861950983415 0.1896633450051164" xyz="0.00010581709067605197 0.06133797258622195 -0.0008599775766282019" />
+			<geometry>
+				<capsule radius="0.028361971155339005" length="0.11762773866236595" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_02_a_right">
 		<inertial>
@@ -1372,6 +1402,12 @@
 				<mesh filename="meshes/toe_02_a_right.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_02_a_right">
+			<origin rpy="1.5341361158664957 0.1546128108595597 -0.051779344610656475" xyz="0.011274962817756223 0.09923177140810313 -0.00715852808370826" />
+			<geometry>
+				<capsule radius="0.09163016597659768" length="0.15566837064808223" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_02_b_right">
 		<inertial>
@@ -1388,6 +1424,12 @@
 				<mesh filename="meshes/toe_02_b_right.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_02_b_right">
+			<origin rpy="1.6508136478003252 0.4708445484529018 0.014859449106415457" xyz="0.002050913035308952 0.11283104520864287 0.0005657806383164951" />
+			<geometry>
+				<capsule radius="0.06061798605116905" length="0.12242484819020395" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_02_c_right">
 		<inertial>
@@ -1404,6 +1446,12 @@
 				<mesh filename="meshes/toe_02_c_right.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_02_c_right">
+			<origin rpy="1.1877719802064104 1.0292009938353943 3.1146582937990117" xyz="-0.002906291358172629 0.1153804537945482 0.003219491664331406" />
+			<geometry>
+				<capsule radius="0.039399990199069014" length="0.12294026303933266" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_03_a_right">
 		<inertial>
@@ -1420,6 +1468,12 @@
 				<mesh filename="meshes/toe_03_a_right.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_03_a_right">
+			<origin rpy="1.5603900036027016 0.36726923578029 -0.029127124466897913" xyz="-0.0024597120144740055 0.1544126248717867 0.0026945424381374" />
+			<geometry>
+				<capsule radius="0.08176208834178365" length="0.1405684110670034" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_03_b_right">
 		<inertial>
@@ -1436,6 +1490,12 @@
 				<mesh filename="meshes/toe_03_b_right.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_03_b_right">
+			<origin rpy="1.5729893303085465 0.23926928409992576 -0.013474181893777692" xyz="0.0009093331391542317 0.09633256405448967 -0.0020802187861932277" />
+			<geometry>
+				<capsule radius="0.06559828439833719" length="0.09450222574578866" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_03_c_right">
 		<inertial>
@@ -1452,6 +1512,12 @@
 				<mesh filename="meshes/toe_03_c_right.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_03_c_right">
+			<origin rpy="-1.5049472611493049 -0.11309634811514746 -0.2620017846433004" xyz="0.001107100131890022 0.08864536161580779 0.0012069769785899055" />
+			<geometry>
+				<capsule radius="0.05345803952836962" length="0.11406065576824265" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_03_d_right">
 		<inertial>
@@ -1468,6 +1534,12 @@
 				<mesh filename="meshes/toe_03_d_right.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_03_d_right">
+			<origin rpy="-1.987210343740708 1.4785048835469872 0.10581227432499807" xyz="-0.015399279849986135 0.10105863748755081 -0.0032410878007562197" />
+			<geometry>
+				<capsule radius="0.044167939953435466" length="0.091712280583625" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_04_a_right">
 		<inertial>
@@ -1484,6 +1556,12 @@
 				<mesh filename="meshes/toe_04_a_right.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_04_a_right">
+			<origin rpy="1.504115902197133 0.32323404418531143 -0.14652947250004178" xyz="0.006303332021431112 0.13627311144761425 -0.0009236925837707386" />
+			<geometry>
+				<capsule radius="0.08375986623981806" length="0.11027858747108531" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_04_b_right">
 		<inertial>
@@ -1500,6 +1578,12 @@
 				<mesh filename="meshes/toe_04_b_right.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_04_b_right">
+			<origin rpy="1.7276385448627294 0.12602853727458907 -0.04484289694697552" xyz="0.007761252919991568 0.08974850131259912 0.0021729570119891914" />
+			<geometry>
+				<capsule radius="0.06745278523661603" length="0.03632944859853013" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_04_c_right">
 		<inertial>
@@ -1516,6 +1600,12 @@
 				<mesh filename="meshes/toe_04_c_right.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_04_c_right">
+			<origin rpy="-0.044251245782526746 -0.16090913477640512 0.06980303727191003" xyz="0.005458409902334586 0.07601021986722885 -0.001008362295615597" />
+			<geometry>
+				<capsule radius="0.06918167522884996" length="0.017802768072510265" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_04_d_right">
 		<inertial>
@@ -1532,6 +1622,12 @@
 				<mesh filename="meshes/toe_04_d_right.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_04_d_right">
+			<origin rpy="1.7499857908340601 -0.1909977754339207 0.02217758816151072" xyz="-0.0018192863674993806 0.0723803728078813 0.0048622463499292026" />
+			<geometry>
+				<capsule radius="0.05271432167834396" length="0.0356556278711672" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_04_e_right">
 		<inertial>
@@ -1548,6 +1644,12 @@
 				<mesh filename="meshes/toe_04_e_right.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_04_e_right">
+			<origin rpy="1.616672872992095 1.0899656968143834 -2.554036027844144" xyz="-0.013452577350517367 0.11259478752320157 0.00027543268950952114" />
+			<geometry>
+				<capsule radius="0.03425266752740769" length="0.10766263767787751" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_05_a_right">
 		<inertial>
@@ -1564,6 +1666,12 @@
 				<mesh filename="meshes/toe_05_a_right.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_05_a_right">
+			<origin rpy="-1.3781470892584968 1.3662444233013264 -2.968094617344163" xyz="-0.02192490277794009 0.051378180491508066 0.0042819783050796634" />
+			<geometry>
+				<capsule radius="0.04352986689920897" length="0.2170583023377086" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_vertebra_dorsal_12">
 		<inertial>
@@ -1580,6 +1688,12 @@
 				<mesh filename="meshes/vertebra_dorsal_12.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_torso_rear">
+			<origin rpy="0.7774519183063688 1.5703154403584674 -2.345538351247085" xyz="0.31629805125191607 0.3544088363063869 6.273093396710937e-05" />
+			<geometry>
+				<capsule radius="0.607780892590496" length="0.7054000668756726" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_vertebra_dorsal_11">
 		<inertial>
@@ -1812,6 +1926,12 @@
 				<mesh filename="meshes/gastralium_07_right.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_torso_mid">
+			<origin rpy="0.0019188847924541674 0.1336427646356515 -1.5608598817818446" xyz="-5.6515068759550825e-05 0.1382369538668889 0.36835099978027164" />
+			<geometry>
+				<capsule radius="0.702693982515512" length="0.5032856994006939" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_vertebra_dorsal_07">
 		<inertial>
@@ -2016,6 +2136,12 @@
 				<mesh filename="meshes/rib_dorsal_04_right.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_torso_front">
+			<origin rpy="0.0010226816708497344 0.08537450880354047 -1.569084226710166" xyz="-0.0010490519232942699 0.15139418066230637 0.3699546858542564" />
+			<geometry>
+				<capsule radius="0.6968781662471596" length="0.6576748982466329" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_vertebra_dorsal_03">
 		<inertial>
@@ -2175,6 +2301,12 @@
 				<mesh filename="meshes/rib_cervical_10_right.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_neck">
+			<origin rpy="-2.7688261110800396 1.3719510857457182 -1.1905726241762182" xyz="0.012585334881212957 0.28247182676608806 -0.10099973261242437" />
+			<geometry>
+				<capsule radius="0.3624312979938864" length="1.1825671370789907" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_vertebra_cervical_08">
 		<inertial>
@@ -2482,6 +2614,12 @@
 				<mesh filename="meshes/upper_teeth.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_head">
+			<origin rpy="-0.037349483928638794 1.4976530175384455 1.5361490964830922" xyz="-0.006692543304434618 0.48972163785412703 0.1898375744024604" />
+			<geometry>
+				<capsule radius="0.581242829812658" length="0.8695043963660251" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_mandible">
 		<inertial>
@@ -2912,6 +3050,12 @@
 				<mesh filename="meshes/gorgo_haemal_arch_01.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_tail_base">
+			<origin rpy="1.9065314072404789 1.5695149146790484 -2.7161734666287742" xyz="-0.03755453115285905 0.98527497762497 -3.412873986559113e-05" />
+			<geometry>
+				<capsule radius="0.42923432534998474" length="1.6918844633055186" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_vertebra_caudal_01">
 		<inertial>
@@ -3142,6 +3286,12 @@
 				<mesh filename="meshes/gorgo_haemal_arch_11.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_tail_mid">
+			<origin rpy="1.486778238846918 -0.002878081337198468 -3.141100760636141" xyz="-0.00014806126489387474 1.138866419734141 0.046841841871963" />
+			<geometry>
+				<capsule radius="0.28502244374714775" length="1.805692624304582" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_vertebra_caudal_11">
 		<inertial>
@@ -3464,6 +3614,12 @@
 				<mesh filename="meshes/gorgo_haemal_arch_25.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_tail_distal">
+			<origin rpy="-1.7724687339305514 0.049334162202582243 3.132941755408025" xyz="-0.0010903658671516437 0.49040250183272455 0.07787667548500381" />
+			<geometry>
+				<capsule radius="0.10190880523404405" length="0.8922383681107176" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_vertebra_caudal_25">
 		<inertial>
@@ -3687,6 +3843,12 @@
 				<mesh filename="meshes/vertebra_caudal_34.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_tail_tip">
+			<origin rpy="1.5417109531747033 -0.020276572077835064 -3.139808087206735" xyz="0.0007007353352626777 0.2635818664851462 -0.0005834906349804153" />
+			<geometry>
+				<capsule radius="0.029396737590706355" length="0.5273449769907109" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_vertebra_caudal_35">
 		<inertial>
@@ -3902,6 +4064,12 @@
 				<mesh filename="meshes/tarsometatarsus_left.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_tarsometatarsus_left">
+			<origin rpy="-1.530418114899586 -0.012357511844566682 -0.08693295151500957" xyz="0.0014467854478120638 0.36936234715011684 0.01879576122779478" />
+			<geometry>
+				<capsule radius="0.19651473310014886" length="0.41519850814619663" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_01_a_left">
 		<inertial>
@@ -3918,6 +4086,12 @@
 				<mesh filename="meshes/toe_01_a_left.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_01_a_left">
+			<origin rpy="-1.6375748163182218 1.1906133064482685 2.9539251330631346" xyz="-0.009655090610749586 0.046658546391660075 -0.0016121976523714924" />
+			<geometry>
+				<capsule radius="0.03951409872299168" length="0.08988255569011548" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_01_b_left">
 		<inertial>
@@ -3934,6 +4108,12 @@
 				<mesh filename="meshes/toe_01_b_left.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_01_b_left">
+			<origin rpy="1.772850703160349 1.4081178859670165 0.17052138705672104" xyz="-0.006893509548510304 0.0580707812001755 0.00962870562534502" />
+			<geometry>
+				<capsule radius="0.03330442243607323" length="0.0942721084625497" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_01_c_left">
 		<inertial>
@@ -3950,6 +4130,12 @@
 				<mesh filename="meshes/toe_01_c_left.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_01_c_left">
+			<origin rpy="1.2492392104074146 -0.6265454043565818 0.12899158112013587" xyz="0.0006064854308826392 0.06146956910906964 0.0006980464013649071" />
+			<geometry>
+				<capsule radius="0.028488092598899933" length="0.11646185731690266" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_02_a_left">
 		<inertial>
@@ -3966,6 +4152,12 @@
 				<mesh filename="meshes/toe_02_a_left.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_02_a_left">
+			<origin rpy="1.5750237828314433 0.22194479218487873 -0.04122566317845444" xyz="0.012563597489503635 0.09922246887861695 0.0007944552107630905" />
+			<geometry>
+				<capsule radius="0.0926854536553942" length="0.14257939263190905" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_02_b_left">
 		<inertial>
@@ -3982,6 +4174,12 @@
 				<mesh filename="meshes/toe_02_b_left.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_02_b_left">
+			<origin rpy="1.4847719859956836 -0.11317322186329992 0.02058409920583959" xyz="0.0018578509798268714 0.11253043092048798 -0.0017659360618004346" />
+			<geometry>
+				<capsule radius="0.06065632895616454" length="0.12196642476969599" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_02_c_left">
 		<inertial>
@@ -3998,6 +4196,12 @@
 				<mesh filename="meshes/toe_02_c_left.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_02_c_left">
+			<origin rpy="1.2797262099743478 1.323228872665211 -3.0689775889738846" xyz="-0.004516518880733998 0.11599535721452911 -0.0003776979374705746" />
+			<geometry>
+				<capsule radius="0.039512617255557714" length="0.12288707956706639" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_03_a_left">
 		<inertial>
@@ -4014,6 +4218,12 @@
 				<mesh filename="meshes/toe_03_a_left.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_03_a_left">
+			<origin rpy="-1.5796313563517241 -0.3655849812367902 -0.02955451734025738" xyz="-0.001846661991128571 0.15441427626393706 -0.004156093800557286" />
+			<geometry>
+				<capsule radius="0.07777879407395766" length="0.16787624710414262" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_03_b_left">
 		<inertial>
@@ -4030,6 +4240,12 @@
 				<mesh filename="meshes/toe_03_b_left.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_03_b_left">
+			<origin rpy="-1.5881330788577959 -0.2644935555191512 -0.009162105611792093" xyz="0.0013731253161799665 0.09662703137939119 0.001604153645263518" />
+			<geometry>
+				<capsule radius="0.06566556311126061" length="0.10035344882787786" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_03_c_left">
 		<inertial>
@@ -4046,6 +4262,12 @@
 				<mesh filename="meshes/toe_03_c_left.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_03_c_left">
+			<origin rpy="1.4875949199969254 0.12103481244886649 -0.2656485792619091" xyz="0.0012803505194798753 0.08845433110455647 -0.00130005400767416" />
+			<geometry>
+				<capsule radius="0.05444940328396773" length="0.10566321087561746" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_03_d_left">
 		<inertial>
@@ -4062,6 +4284,12 @@
 				<mesh filename="meshes/toe_03_d_left.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_03_d_left">
+			<origin rpy="-2.051677180605214 1.5105691814986661 0.03729660448825456" xyz="-0.015454943415045825 0.10120835395423655 0.0008855464116096163" />
+			<geometry>
+				<capsule radius="0.044418045416528947" length="0.09157804589719945" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_04_a_left">
 		<inertial>
@@ -4078,6 +4306,12 @@
 				<mesh filename="meshes/toe_04_a_left.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_04_a_left">
+			<origin rpy="-1.4630290425887307 -0.5855054696485887 -0.14488906405517232" xyz="0.005108728776204936 0.13754776336600283 0.0023056298374668164" />
+			<geometry>
+				<capsule radius="0.08497498248746185" length="0.10676444880197003" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_04_b_left">
 		<inertial>
@@ -4094,6 +4328,12 @@
 				<mesh filename="meshes/toe_04_b_left.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_04_b_left">
+			<origin rpy="-1.7639559086305 -0.20706184133623973 -0.033445837962787994" xyz="0.0077818405855951435 0.08994538639159538 -0.0010188436718187141" />
+			<geometry>
+				<capsule radius="0.06793914134164114" length="0.033077137372364854" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_04_c_left">
 		<inertial>
@@ -4110,6 +4350,12 @@
 				<mesh filename="meshes/toe_04_c_left.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_04_c_left">
+			<origin rpy="0.030505579536615146 0.1760665925811029 0.02248365392035652" xyz="0.006577250061187946 0.07494832629422372 0.000634428349603907" />
+			<geometry>
+				<capsule radius="0.06916729803631674" length="0.018744423767272096" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_04_d_left">
 		<inertial>
@@ -4126,6 +4372,12 @@
 				<mesh filename="meshes/toe_04_d_left.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_04_d_left">
+			<origin rpy="1.4041019169417577 -0.015885313969452364 0.05760249541956086" xyz="-0.0018606617021225005 0.07194966770048962 -0.0047193716971557845" />
+			<geometry>
+				<capsule radius="0.05098557207538333" length="0.04059161497193256" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_04_e_left">
 		<inertial>
@@ -4142,6 +4394,12 @@
 				<mesh filename="meshes/toe_04_e_left.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_04_e_left">
+			<origin rpy="-1.558024771780131 1.046181246046972 0.5568484524082282" xyz="-0.01346151975203845 0.11264281596025892 -0.0006247522529313511" />
+			<geometry>
+				<capsule radius="0.03412965105910412" length="0.10766211313301463" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_toe_05_a_left">
 		<inertial>
@@ -4158,5 +4416,11 @@
 				<mesh filename="meshes/toe_05_a_left.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_toe_05_a_left">
+			<origin rpy="1.7453612043700648 1.3954652811899062 0.16293776494529133" xyz="-0.021005754393259874 0.05234688150028129 -0.004044331343808678" />
+			<geometry>
+				<capsule radius="0.04379949280824006" length="0.21809880203269266" />
+			</geometry>
+		</collision>
 	</link>
 </robot>

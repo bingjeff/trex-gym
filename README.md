@@ -34,3 +34,26 @@ Launch the generated model in the MuJoCo viewer:
 ```
 uv run python -m mujoco.viewer --mjcf=assets/trex.xml
 ```
+
+## Collision Capsules
+The URDF stores generated collision geometry as custom capsule elements under
+`<collision>` blocks. Visual mesh geoms remain visual-only in MuJoCo, while
+collision geoms are generated as MuJoCo capsules.
+
+Regenerate capsule collisions from the visual OBJ meshes:
+
+```
+uv run python tools/generate_collision_capsules.py assets/trex.urdf --report
+```
+
+The generator fits capsules in each owning link frame. It uses the visual mesh
+vertices, URDF forward kinematics at the neutral pose, PCA-oriented axes from the
+mesh primitive tools, and a volume-minimizing capsule fit along the dominant
+axis. The checked-in set covers each foot bone, plus composite capsules for the
+pelvis, rear/mid/front torso, neck, head, and four tail sections.
+
+The `--report` output includes fit quality metrics for every generated capsule:
+`max_outside_distance`, `mean_abs_surface_error`, and
+`p95_abs_surface_error`. The tests assert that all generated capsules enclose
+their source mesh vertices within tolerance and that no collision meshes are
+emitted into MuJoCo.
