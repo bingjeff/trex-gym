@@ -16,6 +16,9 @@ from scipy.spatial import transform
 from . import geometry
 from . import urdf_parsing
 
+_WORLD_LINK_NAME = "world"
+_FLOATING_JOINT_TYPES = ("floating",)
+
 
 @dataclasses.dataclass
 class MujocoJoint:
@@ -69,8 +72,8 @@ def urdf_to_mujoco(urdf: urdf_parsing.Urdf) -> ElementTree.Element:
     if len(asset):
         mujoco.append(asset)
     worldbody = ElementTree.Element("worldbody")
-    for root_name in sorted(urdf.root_link_names):
-        worldbody.append(_link_to_body(root_name, urdf, None))
+    for root_body in _root_bodies(urdf):
+        worldbody.append(root_body)
     mujoco.append(worldbody)
     return mujoco
 
@@ -143,6 +146,18 @@ def mujoco_forward_kinematics(
     return poses
 
 
+def _root_bodies(urdf: urdf_parsing.Urdf) -> list[ElementTree.Element]:
+    bodies = []
+    parent_link_to_joints = urdf.parent_link_name_to_joint
+    for root_name in sorted(urdf.root_link_names):
+        if root_name == _WORLD_LINK_NAME:
+            for joint in parent_link_to_joints.get(root_name, []):
+                bodies.append(_link_to_body(joint.child_name, urdf, joint))
+        else:
+            bodies.append(_link_to_body(root_name, urdf, None))
+    return bodies
+
+
 def _link_to_body(
     link_name: str,
     urdf: urdf_parsing.Urdf,
@@ -197,6 +212,8 @@ def _asset_node(urdf: urdf_parsing.Urdf) -> ElementTree.Element:
 def _joint_to_element(
     joint: urdf_parsing.UrdfJoint,
 ) -> ElementTree.Element | None:
+    if joint.type in _FLOATING_JOINT_TYPES:
+        return ElementTree.Element("freejoint", {"name": joint.name})
     if joint.type not in ("revolute", "continuous"):
         return None
     node = ElementTree.Element(
@@ -258,7 +275,10 @@ def _shape_to_geom(
 
 
 def _body_from_element(node: ElementTree.Element) -> MujocoBody:
-    joints = [_joint_from_element(joint) for joint in node.findall("joint")]
+    joints = [
+        _joint_from_element(joint)
+        for joint in list(node.findall("freejoint")) + list(node.findall("joint"))
+    ]
     return MujocoBody(
         name=node.get("name", ""),
         transform=_transform_from_element(node),
@@ -271,9 +291,10 @@ def _joint_from_element(node: ElementTree.Element) -> MujocoJoint:
     limits = geometry.MotionLimits()
     if node.get("range"):
         limits.position = _from_vec(node.get("range"), 2)
+    joint_type = "free" if node.tag == "freejoint" else node.get("type", "hinge")
     return MujocoJoint(
         name=node.get("name", ""),
-        type=node.get("type", "hinge"),
+        type=joint_type,
         axis=_from_vec(node.get("axis", "0 0 1"), 3),
         limits=limits,
     )

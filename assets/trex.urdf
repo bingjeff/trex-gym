@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <robot name="stan_t_rex">
+	<link name="world" />
+	<joint name="joint_world_to_sacrum" type="floating">
+		<origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0" />
+		<parent link="world" />
+		<child link="link_vertebrae_sacral" />
+	</joint>
 	<joint name="joint_femur_right" type="revolute">
 		<origin rpy="-3.141592502593994 -0.0 0.27925267815589905"
 			xyz="0.0171966552734375 -0.2207697629928589 0.2492464929819107" />

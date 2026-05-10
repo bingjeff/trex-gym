@@ -32,16 +32,25 @@ class TestMujocoParsing(unittest.TestCase):
             urdf_parsing.read_root_node_from_urdf(str(_ASSET_DIR / "trex.urdf"))
         )
         mujoco_xml = mujoco_parsing.to_string(mujoco_parsing.urdf_to_mujoco(urdf))
-        mujoco = mujoco_parsing.parse_mujoco(ElementTree.fromstring(mujoco_xml))
+        mujoco_node = ElementTree.fromstring(mujoco_xml)
+        mujoco = mujoco_parsing.parse_mujoco(mujoco_node)
         joint_positions = _test_joint_positions(urdf)
 
         urdf_poses = mujoco_parsing.urdf_forward_kinematics(urdf, joint_positions)
         mujoco_poses = mujoco_parsing.mujoco_forward_kinematics(mujoco, joint_positions)
 
-        self.assertEqual(set(urdf.links), set(mujoco_poses))
-        self.assertEqual(len(urdf.joints), len(mujoco.body_map) - 1)
+        self.assertEqual(["world"], urdf.root_link_names)
+        self.assertEqual(set(urdf.links) - {"world"}, set(mujoco_poses))
+        self.assertNotIn("world", mujoco.body_map)
+        self.assertEqual(
+            "joint_world_to_sacrum",
+            mujoco_node.find("./worldbody/body/freejoint").get("name"),
+        )
+        self.assertEqual("free", mujoco.body_map["link_vertebrae_sacral"].joint.type)
 
         for link_name, urdf_pose in urdf_poses.items():
+            if link_name == "world":
+                continue
             mujoco_pose = mujoco_poses[link_name]
             np.testing.assert_allclose(
                 urdf_pose.translation,
