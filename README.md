@@ -22,3 +22,10 @@ The biggest runtime dependencies are:
 * [OpenAI Gym](https://github.com/openai/gym) - Provides the basis for the model "environment".
 * [OpenAI Baselines](https://github.com/openai/baselines) - Used for the RL agents.
 * [Tensorflow](https://github.com/tensorflow/tensorflow) - Used as a dependency for the ML infrastructure.
+
+## MuJoCo XML
+The URDF remains the source of truth. Regenerate MuJoCo XML from it with:
+
+```
+uv run python tools/urdf_to_mujoco.py assets/trex.urdf assets/trex.xml
+```
