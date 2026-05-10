@@ -18,6 +18,7 @@ from . import urdf_parsing
 
 _WORLD_LINK_NAME = "world"
 _FLOATING_JOINT_TYPES = ("floating",)
+_VISUAL_GEOM_CLASS = "visual"
 
 
 @dataclasses.dataclass
@@ -68,6 +69,7 @@ def urdf_to_mujoco(urdf: urdf_parsing.Urdf) -> ElementTree.Element:
             ElementTree.Element("option", {"timestep": "0.001"}),
         ]
     )
+    mujoco.append(_default_node())
     asset = _asset_node(urdf)
     if len(asset):
         mujoco.append(asset)
@@ -158,6 +160,21 @@ def _root_bodies(urdf: urdf_parsing.Urdf) -> list[ElementTree.Element]:
     return bodies
 
 
+def _default_node() -> ElementTree.Element:
+    defaults = ElementTree.Element("default")
+    visual = ElementTree.SubElement(defaults, "default", {"class": _VISUAL_GEOM_CLASS})
+    ElementTree.SubElement(
+        visual,
+        "geom",
+        {
+            "contype": "0",
+            "conaffinity": "0",
+            "group": "1",
+        },
+    )
+    return defaults
+
+
 def _link_to_body(
     link_name: str,
     urdf: urdf_parsing.Urdf,
@@ -235,26 +252,30 @@ def _inertial_to_element(
 ) -> ElementTree.Element | None:
     if inertial.mass <= 0:
         return None
+    orientation, diagonal_inertia = _principal_inertia(inertial)
     node = ElementTree.Element(
         "inertial",
         {
             "mass": _format_float(inertial.mass),
             "pos": _to_vec3(inertial.origin.translation),
-            "quat": _to_quat(inertial.origin.rotation),
-            "fullinertia": " ".join(
-                _format_float(v)
-                for v in (
-                    inertial.inertia[0, 0],
-                    inertial.inertia[1, 1],
-                    inertial.inertia[2, 2],
-                    inertial.inertia[0, 1],
-                    inertial.inertia[0, 2],
-                    inertial.inertia[1, 2],
-                )
-            ),
+            "quat": _to_quat(orientation),
+            "diaginertia": _to_vec3(diagonal_inertia),
         },
     )
     return node
+
+
+def _principal_inertia(
+    inertial: urdf_parsing.UrdfInertial,
+) -> tuple[transform.Rotation, np.ndarray]:
+    off_diagonal = inertial.inertia.copy()
+    np.fill_diagonal(off_diagonal, 0.0)
+    if np.allclose(off_diagonal, 0.0):
+        return inertial.origin.rotation, np.diag(inertial.inertia)
+    moments, axes = np.linalg.eigh(inertial.inertia)
+    if np.linalg.det(axes) < 0:
+        axes[:, 0] *= -1.0
+    return inertial.origin.rotation * transform.Rotation.from_matrix(axes), moments
 
 
 def _shape_to_geom(
@@ -270,7 +291,7 @@ def _shape_to_geom(
         "quat": _to_quat(shape.origin.rotation),
     }
     if visual:
-        attributes.update({"contype": "0", "conaffinity": "0", "group": "1"})
+        attributes["class"] = _VISUAL_GEOM_CLASS
     return ElementTree.Element("geom", attributes)
 
 

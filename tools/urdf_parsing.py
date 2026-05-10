@@ -27,18 +27,14 @@ class UrdfJoint:
     axis: np.ndarray = dataclasses.field(
         default_factory=lambda: np.array([0.0, 0.0, 1.0])
     )
-    origin: geometry.Transform = dataclasses.field(
-        default_factory=geometry.Transform
-    )
+    origin: geometry.Transform = dataclasses.field(default_factory=geometry.Transform)
     type: str = "fixed"
     limits: geometry.MotionLimits = dataclasses.field(
         default_factory=geometry.MotionLimits
     )
 
     def to_element(self) -> ElementTree.Element:
-        joint = ElementTree.Element(
-            "joint", {"name": self.name, "type": self.type}
-        )
+        joint = ElementTree.Element("joint", {"name": self.name, "type": self.type})
         joint.append(ElementTree.Element("parent", {"link": self.parent_name}))
         joint.append(ElementTree.Element("child", {"link": self.child_name}))
         joint.append(to_axis(self.axis))
@@ -62,9 +58,7 @@ class UrdfJoint:
 @dataclasses.dataclass
 class UrdfInertial:
     mass: float = 0.0
-    origin: geometry.Transform = dataclasses.field(
-        default_factory=geometry.Transform
-    )
+    origin: geometry.Transform = dataclasses.field(default_factory=geometry.Transform)
     inertia: np.ndarray = dataclasses.field(default_factory=lambda: np.eye(3))
 
     def to_element(self) -> ElementTree.Element:
@@ -79,7 +73,7 @@ class UrdfInertial:
         inertial = node.find("inertial")
         if inertial is not None:
             origin = from_origin(inertial)
-            mass = lookup_float(inertial, "mass")
+            mass = lookup_float(inertial.find("mass"), "value")
             inertia = from_inertia(inertial)
             return cls(mass=mass, origin=origin, inertia=inertia)
         else:
@@ -90,12 +84,8 @@ class UrdfInertial:
 class UrdfLink:
     name: str
     inertia: UrdfInertial = dataclasses.field(default_factory=UrdfInertial)
-    visual_shapes: list[geometry.Geometry] = dataclasses.field(
-        default_factory=list
-    )
-    collision_shapes: list[geometry.Geometry] = dataclasses.field(
-        default_factory=list
-    )
+    visual_shapes: list[geometry.Geometry] = dataclasses.field(default_factory=list)
+    collision_shapes: list[geometry.Geometry] = dataclasses.field(default_factory=list)
 
     def to_element(self) -> ElementTree.Element:
         link = ElementTree.Element("link", {"name": self.name})
@@ -118,9 +108,7 @@ class UrdfLink:
             name=node.get("name"),
             inertia=UrdfInertial.from_element(node),
             visual_shapes=[from_shape(e) for e in node.findall("visual")],
-            collision_shapes=[
-                from_shape(e) for e in node.findall("collision")
-            ],
+            collision_shapes=[from_shape(e) for e in node.findall("collision")],
         )
 
 
@@ -164,9 +152,7 @@ class Urdf:
         link_map = self.parent_link_name_to_joint
         for root_name in self.root_link_names:
             all_chains.extend(self.get_joint_chains(root_name, link_map))
-        return {
-            f"{c[0].parent_name}->{c[-1].child_name}": c for c in all_chains
-        }
+        return {f"{c[0].parent_name}->{c[-1].child_name}": c for c in all_chains}
 
     def get_joint_chains(
         self,
@@ -185,9 +171,7 @@ class Urdf:
                         all_chains.append(chain)
                     for joint in joints:
                         all_chains.extend(
-                            self.get_joint_chains(
-                                joint.child_name, link_map, joint
-                            )
+                            self.get_joint_chains(joint.child_name, link_map, joint)
                         )
                     break
                 else:
@@ -225,12 +209,10 @@ class Urdf:
         return cls(
             name=node.get("name"),
             joints={
-                j.get("name"): UrdfJoint.from_element(j)
-                for j in node.findall("joint")
+                j.get("name"): UrdfJoint.from_element(j) for j in node.findall("joint")
             },
             links={
-                k.get("name"): UrdfLink.from_element(k)
-                for k in node.findall("link")
+                k.get("name"): UrdfLink.from_element(k) for k in node.findall("link")
             },
         )
 
@@ -245,9 +227,7 @@ def read_root_node_from_urdf(urdf_path: str) -> ElementTree.Element:
     return ElementTree.fromstring(urdf_string)
 
 
-def lookup_float(
-    node: ElementTree.Element | None, key: str, default=0.0
-) -> float:
+def lookup_float(node: ElementTree.Element | None, key: str, default=0.0) -> float:
     if node is not None:
         value = node.get(key)
         return default if value is None else float(value)

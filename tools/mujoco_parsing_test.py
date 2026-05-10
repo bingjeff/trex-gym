@@ -47,6 +47,37 @@ class TestMujocoParsing(unittest.TestCase):
             mujoco_node.find("./worldbody/body/freejoint").get("name"),
         )
         self.assertEqual("free", mujoco.body_map["link_vertebrae_sacral"].joint.type)
+        sacrum = urdf.links["link_vertebrae_sacral"]
+        sacrum_inertial = mujoco_node.find(
+            "./worldbody/body[@name='link_vertebrae_sacral']/inertial"
+        )
+        self.assertIsNotNone(sacrum_inertial)
+        self.assertAlmostEqual(sacrum.inertia.mass, float(sacrum_inertial.get("mass")))
+        np.testing.assert_allclose(
+            sacrum.inertia.origin.translation,
+            np.fromstring(sacrum_inertial.get("pos"), sep=" "),
+            atol=_NP_TOLERANCE,
+        )
+        np.testing.assert_allclose(
+            [
+                sacrum.inertia.inertia[0, 0],
+                sacrum.inertia.inertia[1, 1],
+                sacrum.inertia.inertia[2, 2],
+            ],
+            np.fromstring(sacrum_inertial.get("diaginertia"), sep=" "),
+            atol=_NP_TOLERANCE,
+        )
+        visual_default = mujoco_node.find("./default/default[@class='visual']/geom")
+        self.assertIsNotNone(visual_default)
+        self.assertEqual("0", visual_default.get("contype"))
+        self.assertEqual("0", visual_default.get("conaffinity"))
+        self.assertTrue(
+            all(
+                geom.get("class") == "visual"
+                for geom in mujoco_node.findall(".//geom")
+                if "_visual_" in geom.get("name", "")
+            )
+        )
 
         for link_name, urdf_pose in urdf_poses.items():
             if link_name == "world":
