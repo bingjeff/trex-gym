@@ -183,6 +183,7 @@ def _default_node() -> ElementTree.Element:
             "contype": "1",
             "conaffinity": "1",
             "group": "2",
+            "rgba": "0.5 0.8 1.0 0.5",
         },
     )
     return defaults

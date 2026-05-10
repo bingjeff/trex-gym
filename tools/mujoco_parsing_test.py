@@ -46,6 +46,12 @@ class TestMujocoParsing(unittest.TestCase):
                 for shape in collision_shapes
             )
         )
+        self.assertEqual(
+            3, len(urdf.links["link_tarsometatarsus_right"].collision_shapes)
+        )
+        self.assertEqual(
+            3, len(urdf.links["link_tarsometatarsus_left"].collision_shapes)
+        )
         mujoco_xml = mujoco_parsing.to_string(mujoco_parsing.urdf_to_mujoco(urdf))
         mujoco_node = ElementTree.fromstring(mujoco_xml)
         mujoco = mujoco_parsing.parse_mujoco(mujoco_node)
@@ -92,6 +98,7 @@ class TestMujocoParsing(unittest.TestCase):
         self.assertEqual("1", contact_default.get("contype"))
         self.assertEqual("1", contact_default.get("conaffinity"))
         self.assertEqual("2", contact_default.get("group"))
+        self.assertEqual("0.5 0.8 1.0 0.5", contact_default.get("rgba"))
         self.assertTrue(
             all(
                 geom.get("class") == "visual"

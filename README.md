@@ -49,8 +49,10 @@ uv run python tools/generate_collision_capsules.py assets/trex.urdf --report
 The generator fits capsules in each owning link frame. It uses the visual mesh
 vertices, URDF forward kinematics at the neutral pose, PCA-oriented axes from the
 mesh primitive tools, and a volume-minimizing capsule fit along the dominant
-axis. The checked-in set covers each foot bone, plus composite capsules for the
-pelvis, rear/mid/front torso, neck, head, and four tail sections.
+axis. The checked-in set covers the foot bones with each tarsometatarsus split
+into three adjacent capsules and redundant hidden toe capsules omitted, plus
+composite capsules for the pelvis, rear/mid/front torso, neck, head, and four
+tail sections.
 
 The `--report` output includes fit quality metrics for every generated capsule:
 `max_outside_distance`, `mean_abs_surface_error`, and

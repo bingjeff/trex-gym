@@ -25,6 +25,9 @@ class CapsuleFitSpec:
     name: str
     owner_link: str
     source_links: tuple[str, ...]
+    split_axis: int | None = None
+    split_index: int = 0
+    split_count: int = 1
 
 
 @dataclasses.dataclass
@@ -41,9 +44,19 @@ def _links(prefix: str, first: int, last: int) -> tuple[str, ...]:
 
 
 def _foot_specs(side: str) -> list[CapsuleFitSpec]:
+    tarsometatarsus_link = f"link_tarsometatarsus_{side}"
+    specs = [
+        CapsuleFitSpec(
+            name=f"tarsometatarsus_{side}_{index:02d}",
+            owner_link=tarsometatarsus_link,
+            source_links=(tarsometatarsus_link,),
+            split_axis=1,
+            split_index=index,
+            split_count=3,
+        )
+        for index in range(3)
+    ]
     names = [
-        f"link_tarsometatarsus_{side}",
-        f"link_toe_01_a_{side}",
         f"link_toe_01_b_{side}",
         f"link_toe_01_c_{side}",
         f"link_toe_02_a_{side}",
@@ -58,16 +71,16 @@ def _foot_specs(side: str) -> list[CapsuleFitSpec]:
         f"link_toe_04_c_{side}",
         f"link_toe_04_d_{side}",
         f"link_toe_04_e_{side}",
-        f"link_toe_05_a_{side}",
     ]
-    return [
+    specs.extend(
         CapsuleFitSpec(
             name=link.removeprefix("link_"),
             owner_link=link,
             source_links=(link,),
         )
         for link in names
-    ]
+    )
+    return specs
 
 
 CAPSULE_FIT_SPECS = (
@@ -168,7 +181,37 @@ def _fit_spec(
             points.append((owner_t_link * link_t_mesh).apply(_obj_vertices(mesh_path)))
     if not points:
         raise ValueError(f"No mesh vertices found for capsule spec: {spec.name}")
-    return _fit_capsule(spec, np.vstack(points))
+    return _fit_capsule(spec, _maybe_slice_points(spec, np.vstack(points)))
+
+
+def _maybe_slice_points(spec: CapsuleFitSpec, points: np.ndarray) -> np.ndarray:
+    if spec.split_axis is None:
+        return points
+    if spec.split_count < 2:
+        raise ValueError(f"Split count must be greater than 1: {spec.name}")
+    if not 0 <= spec.split_index < spec.split_count:
+        raise ValueError(f"Split index is out of range: {spec.name}")
+
+    box = mesh_primitives.get_axis_aligned_bounding_box(points)
+    local_points = box.origin.inverse().apply(points)
+    coordinates = local_points[:, spec.split_axis]
+    bounds = np.linspace(
+        float(np.min(coordinates)),
+        float(np.max(coordinates)),
+        spec.split_count + 1,
+    )
+    lower = bounds[spec.split_index]
+    upper = bounds[spec.split_index + 1]
+    if spec.split_index == 0:
+        mask = coordinates <= upper
+    elif spec.split_index == spec.split_count - 1:
+        mask = coordinates >= lower
+    else:
+        mask = (coordinates >= lower) & (coordinates <= upper)
+    sliced_points = points[mask]
+    if not len(sliced_points):
+        raise ValueError(f"Point slice is empty for capsule spec: {spec.name}")
+    return sliced_points
 
 
 def _fit_capsule(spec: CapsuleFitSpec, points: np.ndarray) -> CapsuleFit:
