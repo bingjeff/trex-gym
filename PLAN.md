@@ -36,6 +36,8 @@ For every phase:
 
 ## Phase 1: Simplified MJX Model
 
+Status: completed in the first implementation pass.
+
 Build a simplification step that converts the full generated MJCF into a
 training-focused MJCF.
 
@@ -59,6 +61,40 @@ training-focused MJCF.
    - foot/contact sites
    - sensors needed by the getup environment
    - keyframes for zero/side-lying starting state and any nominal stand target
+
+Phase 1 results:
+
+- Added `tools/mjx_model_simplification.py`.
+- Added `tools/urdf_to_mjx_mujoco.py`.
+- The simplifier removes visual meshes and visual geoms from the MJX training
+  MJCF.
+- Fixed-joint links are fused in URDF space before MJCF generation.
+- Fused child collision capsules are transformed into the retained parent link
+  frame.
+- Fused child inertials are merged into the retained parent link using the
+  parallel-axis theorem.
+- Existing MuJoCo metadata is preserved.
+- Emitted training actuators are converted from motor shortcuts to position
+  actuator shortcuts with an initial `kp=35`.
+- Current simplified T-Rex training model complexity:
+  - bodies: 31
+  - joints: 32
+  - qpos: 38
+  - qvel: 37
+  - actuators: 10
+  - tendons: 2
+  - geoms: 45 contact, 0 visual
+  - mesh assets: 0
+- Tests verify deterministic fixed-link fusion, visual mesh removal, MuJoCo
+  load, MJX model/data creation, mass preservation, and expected model counts.
+- Manual end-to-end validation generated `/tmp/trex.mjx.xml`, loaded it in
+  MuJoCo, copied it to MJX, and stepped it for three zero-control simulation
+  steps.
+
+Deferred to later phases:
+
+- Scene additions: floor, cameras, sites, sensors, and keyframes.
+- PPO smoke tests for the final environment.
 
 ## Phase 2: Complexity Checks
 
