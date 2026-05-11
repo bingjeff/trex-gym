@@ -25,7 +25,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["trex_gym*"]
+include = ["old*"]
 
 [tool.black]
 line-length = 88
