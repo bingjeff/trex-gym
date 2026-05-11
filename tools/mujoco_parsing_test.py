@@ -56,6 +56,10 @@ class TestMujocoParsing(unittest.TestCase):
         self.assertEqual(1, len(urdf.links["link_femur_right"].collision_shapes))
         self.assertEqual(1, len(urdf.links["link_femur_left"].collision_shapes))
         linked_dof_links = set()
+        adduction_limits = {
+            "right": [-0.7853981633974483, 0.2617993877991494],
+            "left": [-0.2617993877991494, 0.7853981633974483],
+        }
         for side in ("right", "left"):
             adduction = urdf.joints[f"joint_hip_adduction_{side}"]
             flexion = urdf.joints[f"joint_femur_{side}"]
@@ -65,7 +69,7 @@ class TestMujocoParsing(unittest.TestCase):
             self.assertEqual(f"link_femur_{side}", adduction.linked_dof_body)
             np.testing.assert_allclose([1.0, 0.0, 0.0], adduction.axis)
             np.testing.assert_allclose(
-                [-0.7853981633974483, 0.7853981633974483],
+                adduction_limits[side],
                 adduction.limits.position,
             )
             self.assertEqual(f"link_hip_adduction_{side}", flexion.parent_name)
@@ -94,7 +98,7 @@ class TestMujocoParsing(unittest.TestCase):
             )
             np.testing.assert_allclose([1.0, 0.0, 0.0], femur_joints[0].axis)
             np.testing.assert_allclose(
-                [-0.7853981633974483, 0.7853981633974483],
+                adduction_limits[side],
                 femur_joints[0].limits.position,
             )
             np.testing.assert_allclose([0.0, 0.0, 1.0], femur_joints[1].axis)
