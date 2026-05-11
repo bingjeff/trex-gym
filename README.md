@@ -57,7 +57,10 @@ mesh primitive tools, and a volume-minimizing capsule fit along the dominant
 axis. The checked-in set covers the foot bones with each tarsometatarsus split
 into three adjacent capsules and redundant hidden toe capsules omitted, femur
 capsules for the upper legs, plus composite capsules for the rear/mid/front
-torso, neck, head, and four tail sections.
+torso, neck, head, and four tail sections. Tail-section capsules are attached
+to the distal fixed vertebra in their section so they move with that section's
+revolute joint. The caudal chain uses x-axis hinges for sagittal flexion and
+the next distal z-axis hinge in each section for medio-lateral tail wag.
 
 The `--report` output includes fit quality metrics for every generated capsule:
 `max_outside_distance`, `mean_abs_surface_error`, and

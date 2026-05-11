@@ -124,22 +124,22 @@ CAPSULE_FIT_SPECS = (
         ),
         CapsuleFitSpec(
             name="tail_base",
-            owner_link="link_vertebra_caudal_00",
+            owner_link="link_vertebra_caudal_09",
             source_links=_links("link_vertebra_caudal", 0, 9),
         ),
         CapsuleFitSpec(
             name="tail_mid",
-            owner_link="link_vertebra_caudal_10",
+            owner_link="link_vertebra_caudal_23",
             source_links=_links("link_vertebra_caudal", 10, 23),
         ),
         CapsuleFitSpec(
             name="tail_distal",
-            owner_link="link_vertebra_caudal_24",
+            owner_link="link_vertebra_caudal_33",
             source_links=_links("link_vertebra_caudal", 24, 33),
         ),
         CapsuleFitSpec(
             name="tail_tip",
-            owner_link="link_vertebra_caudal_34",
+            owner_link="link_vertebra_caudal_44",
             source_links=_links("link_vertebra_caudal", 34, 44),
         ),
     )

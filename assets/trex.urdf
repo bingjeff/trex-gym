@@ -655,14 +655,14 @@
 		<dynamics damping="1.0" />
 		<limit effort="100.0" lower="-0.3490658503988659" upper="0.3490658503988659" velocity="1.0" />
 	</joint>
-	<joint name="joint_vertebra_caudal_03" type="fixed">
+	<joint name="joint_vertebra_caudal_03" type="revolute">
 		<origin rpy="0.0 -0.0 0.0"
 			xyz="-1.3953297184343683e-08 0.17777809500694275 -9.217799856742204e-09" />
 		<parent link="link_vertebra_caudal_02" />
 		<child link="link_vertebra_caudal_03" />
 		<axis xyz="0.0 0.0 1.0" />
 		<dynamics damping="1.0" />
-		<limit effort="100.0" lower="1.0" upper="1.0" velocity="1.0" />
+		<limit effort="100.0" lower="-0.3490658503988659" upper="0.3490658503988659" velocity="1.0" />
 	</joint>
 	<joint name="joint_vertebra_caudal_04" type="fixed">
 		<origin rpy="0.03490658476948738 -0.0 0.0"
@@ -723,18 +723,18 @@
 			xyz="-1.791526216265993e-08 0.17420564591884613 2.9312907656731113e-09" />
 		<parent link="link_vertebra_caudal_09" />
 		<child link="link_vertebra_caudal_10" />
-		<axis xyz="0.0 0.0 1.0" />
+		<axis xyz="1.0 0.0 0.0" />
 		<dynamics damping="1.0" />
-		<limit effort="100.0" lower="-1.3490658503988659" upper="1.3490658503988659" velocity="1.0" />
+		<limit effort="100.0" lower="-0.3490658503988659" upper="0.3490658503988659" velocity="1.0" />
 	</joint>
-	<joint name="joint_vertebra_caudal_11" type="fixed">
+	<joint name="joint_vertebra_caudal_11" type="revolute">
 		<origin rpy="-0.0872664526104927 -0.0 0.0"
 			xyz="-1.632303714416139e-08 0.17552588880062103 -2.7522837342530693e-09" />
 		<parent link="link_vertebra_caudal_10" />
 		<child link="link_vertebra_caudal_11" />
 		<axis xyz="0.0 0.0 1.0" />
 		<dynamics damping="1.0" />
-		<limit effort="100.0" lower="1.0" upper="1.0" velocity="1.0" />
+		<limit effort="100.0" lower="-0.3490658503988659" upper="0.3490658503988659" velocity="1.0" />
 	</joint>
 	<joint name="joint_vertebra_caudal_12" type="fixed">
 		<origin rpy="-0.10471975803375244 -0.0 0.0"
@@ -853,14 +853,14 @@
 		<dynamics damping="1.0" />
 		<limit effort="100.0" lower="-0.3490658503988659" upper="0.3490658503988659" velocity="1.0" />
 	</joint>
-	<joint name="joint_vertebra_caudal_25" type="fixed">
+	<joint name="joint_vertebra_caudal_25" type="revolute">
 		<origin rpy="0.0872664526104927 -0.0 0.0"
 			xyz="-1.70112137709566e-08 0.1338040679693222 -1.1872008087721042e-07" />
 		<parent link="link_vertebra_caudal_24" />
 		<child link="link_vertebra_caudal_25" />
 		<axis xyz="0.0 0.0 1.0" />
 		<dynamics damping="1.0" />
-		<limit effort="100.0" lower="1.0" upper="1.0" velocity="1.0" />
+		<limit effort="100.0" lower="-0.3490658503988659" upper="0.3490658503988659" velocity="1.0" />
 	</joint>
 	<joint name="joint_vertebra_caudal_26" type="fixed">
 		<origin rpy="0.0872664526104927 -0.0 0.0"
@@ -934,14 +934,14 @@
 		<dynamics damping="1.0" />
 		<limit effort="100.0" lower="1.0" upper="1.0" velocity="1.0" />
 	</joint>
-	<joint name="joint_vertebra_caudal_34" type="fixed">
+	<joint name="joint_vertebra_caudal_34" type="revolute">
 		<origin rpy="0.06981316208839417 -0.0 0.0"
 			xyz="-7.998536943887302e-09 0.07271556556224823 1.1359605878169532e-07" />
 		<parent link="link_vertebra_caudal_33" />
 		<child link="link_vertebra_caudal_34" />
 		<axis xyz="0.0 0.0 1.0" />
 		<dynamics damping="1.0" />
-		<limit effort="100.0" lower="1.0" upper="1.0" velocity="1.0" />
+		<limit effort="100.0" lower="-0.3490658503988659" upper="0.3490658503988659" velocity="1.0" />
 	</joint>
 	<joint name="joint_vertebra_caudal_35" type="fixed">
 		<origin rpy="-0.03490658476948738 -0.0 0.0"
@@ -3068,12 +3068,6 @@
 				<mesh filename="meshes/gorgo_haemal_arch_01.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
-		<collision name="collision_capsule_tail_base">
-			<origin rpy="1.9065314072404789 1.5695149146790484 -2.7161734666287742" xyz="-0.03755453115285905 0.98527497762497 -3.412873986559113e-05" />
-			<geometry>
-				<capsule radius="0.42923432534998474" length="1.6918844633055186" />
-			</geometry>
-		</collision>
 	</link>
 	<link name="link_vertebra_caudal_01">
 		<inertial>
@@ -3281,6 +3275,12 @@
 				<mesh filename="meshes/gorgo_haemal_arch_10.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_tail_base">
+			<origin rpy="-1.3938453981467092 0.0011165860406188166 0.0006285511538165478" xyz="-3.400491209133133e-05 -0.6655553899488427 -0.08455265519441682" />
+			<geometry>
+				<capsule radius="0.4292343253499847" length="1.6918844633055186" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_vertebra_caudal_10">
 		<inertial>
@@ -3304,12 +3304,6 @@
 				<mesh filename="meshes/gorgo_haemal_arch_11.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
-		<collision name="collision_capsule_tail_mid">
-			<origin rpy="1.486778238846918 -0.002878081337198468 -3.141100760636141" xyz="-0.00014806126489387474 1.138866419734141 0.046841841871963" />
-			<geometry>
-				<capsule radius="0.28502244374714775" length="1.805692624304582" />
-			</geometry>
-		</collision>
 	</link>
 	<link name="link_vertebra_caudal_11">
 		<inertial>
@@ -3609,6 +3603,12 @@
 				<mesh filename="meshes/gorgo_haemal_arch_24.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_tail_mid">
+			<origin rpy="1.8009388689095895 -0.002889220877194454 3.141171092905451" xyz="-0.00014803035439797663 -0.96379159741755 0.24822349855329112" />
+			<geometry>
+				<capsule radius="0.28502244374714786" length="1.8056926243045799" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_vertebra_caudal_24">
 		<inertial>
@@ -3632,12 +3632,6 @@
 				<mesh filename="meshes/gorgo_haemal_arch_25.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
-		<collision name="collision_capsule_tail_distal">
-			<origin rpy="-1.7724687339305514 0.049334162202582243 3.132941755408025" xyz="-0.0010903658671516437 0.49040250183272455 0.07787667548500381" />
-			<geometry>
-				<capsule radius="0.10190880523404405" length="0.8922383681107176" />
-			</geometry>
-		</collision>
 	</link>
 	<link name="link_vertebra_caudal_25">
 		<inertial>
@@ -3845,6 +3839,12 @@
 				<mesh filename="meshes/gorgo_haemal_arch_34.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_tail_distal">
+			<origin rpy="-1.4404474619318437 0.04946060643584249 -3.1336973305525895" xyz="-0.0010901738487346475 -0.4309132050396171 0.07628478227589117" />
+			<geometry>
+				<capsule radius="0.101908805234044" length="0.8922383681107187" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_vertebra_caudal_34">
 		<inertial>
@@ -3861,12 +3861,6 @@
 				<mesh filename="meshes/vertebra_caudal_34.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
-		<collision name="collision_capsule_tail_tip">
-			<origin rpy="1.5417109531747033 -0.020276572077835064 -3.139808087206735" xyz="0.0007007353352626777 0.2635818664851462 -0.0005834906349804153" />
-			<geometry>
-				<capsule radius="0.029396737590706355" length="0.5273449769907109" />
-			</geometry>
-		</collision>
 	</link>
 	<link name="link_vertebra_caudal_35">
 		<inertial>
@@ -4027,6 +4021,12 @@
 				<mesh filename="meshes/vertebra_caudal_44.obj" scale="1.0 1.0 1.0" />
 			</geometry>
 		</visual>
+		<collision name="collision_capsule_tail_tip">
+			<origin rpy="1.6464523205138373 -0.0203520176066474 3.1412476728462733" xyz="0.0007008547287321356 -0.2283722629055401 0.01579395265058438" />
+			<geometry>
+				<capsule radius="0.029396737590706566" length="0.5273449769907105" />
+			</geometry>
+		</collision>
 	</link>
 	<link name="link_femur_left">
 		<inertial>

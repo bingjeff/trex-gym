@@ -55,6 +55,36 @@ class TestMujocoParsing(unittest.TestCase):
         self.assertEqual(0, len(urdf.links["link_vertebrae_sacral"].collision_shapes))
         self.assertEqual(1, len(urdf.links["link_femur_right"].collision_shapes))
         self.assertEqual(1, len(urdf.links["link_femur_left"].collision_shapes))
+        for joint_name in (
+            "joint_vertebra_caudal_02",
+            "joint_vertebra_caudal_10",
+            "joint_vertebra_caudal_24",
+        ):
+            self.assertEqual("revolute", urdf.joints[joint_name].type)
+            np.testing.assert_allclose([1.0, 0.0, 0.0], urdf.joints[joint_name].axis)
+            np.testing.assert_allclose(
+                [-0.3490658503988659, 0.3490658503988659],
+                urdf.joints[joint_name].limits.position,
+            )
+        for joint_name in (
+            "joint_vertebra_caudal_03",
+            "joint_vertebra_caudal_11",
+            "joint_vertebra_caudal_25",
+            "joint_vertebra_caudal_34",
+        ):
+            self.assertEqual("revolute", urdf.joints[joint_name].type)
+            np.testing.assert_allclose([0.0, 0.0, 1.0], urdf.joints[joint_name].axis)
+            np.testing.assert_allclose(
+                [-0.3490658503988659, 0.3490658503988659],
+                urdf.joints[joint_name].limits.position,
+            )
+        for link_name in (
+            "link_vertebra_caudal_09",
+            "link_vertebra_caudal_23",
+            "link_vertebra_caudal_33",
+            "link_vertebra_caudal_44",
+        ):
+            self.assertEqual(1, len(urdf.links[link_name].collision_shapes))
         linked_dof_links = set()
         adduction_limits = {
             "right": [-0.7853981633974483, 0.2617993877991494],
