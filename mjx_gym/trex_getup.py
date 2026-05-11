@@ -16,7 +16,10 @@ def default_config() -> config_dict.ConfigDict:
     return config_dict.create(
         ctrl_dt=0.02,
         sim_dt=0.004,
-        Kp=35.0,
+        Kp=1000.0,
+        passive_stiffness=1000.0,
+        passive_damping=80.0,
+        armature=0.2,
         episode_length=300,
         action_repeat=1,
         action_scale=0.25,
@@ -51,7 +54,12 @@ class TrexGetup(mjx_env.MjxEnv):
     ):
         super().__init__(config, config_overrides)
         self._mj_model = mujoco.MjModel.from_xml_string(
-            consts.trex_getup_xml(position_kp=self._config.Kp)
+            consts.trex_getup_xml(
+                position_kp_per_row_sum=self._config.Kp,
+                passive_stiffness_per_row_sum=self._config.passive_stiffness,
+                passive_damping_per_row_sum=self._config.passive_damping,
+                armature_per_row_sum=self._config.armature,
+            )
         )
         self._mj_model.opt.timestep = self._config.sim_dt
         self._mjx_model = mjx.put_model(self._mj_model, impl=self._config.impl)

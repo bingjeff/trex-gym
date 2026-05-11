@@ -282,6 +282,53 @@ Next direction:
 - Once getup/stand is learning, split out a walking task rather than overloading
   this recovery task.
 
+## Phase 5: Collision Filtering and Gain Tuning
+
+Status: completed for the first stable tuned model.
+
+Goals:
+
+1. Restrict collision pairs so every valid contact includes the ground.
+2. Use MuJoCo's zero-configuration mass matrix to compute per-DOF gain ratios.
+3. Use mass-matrix row-sum magnitudes, not only diagonal entries, as the DOF
+   scale.
+4. Tune passive stiffness, passive damping, armature, and position actuator
+   gains through centralized factors so solver timestep changes can be handled
+   quickly.
+
+Implementation:
+
+- Robot contact capsules are configured with `contype=0`, `conaffinity=1`.
+- The floor is configured with `contype=1`, `conaffinity=0`.
+- This permits floor-vs-capsule contacts and excludes capsule-vs-capsule
+  self-collisions for the current run.
+- Mass matrix scales are computed from `sum(abs(M[dof, :]))` at zero
+  configuration.
+- Tendon actuator scales are coefficient-weighted sums of their coupled joint
+  scales.
+- Tuned factors at `sim_dt=0.004`:
+  - passive stiffness per row sum: `1000`
+  - passive damping per row sum: `80`
+  - armature per row sum: `0.2`
+  - actuator `kp` per row sum: `1000`
+
+Validation:
+
+- Tests verify that all active MuJoCo contacts include the floor.
+- Tests verify mass-scaled tuning uses mass-matrix row sums.
+- Tests verify minimum tuned passive stiffness, damping, and actuator gains are
+  above the first target thresholds.
+- A side-lying MuJoCo drop rollout ran for 4 seconds without warnings, with
+  only floor contacts.
+- Representative 0.1 rad perturbations to caudal, toe, femur, and cervical
+  joints decayed below `2e-4` rad without warnings.
+- JIT reset/step still succeeds after tuning.
+- Tiny PPO smoke test still completes after tuning:
+  - `env_name=TrexGetup`
+  - `num_timesteps=128`
+  - `num_envs=2`
+  - compile time around 50 seconds on local CPU.
+
 ## Open Decisions
 
 - Exact nominal standing posture for fixed leg PD targets.

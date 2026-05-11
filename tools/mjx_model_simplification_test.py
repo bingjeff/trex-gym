@@ -164,6 +164,40 @@ class TestMjxModelSimplification(unittest.TestCase):
         self.assertEqual((38,), mjx_data.qpos.shape)
         self.assertEqual((37,), mjx_data.qvel.shape)
 
+    def test_mass_scaled_tuning_uses_mass_matrix_row_sums(self):
+        urdf = urdf_parsing.Urdf.from_element(
+            urdf_parsing.read_root_node_from_urdf(str(_ASSET_DIR / "trex.urdf"))
+        )
+        mjcf = mjx_model_simplification.urdf_to_mjx_mujoco(urdf)
+        untuned_model = mjx_model_simplification.load_mujoco_from_xml_element(mjcf)
+        row_sums = mjx_model_simplification.mass_matrix_row_sum_scales(untuned_model)
+        scales = mjx_model_simplification.apply_mass_scaled_joint_tuning(mjcf)
+        model = mjx_model_simplification.load_mujoco_from_xml_element(mjcf)
+
+        for joint_name in (
+            "joint_femur_right",
+            "joint_vertebra_caudal_24",
+            "joint_toe_04_d_right",
+        ):
+            joint_id = model.joint(joint_name).id
+            dof_id = model.jnt_dofadr[joint_id]
+            self.assertAlmostEqual(row_sums[dof_id], scales[joint_name])
+            self.assertAlmostEqual(
+                model.jnt_stiffness[joint_id],
+                mjx_model_simplification.DEFAULT_PASSIVE_STIFFNESS_PER_ROW_SUM
+                * scales[joint_name],
+            )
+            self.assertAlmostEqual(
+                model.dof_damping[dof_id],
+                mjx_model_simplification.DEFAULT_PASSIVE_DAMPING_PER_ROW_SUM
+                * scales[joint_name],
+            )
+            self.assertAlmostEqual(
+                model.dof_armature[dof_id],
+                mjx_model_simplification.DEFAULT_ARMATURE_PER_ROW_SUM
+                * scales[joint_name],
+            )
+
     def test_trex_complexity_comparison_reports_expected_reduction(self):
         urdf = urdf_parsing.Urdf.from_element(
             urdf_parsing.read_root_node_from_urdf(str(_ASSET_DIR / "trex.urdf"))

@@ -4,6 +4,7 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 import numpy as np
+import mujoco
 from scipy.spatial import transform
 
 from tools import mjx_model_simplification
@@ -50,35 +51,72 @@ def load_urdf() -> urdf_parsing.Urdf:
     )
 
 
-def trex_getup_mjcf(position_kp: float = 35.0) -> ElementTree.Element:
+def trex_getup_mjcf(
+    position_kp_per_row_sum: float = (
+        mjx_model_simplification.DEFAULT_PASSIVE_STIFFNESS_PER_ROW_SUM
+    ),
+    passive_stiffness_per_row_sum: float = (
+        mjx_model_simplification.DEFAULT_PASSIVE_STIFFNESS_PER_ROW_SUM
+    ),
+    passive_damping_per_row_sum: float = (
+        mjx_model_simplification.DEFAULT_PASSIVE_DAMPING_PER_ROW_SUM
+    ),
+    armature_per_row_sum: float = mjx_model_simplification.DEFAULT_ARMATURE_PER_ROW_SUM,
+) -> ElementTree.Element:
     """Builds the simplified T-Rex getup scene MJCF."""
-    node = mjx_model_simplification.urdf_to_mjx_mujoco(
-        load_urdf(), position_kp=position_kp
-    )
+    node = mjx_model_simplification.urdf_to_mjx_mujoco(load_urdf())
     _add_scene(node)
     _add_torso_sites(node)
     _add_sensors(node)
     _add_keyframes(node)
+    mjx_model_simplification.configure_ground_only_contacts(node)
+    mjx_model_simplification.apply_mass_scaled_joint_tuning(
+        node,
+        stiffness_per_row_sum=passive_stiffness_per_row_sum,
+        damping_per_row_sum=passive_damping_per_row_sum,
+        armature_per_row_sum=armature_per_row_sum,
+        actuator_kp_per_row_sum=position_kp_per_row_sum,
+    )
     return node
 
 
-def trex_getup_xml(position_kp: float = 35.0) -> str:
-    return mujoco_parsing.to_string(trex_getup_mjcf(position_kp=position_kp))
+def trex_getup_xml(
+    position_kp_per_row_sum: float = (
+        mjx_model_simplification.DEFAULT_PASSIVE_STIFFNESS_PER_ROW_SUM
+    ),
+    passive_stiffness_per_row_sum: float = (
+        mjx_model_simplification.DEFAULT_PASSIVE_STIFFNESS_PER_ROW_SUM
+    ),
+    passive_damping_per_row_sum: float = (
+        mjx_model_simplification.DEFAULT_PASSIVE_DAMPING_PER_ROW_SUM
+    ),
+    armature_per_row_sum: float = mjx_model_simplification.DEFAULT_ARMATURE_PER_ROW_SUM,
+) -> str:
+    return mujoco_parsing.to_string(
+        trex_getup_mjcf(
+            position_kp_per_row_sum=position_kp_per_row_sum,
+            passive_stiffness_per_row_sum=passive_stiffness_per_row_sum,
+            passive_damping_per_row_sum=passive_damping_per_row_sum,
+            armature_per_row_sum=armature_per_row_sum,
+        )
+    )
 
 
 def side_lying_qpos(model) -> np.ndarray:
     """Returns a side-lying free-root pose with all joints at zero."""
     qpos = np.zeros(model.nq)
-    qpos[0:3] = np.array([0.0, 0.0, 1.0])
+    qpos[0:3] = np.array([0.0, 0.0, 0.0])
     quat_xyzw = transform.Rotation.from_euler("x", np.pi / 2.0).as_quat()
     qpos[3:7] = np.array([quat_xyzw[3], quat_xyzw[0], quat_xyzw[1], quat_xyzw[2]])
+    qpos[2] = _ground_clearance_root_height(model, qpos)
     return qpos
 
 
 def zero_upright_qpos(model) -> np.ndarray:
     qpos = np.zeros(model.nq)
-    qpos[0:3] = np.array([0.0, 0.0, 1.0])
+    qpos[0:3] = np.array([0.0, 0.0, 0.0])
     qpos[3:7] = np.array([1.0, 0.0, 0.0, 0.0])
+    qpos[2] = _ground_clearance_root_height(model, qpos)
     return qpos
 
 
@@ -194,7 +232,7 @@ def _add_keyframes(node: ElementTree.Element) -> None:
         {
             "name": "zero_upright",
             "qpos": _format_values(
-                [0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0] + [0.0] * JOINT_QPOS_DOF
+                [0.0, 0.0, 1.5, 1.0, 0.0, 0.0, 0.0] + [0.0] * JOINT_QPOS_DOF
             ),
             "ctrl": _format_values([0.0] * CTRL_DOF),
         },
@@ -208,7 +246,7 @@ def _add_keyframes(node: ElementTree.Element) -> None:
                 [
                     0.0,
                     0.0,
-                    1.0,
+                    3.0,
                     0.7071067811865476,
                     0.7071067811865475,
                     0.0,
@@ -223,3 +261,19 @@ def _add_keyframes(node: ElementTree.Element) -> None:
 
 def _format_values(values: list[float]) -> str:
     return " ".join(f"{value:.17g}" for value in values)
+
+
+def _ground_clearance_root_height(
+    model, qpos: np.ndarray, margin: float = 0.05
+) -> float:
+    data = mujoco.MjData(model)
+    data.qpos[:] = qpos
+    mujoco.mj_forward(model, data)
+    floor_id = model.geom("floor").id if model.ngeom else -1
+    min_z = np.inf
+    for geom_id in range(model.ngeom):
+        if geom_id == floor_id:
+            continue
+        geom_bottom = data.geom_xpos[geom_id, 2] - np.max(model.geom_size[geom_id])
+        min_z = min(min_z, geom_bottom)
+    return float(qpos[2] - min_z + margin)

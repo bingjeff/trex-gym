@@ -16,6 +16,9 @@ from . import mujoco_parsing
 from . import urdf_parsing
 
 DEFAULT_POSITION_KP = 35.0
+DEFAULT_PASSIVE_STIFFNESS_PER_ROW_SUM = 1000.0
+DEFAULT_PASSIVE_DAMPING_PER_ROW_SUM = 80.0
+DEFAULT_ARMATURE_PER_ROW_SUM = 0.2
 
 
 @dataclasses.dataclass
@@ -66,6 +69,72 @@ def urdf_to_mjx_mujoco(
     return mujoco
 
 
+def configure_ground_only_contacts(mujoco_node: ElementTree.Element) -> None:
+    """Configures the training MJCF so only floor-vs-body contacts are valid."""
+    contact_default = mujoco_node.find("./default/default[@class='contact']/geom")
+    if contact_default is not None:
+        contact_default.set("contype", "0")
+        contact_default.set("conaffinity", "1")
+    for geom in mujoco_node.findall(".//geom"):
+        if geom.get("name") == "floor":
+            geom.set("contype", "1")
+            geom.set("conaffinity", "0")
+        elif geom.get("class") == "contact" or geom.get("group") == "2":
+            geom.set("contype", "0")
+            geom.set("conaffinity", "1")
+
+
+def apply_mass_scaled_joint_tuning(
+    mujoco_node: ElementTree.Element,
+    stiffness_per_row_sum: float = DEFAULT_PASSIVE_STIFFNESS_PER_ROW_SUM,
+    damping_per_row_sum: float = DEFAULT_PASSIVE_DAMPING_PER_ROW_SUM,
+    armature_per_row_sum: float = DEFAULT_ARMATURE_PER_ROW_SUM,
+    actuator_kp_per_row_sum: float = DEFAULT_PASSIVE_STIFFNESS_PER_ROW_SUM,
+) -> dict[str, float]:
+    """Applies mass-matrix-row-sum-scaled passive and actuator gains.
+
+    The scale for each hinge DOF is `sum(abs(M[dof, :]))` at the zero/root
+    identity configuration. Tendon actuator scales are the coefficient-weighted
+    sum of the tendon joints' DOF scales.
+    """
+    model = load_mujoco_from_xml_element(mujoco_node)
+    scales = mass_matrix_row_sum_scales(model)
+    joint_scales = _hinge_joint_scales(model, scales)
+    tendon_scales = _fixed_tendon_scales(mujoco_node, joint_scales)
+
+    for joint in mujoco_node.findall(".//joint"):
+        name = joint.get("name")
+        if name not in joint_scales:
+            continue
+        scale = joint_scales[name]
+        joint.set("stiffness", _format_float(stiffness_per_row_sum * scale))
+        joint.set("damping", _format_float(damping_per_row_sum * scale))
+        joint.set("armature", _format_float(armature_per_row_sum * scale))
+
+    actuator = mujoco_node.find("actuator")
+    if actuator is not None:
+        for position in actuator.findall("position"):
+            if position.get("joint") in joint_scales:
+                scale = joint_scales[position.get("joint")]
+            elif position.get("tendon") in tendon_scales:
+                scale = tendon_scales[position.get("tendon")]
+            else:
+                continue
+            position.set("kp", _format_float(actuator_kp_per_row_sum * scale))
+    return joint_scales
+
+
+def mass_matrix_row_sum_scales(model: mujoco.MjModel) -> np.ndarray:
+    data = mujoco.MjData(model)
+    data.qpos[:] = _zero_qpos(model)
+    mujoco.mj_forward(model, data)
+    mass_matrix = np.zeros((model.nv, model.nv))
+    mujoco.mj_fullM(model, mass_matrix, data.qM)
+    if not np.allclose(mass_matrix, mass_matrix.T):
+        raise ValueError("Mass matrix is not symmetric.")
+    return np.sum(np.abs(mass_matrix), axis=1)
+
+
 def compare_full_and_simplified(
     urdf: urdf_parsing.Urdf,
     asset_dir: Path,
@@ -85,9 +154,11 @@ def compare_full_and_simplified(
 
 
 def load_mujoco_from_xml_element(
-    node: ElementTree.Element, asset_dir: Path
+    node: ElementTree.Element, asset_dir: Path | None = None
 ) -> mujoco.MjModel:
     """Loads an MJCF element with assets resolved relative to `asset_dir`."""
+    if asset_dir is None:
+        return mujoco.MjModel.from_xml_string(mujoco_parsing.to_string(node))
     return mujoco.MjModel.from_xml_string(
         mujoco_parsing.to_string(node),
         assets=_asset_bytes(asset_dir),
@@ -237,6 +308,38 @@ def summarize_mujoco_model(model) -> ModelSummary:
         total_mass=total_mass,
         center_of_mass=center_of_mass,
     )
+
+
+def _zero_qpos(model: mujoco.MjModel) -> np.ndarray:
+    qpos = np.zeros(model.nq)
+    if model.nq >= 7:
+        qpos[3] = 1.0
+    return qpos
+
+
+def _hinge_joint_scales(model: mujoco.MjModel, scales: np.ndarray) -> dict[str, float]:
+    output = {}
+    for joint_id in range(model.njnt):
+        if model.jnt_type[joint_id] != mujoco.mjtJoint.mjJNT_HINGE:
+            continue
+        name = model.joint(joint_id).name
+        output[name] = float(scales[model.jnt_dofadr[joint_id]])
+    return output
+
+
+def _fixed_tendon_scales(
+    mujoco_node: ElementTree.Element,
+    joint_scales: dict[str, float],
+) -> dict[str, float]:
+    output = {}
+    for tendon in mujoco_node.findall("./tendon/fixed"):
+        scale = 0.0
+        for joint in tendon.findall("joint"):
+            joint_name = joint.get("joint")
+            coef = float(joint.get("coef", "1.0"))
+            scale += abs(coef) * joint_scales[joint_name]
+        output[tendon.get("name")] = scale
+    return output
 
 
 def _asset_bytes(asset_dir: Path) -> dict[str, bytes]:
