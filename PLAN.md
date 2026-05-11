@@ -98,6 +98,8 @@ Deferred to later phases:
 
 ## Phase 2: Complexity Checks
 
+Status: completed with a repeatable comparison tool.
+
 After simplification, compare the full and simplified models.
 
 Measure:
@@ -119,6 +121,35 @@ Pass criteria:
 - zero-action MJX stepping runs for a few steps
 - no visual mesh assets or visual geoms remain in the simplified model
 - all intended DOFs and actuators remain present
+
+Phase 2 results:
+
+- Added `tools/compare_mjx_model_complexity.py`.
+- Added reusable comparison helpers to `tools/mjx_model_simplification.py`.
+- Added tests that load the full model with mesh assets, load the simplified
+  model, compare the measured complexity, and verify the formatted report.
+- Current full-to-simplified comparison:
+  - bodies: 134 -> 31
+  - joints: 32 -> 32
+  - qpos: 38 -> 38
+  - qvel: 37 -> 37
+  - actuators: 10 -> 10
+  - tendons: 2 -> 2
+  - geoms: 297 -> 45
+  - visual geoms: 252 -> 0
+  - contact geoms: 45 -> 45
+  - mesh assets: 252 -> 0
+  - sensors: 0 -> 0
+  - total mass preserved at 5180.28
+  - zero-configuration center of mass preserved at
+    `1.10481 -0.648769 0.00176733`
+
+Conclusion:
+
+- The simplifier removes visual and fixed-body overhead without changing the
+  current articulated DOFs or contact capsule count.
+- The remaining complexity is dominated by movable DOFs, not collision geoms or
+  visual assets.
 
 ## Phase 3: `mjx_gym` Environment
 

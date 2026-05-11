@@ -164,6 +164,32 @@ class TestMjxModelSimplification(unittest.TestCase):
         self.assertEqual((38,), mjx_data.qpos.shape)
         self.assertEqual((37,), mjx_data.qvel.shape)
 
+    def test_trex_complexity_comparison_reports_expected_reduction(self):
+        urdf = urdf_parsing.Urdf.from_element(
+            urdf_parsing.read_root_node_from_urdf(str(_ASSET_DIR / "trex.urdf"))
+        )
+        comparison = mjx_model_simplification.compare_full_and_simplified(
+            urdf, asset_dir=_ASSET_DIR
+        )
+
+        self.assertEqual(134, comparison.full.bodies)
+        self.assertEqual(31, comparison.simplified.bodies)
+        self.assertEqual(297, comparison.full.geoms)
+        self.assertEqual(45, comparison.simplified.geoms)
+        self.assertEqual(252, comparison.full.visual_geoms)
+        self.assertEqual(0, comparison.simplified.visual_geoms)
+        self.assertEqual(45, comparison.full.contact_geoms)
+        self.assertEqual(45, comparison.simplified.contact_geoms)
+        self.assertEqual(252, comparison.full.mesh_assets)
+        self.assertEqual(0, comparison.simplified.mesh_assets)
+        self.assertAlmostEqual(
+            comparison.full.total_mass, comparison.simplified.total_mass
+        )
+
+        table = mjx_model_simplification.comparison_markdown(comparison)
+        self.assertIn("| Bodies | 134 | 31 |", table)
+        self.assertIn("| Mesh assets | 252 | 0 |", table)
+
 
 if __name__ == "__main__":
     unittest.main()

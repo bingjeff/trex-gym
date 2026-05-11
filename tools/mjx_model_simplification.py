@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import dataclasses
 from collections import defaultdict
+from pathlib import Path
 from xml.etree import ElementTree
 
 import mujoco
@@ -35,6 +36,19 @@ class ModelSummary:
 
 
 @dataclasses.dataclass
+class ModelComparison:
+    full: ModelSummary
+    simplified: ModelSummary
+
+    def ratio(self, field: str) -> float:
+        full_value = getattr(self.full, field)
+        simplified_value = getattr(self.simplified, field)
+        if full_value == 0:
+            return np.inf
+        return simplified_value / full_value
+
+
+@dataclasses.dataclass
 class _InertialComponent:
     mass: float
     com: np.ndarray
@@ -50,6 +64,71 @@ def urdf_to_mjx_mujoco(
     mujoco = mujoco_parsing.urdf_to_mujoco(simplified)
     convert_motors_to_position_actuators(mujoco, position_kp)
     return mujoco
+
+
+def compare_full_and_simplified(
+    urdf: urdf_parsing.Urdf,
+    asset_dir: Path,
+    position_kp: float = DEFAULT_POSITION_KP,
+) -> ModelComparison:
+    """Loads full and simplified MuJoCo models and returns their summaries."""
+    full_mujoco = mujoco_parsing.urdf_to_mujoco(urdf)
+    simplified_mujoco = urdf_to_mjx_mujoco(urdf, position_kp=position_kp)
+    return ModelComparison(
+        full=summarize_mujoco_model(
+            load_mujoco_from_xml_element(full_mujoco, asset_dir)
+        ),
+        simplified=summarize_mujoco_model(
+            load_mujoco_from_xml_element(simplified_mujoco, asset_dir)
+        ),
+    )
+
+
+def load_mujoco_from_xml_element(
+    node: ElementTree.Element, asset_dir: Path
+) -> mujoco.MjModel:
+    """Loads an MJCF element with assets resolved relative to `asset_dir`."""
+    return mujoco.MjModel.from_xml_string(
+        mujoco_parsing.to_string(node),
+        assets=_asset_bytes(asset_dir),
+    )
+
+
+def comparison_markdown(comparison: ModelComparison) -> str:
+    """Formats a model comparison as a Markdown table."""
+    rows = [
+        ("Bodies", "bodies"),
+        ("Joints", "joints"),
+        ("qpos", "qpos"),
+        ("qvel", "qvel"),
+        ("Actuators", "actuators"),
+        ("Tendons", "tendons"),
+        ("Geoms", "geoms"),
+        ("Visual geoms", "visual_geoms"),
+        ("Contact geoms", "contact_geoms"),
+        ("Mesh assets", "mesh_assets"),
+        ("Sensors", "sensors"),
+        ("Total mass", "total_mass"),
+    ]
+    output = [
+        "| Metric | Full | Simplified | Simplified / Full |",
+        "|---|---:|---:|---:|",
+    ]
+    for label, field in rows:
+        full_value = getattr(comparison.full, field)
+        simplified_value = getattr(comparison.simplified, field)
+        output.append(
+            "| "
+            f"{label} | {_format_metric(full_value)} | "
+            f"{_format_metric(simplified_value)} | "
+            f"{comparison.ratio(field):.3g} |"
+        )
+    output.append(
+        "| Center of mass | "
+        f"{_format_vec3(comparison.full.center_of_mass)} | "
+        f"{_format_vec3(comparison.simplified.center_of_mass)} | |"
+    )
+    return "\n".join(output)
 
 
 def simplify_urdf_for_mjx(urdf: urdf_parsing.Urdf) -> urdf_parsing.Urdf:
@@ -158,6 +237,24 @@ def summarize_mujoco_model(model) -> ModelSummary:
         total_mass=total_mass,
         center_of_mass=center_of_mass,
     )
+
+
+def _asset_bytes(asset_dir: Path) -> dict[str, bytes]:
+    assets = {}
+    for path in asset_dir.rglob("*"):
+        if path.is_file():
+            assets[path.relative_to(asset_dir).as_posix()] = path.read_bytes()
+    return assets
+
+
+def _format_metric(value: float | int) -> str:
+    if isinstance(value, float):
+        return f"{value:.6g}"
+    return str(value)
+
+
+def _format_vec3(vec: np.ndarray) -> str:
+    return " ".join(f"{value:.6g}" for value in vec)
 
 
 def _transform_shape(
