@@ -16,11 +16,18 @@ Run tests inside the environment:
 uv run python -m unittest discover -s tools -p '*test.py'
 ```
 
-The active runtime dependencies are intentionally small:
+The active runtime dependencies are:
 
 * [MuJoCo](https://mujoco.org/) - Physics model loading and viewer.
+* [MuJoCo MJX](https://mujoco.readthedocs.io/en/latest/mjx.html) - JAX-backed
+  MuJoCo simulation.
+* [MuJoCo Playground](https://github.com/google-deepmind/mujoco_playground) -
+  PPO training tools built on MJX.
 * [NumPy](https://numpy.org/) - Numeric arrays.
 * [SciPy](https://scipy.org/) - Rotation math for kinematics conversion.
+
+The Playground training stack is currently pinned to `jax<0.10` because
+`brax==0.14.2` still calls a JAX API removed in JAX 0.10.
 
 ## MuJoCo XML
 The URDF remains the source of truth. Regenerate MuJoCo XML from it with:
@@ -33,6 +40,18 @@ Launch the generated model in the MuJoCo viewer:
 
 ```
 uv run python -m mujoco.viewer --mjcf=assets/trex.xml
+```
+
+Validate that the generated model can be copied to MJX:
+
+```
+uv run python -c "import mujoco; from mujoco import mjx; m=mujoco.MjModel.from_xml_path('assets/trex.xml'); mjx.put_model(m)"
+```
+
+Run a small MuJoCo Playground PPO smoke test:
+
+```
+uv run train-jax-ppo --env_name=CartpoleBalance --num_timesteps=1024 --num_envs=16 --num_eval_envs=4 --episode_length=100 --num_evals=1 --num_minibatches=1 --num_updates_per_batch=1 --batch_size=16 --unroll_length=5 --run_evals=false --num_videos=0 --logdir=/tmp/trex-gym-playground-smoke
 ```
 
 The URDF represents hip adduction with intermediate `link_hip_adduction_*`

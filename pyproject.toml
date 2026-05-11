@@ -13,8 +13,12 @@ authors = [
     { name = "Jeffrey T. Bingham", email = "bingjeff@gmail.com" },
 ]
 dependencies = [
+    "jax<0.10",
+    "jaxlib<0.10",
     "mujoco",
+    "mujoco-mjx>=3.8.0",
     "numpy",
+    "playground[learning]>=0.2.0",
     "pycollada",
     "scipy",
 ]
