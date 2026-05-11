@@ -84,6 +84,12 @@ def urdf_to_mujoco(urdf: urdf_parsing.Urdf) -> ElementTree.Element:
     for root_body in _root_bodies(urdf):
         worldbody.append(root_body)
     mujoco.append(worldbody)
+    tendon = _tendon_node(urdf)
+    if len(tendon):
+        mujoco.append(tendon)
+    actuator = _actuator_node(urdf)
+    if len(actuator):
+        mujoco.append(actuator)
     return mujoco
 
 
@@ -207,7 +213,7 @@ def _link_to_body(
     body = ElementTree.Element("body", {"name": link.name})
     if parent_joint is not None:
         _set_transform_attributes(body, parent_joint.origin)
-        _maybe_append(body, _joint_to_element(parent_joint))
+        _maybe_append(body, _joint_to_element(parent_joint, urdf.mujoco.passive))
     _append_link_contents_and_children(body, link_name, urdf)
     return body
 
@@ -238,8 +244,8 @@ def _linked_dof_body_to_body(
     target_link = urdf.links[target_link_name]
     body = ElementTree.Element("body", {"name": target_link.name})
     _set_transform_attributes(body, linked_joint.origin * target_joint.origin)
-    _maybe_append(body, _joint_to_element(linked_joint))
-    _maybe_append(body, _joint_to_element(target_joint))
+    _maybe_append(body, _joint_to_element(linked_joint, urdf.mujoco.passive))
+    _maybe_append(body, _joint_to_element(target_joint, urdf.mujoco.passive))
     _append_link_contents_and_children(body, target_link.name, urdf)
     return body
 
@@ -290,6 +296,7 @@ def _asset_node(urdf: urdf_parsing.Urdf) -> ElementTree.Element:
 
 def _joint_to_element(
     joint: urdf_parsing.UrdfJoint,
+    passive: urdf_parsing.UrdfMujocoPassive | None = None,
 ) -> ElementTree.Element | None:
     if joint.type in _FLOATING_JOINT_TYPES:
         return ElementTree.Element("freejoint", {"name": joint.name})
@@ -306,6 +313,40 @@ def _joint_to_element(
     if np.all(np.isfinite(joint.limits.position)):
         node.set("limited", "true")
         node.set("range", _to_vec2(joint.limits.position))
+    if passive is not None:
+        node.set("stiffness", _format_float(passive.stiffness))
+        node.set("damping", _format_float(passive.damping))
+        node.set("frictionloss", _format_float(passive.frictionloss))
+    return node
+
+
+def _tendon_node(urdf: urdf_parsing.Urdf) -> ElementTree.Element:
+    node = ElementTree.Element("tendon")
+    for tendon in urdf.mujoco.tendons:
+        fixed = ElementTree.SubElement(node, "fixed", {"name": tendon.name})
+        for joint in tendon.joints:
+            ElementTree.SubElement(
+                fixed,
+                "joint",
+                {"joint": joint.joint, "coef": _format_float(joint.coef)},
+            )
+    return node
+
+
+def _actuator_node(urdf: urdf_parsing.Urdf) -> ElementTree.Element:
+    node = ElementTree.Element("actuator")
+    for motor in urdf.mujoco.motors:
+        attributes = {
+            "name": motor.name,
+            "gear": _format_float(motor.gear),
+            "ctrllimited": "true",
+            "ctrlrange": _to_vec2(motor.ctrlrange),
+        }
+        if motor.joint:
+            attributes["joint"] = motor.joint
+        if motor.tendon:
+            attributes["tendon"] = motor.tendon
+        ElementTree.SubElement(node, "motor", attributes)
     return node
 
 

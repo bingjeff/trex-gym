@@ -40,6 +40,14 @@ links. Their adduction joints use `linked_dof_body="link_femur_*"` so the
 MuJoCo converter collapses those marker links and emits the adduction hinge as
 an additional DOF on each femur body.
 
+The URDF also carries MuJoCo-style control metadata in a top-level `<mujoco>`
+extension. The converter maps `<passive>` to stiffness, damping, and
+friction-loss attributes on every emitted hinge joint. Tail coupling is
+represented by two fixed tendons, `tail_sagittal` and `tail_mediolateral`, with
+joint coefficients for each caudal DOF in that plane. The actuator set is
+limited to hip adduction, hip flexion, knee, ankle, and the two tail tendons;
+all other movable joints remain passive in the generated XML.
+
 ## Collision Capsules
 The URDF stores generated collision geometry as custom capsule elements under
 `<collision>` blocks. Visual mesh geoms remain visual-only in MuJoCo, while

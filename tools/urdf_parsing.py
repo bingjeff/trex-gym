@@ -19,6 +19,132 @@ from xml.etree import ElementTree
 
 
 @dataclasses.dataclass
+class UrdfMujocoPassive:
+    stiffness: float = 0.0
+    damping: float = 0.0
+    frictionloss: float = 0.0
+
+    def to_element(self) -> ElementTree.Element:
+        return ElementTree.Element(
+            "passive",
+            {
+                "stiffness": f"{self.stiffness}",
+                "damping": f"{self.damping}",
+                "frictionloss": f"{self.frictionloss}",
+            },
+        )
+
+    @classmethod
+    def from_element(cls, node: ElementTree.Element | None) -> "UrdfMujocoPassive":
+        return cls(
+            stiffness=lookup_float(node, "stiffness"),
+            damping=lookup_float(node, "damping"),
+            frictionloss=lookup_float(node, "frictionloss"),
+        )
+
+
+@dataclasses.dataclass
+class UrdfMujocoTendonJoint:
+    joint: str
+    coef: float = 1.0
+
+    def to_element(self) -> ElementTree.Element:
+        return ElementTree.Element(
+            "joint", {"joint": self.joint, "coef": f"{self.coef}"}
+        )
+
+    @classmethod
+    def from_element(cls, node: ElementTree.Element) -> "UrdfMujocoTendonJoint":
+        return cls(joint=node.get("joint"), coef=lookup_float(node, "coef", 1.0))
+
+
+@dataclasses.dataclass
+class UrdfMujocoTendon:
+    name: str
+    joints: list[UrdfMujocoTendonJoint] = dataclasses.field(default_factory=list)
+
+    def to_element(self) -> ElementTree.Element:
+        tendon = ElementTree.Element("tendon", {"name": self.name})
+        for joint in self.joints:
+            tendon.append(joint.to_element())
+        return tendon
+
+    @classmethod
+    def from_element(cls, node: ElementTree.Element) -> "UrdfMujocoTendon":
+        return cls(
+            name=node.get("name"),
+            joints=[
+                UrdfMujocoTendonJoint.from_element(joint)
+                for joint in node.findall("joint")
+            ],
+        )
+
+
+@dataclasses.dataclass
+class UrdfMujocoMotor:
+    name: str
+    joint: str = ""
+    tendon: str = ""
+    gear: float = 1.0
+    ctrlrange: np.ndarray = dataclasses.field(
+        default_factory=lambda: np.array([-1.0, 1.0])
+    )
+
+    def to_element(self) -> ElementTree.Element:
+        attributes = {
+            "name": self.name,
+            "gear": f"{self.gear}",
+            "ctrlrange": to_vec2(self.ctrlrange),
+        }
+        if self.joint:
+            attributes["joint"] = self.joint
+        if self.tendon:
+            attributes["tendon"] = self.tendon
+        return ElementTree.Element("motor", attributes)
+
+    @classmethod
+    def from_element(cls, node: ElementTree.Element) -> "UrdfMujocoMotor":
+        return cls(
+            name=node.get("name"),
+            joint=node.get("joint", ""),
+            tendon=node.get("tendon", ""),
+            gear=lookup_float(node, "gear", 1.0),
+            ctrlrange=from_vec2(node.get("ctrlrange", "-1.0 1.0")),
+        )
+
+
+@dataclasses.dataclass
+class UrdfMujoco:
+    passive: UrdfMujocoPassive = dataclasses.field(default_factory=UrdfMujocoPassive)
+    tendons: list[UrdfMujocoTendon] = dataclasses.field(default_factory=list)
+    motors: list[UrdfMujocoMotor] = dataclasses.field(default_factory=list)
+
+    def to_element(self) -> ElementTree.Element:
+        node = ElementTree.Element("mujoco")
+        node.append(self.passive.to_element())
+        for tendon in self.tendons:
+            node.append(tendon.to_element())
+        for motor in self.motors:
+            node.append(motor.to_element())
+        return node
+
+    @classmethod
+    def from_element(cls, node: ElementTree.Element | None) -> "UrdfMujoco":
+        if node is None:
+            return cls()
+        return cls(
+            passive=UrdfMujocoPassive.from_element(node.find("passive")),
+            tendons=[
+                UrdfMujocoTendon.from_element(tendon)
+                for tendon in node.findall("tendon")
+            ],
+            motors=[
+                UrdfMujocoMotor.from_element(motor) for motor in node.findall("motor")
+            ],
+        )
+
+
+@dataclasses.dataclass
 class UrdfJoint:
     name: str
     parent_name: str
@@ -121,6 +247,7 @@ class Urdf:
     name: str
     joints: dict[str, UrdfJoint] = dataclasses.field(default_factory=dict)
     links: dict[str, UrdfLink] = dataclasses.field(default_factory=dict)
+    mujoco: UrdfMujoco = dataclasses.field(default_factory=UrdfMujoco)
 
     @property
     def root_link_names(self) -> list[str]:
@@ -196,6 +323,7 @@ class Urdf:
 
     def to_element(self) -> ElementTree.Element:
         urdf = ElementTree.Element("robot", {"name": self.name})
+        urdf.append(self.mujoco.to_element())
         for joint in self.joints.values():
             urdf.append(joint.to_element())
         for link in self.links.values():
@@ -218,6 +346,7 @@ class Urdf:
             links={
                 k.get("name"): UrdfLink.from_element(k) for k in node.findall("link")
             },
+            mujoco=UrdfMujoco.from_element(node.find("mujoco")),
         )
 
     @classmethod
@@ -246,6 +375,10 @@ def lookup_str(node: ElementTree.Element | None, key: str, default="") -> str:
 
 def from_vec3(vec_string: str) -> np.ndarray:
     return np.array([float(x) for x in vec_string.split(" ") if x])[:3]
+
+
+def from_vec2(vec_string: str) -> np.ndarray:
+    return np.array([float(x) for x in vec_string.split(" ") if x])[:2]
 
 
 def from_rpy(vec_string: str) -> transform.Rotation:
@@ -325,6 +458,10 @@ def from_limit(node: ElementTree.Element) -> geometry.MotionLimits:
 
 def to_vec3(vec: np.ndarray) -> str:
     return f"{vec[0]} {vec[1]} {vec[2]}"
+
+
+def to_vec2(vec: np.ndarray) -> str:
+    return f"{vec[0]} {vec[1]}"
 
 
 def to_rpy(rotation: transform.Rotation) -> str:

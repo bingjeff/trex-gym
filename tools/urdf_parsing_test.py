@@ -7,6 +7,15 @@ from tools import urdf_parsing
 
 _TEST_URDF = """<?xml version="1.0" encoding="utf-8"?>
 <robot name="stan_t_rex">
+  <mujoco>
+    <passive stiffness="1.0" damping="2.0" frictionloss="0.25" />
+    <tendon name="tail_sagittal">
+      <joint joint="joint_femur_right" coef="1.0" />
+      <joint joint="joint_tibia_right" coef="0.5" />
+    </tendon>
+    <motor name="actuator_leg" joint="joint_femur_right" gear="100.0" ctrlrange="-1.0 1.0" />
+    <motor name="actuator_tail" tendon="tail_sagittal" gear="20.0" ctrlrange="-0.5 0.5" />
+  </mujoco>
   <joint name="joint_femur_right" type="revolute" linked_dof_body="link_tibia_right">
     <origin rpy="-3.141592502593994 -0.0 0.27925267815589905"
       xyz="0.0171966552734375 -0.2207697629928589 0.2492464929819107" />
@@ -80,6 +89,41 @@ class TestUrdfParsing(unittest.TestCase):
         urdf_string = urdf_original.to_string()
         urdf_roundtrip = urdf_parsing.Urdf.from_string(urdf_string)
         self.assertEqual(urdf_original.name, urdf_roundtrip.name)
+        self.assertAlmostEqual(
+            urdf_original.mujoco.passive.stiffness,
+            urdf_roundtrip.mujoco.passive.stiffness,
+        )
+        self.assertAlmostEqual(
+            urdf_original.mujoco.passive.damping,
+            urdf_roundtrip.mujoco.passive.damping,
+        )
+        self.assertAlmostEqual(
+            urdf_original.mujoco.passive.frictionloss,
+            urdf_roundtrip.mujoco.passive.frictionloss,
+        )
+        self.assertEqual(len(urdf_original.mujoco.tendons), 1)
+        self.assertEqual(len(urdf_original.mujoco.motors), 2)
+        original_tendon = urdf_original.mujoco.tendons[0]
+        roundtrip_tendon = urdf_roundtrip.mujoco.tendons[0]
+        self.assertEqual(original_tendon.name, roundtrip_tendon.name)
+        self.assertEqual(
+            [joint.joint for joint in original_tendon.joints],
+            [joint.joint for joint in roundtrip_tendon.joints],
+        )
+        np.testing.assert_allclose(
+            [joint.coef for joint in original_tendon.joints],
+            [joint.coef for joint in roundtrip_tendon.joints],
+        )
+        for original_motor, roundtrip_motor in zip(
+            urdf_original.mujoco.motors, urdf_roundtrip.mujoco.motors
+        ):
+            self.assertEqual(original_motor.name, roundtrip_motor.name)
+            self.assertEqual(original_motor.joint, roundtrip_motor.joint)
+            self.assertEqual(original_motor.tendon, roundtrip_motor.tendon)
+            self.assertAlmostEqual(original_motor.gear, roundtrip_motor.gear)
+            np.testing.assert_allclose(
+                original_motor.ctrlrange, roundtrip_motor.ctrlrange
+            )
         self.assertEqual(len(urdf_original.joints), len(urdf_roundtrip.joints))
         for name in urdf_original.joints:
             o = urdf_original.joints[name]

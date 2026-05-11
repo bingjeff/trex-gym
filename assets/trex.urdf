@@ -3,6 +3,30 @@
 	<link name="world" />
 	<link name="link_hip_adduction_right" />
 	<link name="link_hip_adduction_left" />
+	<mujoco>
+		<passive stiffness="1.0" damping="1.0" frictionloss="0.01" />
+		<tendon name="tail_sagittal">
+			<joint joint="joint_vertebra_caudal_02" coef="1.0" />
+			<joint joint="joint_vertebra_caudal_10" coef="0.75" />
+			<joint joint="joint_vertebra_caudal_24" coef="0.5" />
+		</tendon>
+		<tendon name="tail_mediolateral">
+			<joint joint="joint_vertebra_caudal_03" coef="1.0" />
+			<joint joint="joint_vertebra_caudal_11" coef="0.75" />
+			<joint joint="joint_vertebra_caudal_25" coef="0.5" />
+			<joint joint="joint_vertebra_caudal_34" coef="0.25" />
+		</tendon>
+		<motor name="actuator_hip_adduction_right" joint="joint_hip_adduction_right" gear="100.0" ctrlrange="-1.0 1.0" />
+		<motor name="actuator_hip_adduction_left" joint="joint_hip_adduction_left" gear="100.0" ctrlrange="-1.0 1.0" />
+		<motor name="actuator_hip_flexion_right" joint="joint_femur_right" gear="100.0" ctrlrange="-1.0 1.0" />
+		<motor name="actuator_hip_flexion_left" joint="joint_femur_left" gear="100.0" ctrlrange="-1.0 1.0" />
+		<motor name="actuator_knee_right" joint="joint_tibia_right" gear="100.0" ctrlrange="-1.0 1.0" />
+		<motor name="actuator_knee_left" joint="joint_tibia_left" gear="100.0" ctrlrange="-1.0 1.0" />
+		<motor name="actuator_ankle_right" joint="joint_tarsometatarsus_right" gear="100.0" ctrlrange="-1.0 1.0" />
+		<motor name="actuator_ankle_left" joint="joint_tarsometatarsus_left" gear="100.0" ctrlrange="-1.0 1.0" />
+		<motor name="actuator_tail_sagittal" tendon="tail_sagittal" gear="20.0" ctrlrange="-1.0 1.0" />
+		<motor name="actuator_tail_mediolateral" tendon="tail_mediolateral" gear="20.0" ctrlrange="-1.0 1.0" />
+	</mujoco>
 	<joint name="joint_world_to_sacrum" type="floating">
 		<origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0" />
 		<parent link="world" />

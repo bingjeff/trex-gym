@@ -52,6 +52,14 @@ class TestMujocoParsing(unittest.TestCase):
         self.assertEqual(
             3, len(urdf.links["link_tarsometatarsus_left"].collision_shapes)
         )
+        self.assertAlmostEqual(1.0, urdf.mujoco.passive.stiffness)
+        self.assertAlmostEqual(1.0, urdf.mujoco.passive.damping)
+        self.assertAlmostEqual(0.01, urdf.mujoco.passive.frictionloss)
+        self.assertEqual(
+            ["tail_sagittal", "tail_mediolateral"],
+            [tendon.name for tendon in urdf.mujoco.tendons],
+        )
+        self.assertEqual(10, len(urdf.mujoco.motors))
         self.assertEqual(0, len(urdf.links["link_vertebrae_sacral"].collision_shapes))
         self.assertEqual(1, len(urdf.links["link_femur_right"].collision_shapes))
         self.assertEqual(1, len(urdf.links["link_femur_left"].collision_shapes))
@@ -137,6 +145,63 @@ class TestMujocoParsing(unittest.TestCase):
             mujoco_node.find("./worldbody/body/freejoint").get("name"),
         )
         self.assertEqual("free", mujoco.body_map["link_vertebrae_sacral"].joint.type)
+        hinge_nodes = mujoco_node.findall(".//joint[@type='hinge']")
+        self.assertTrue(hinge_nodes)
+        self.assertTrue(all(joint.get("stiffness") == "1" for joint in hinge_nodes))
+        self.assertTrue(all(joint.get("damping") == "1" for joint in hinge_nodes))
+        self.assertTrue(
+            all(joint.get("frictionloss") == "0.01" for joint in hinge_nodes)
+        )
+        sagittal_tendon = mujoco_node.find("./tendon/fixed[@name='tail_sagittal']")
+        mediolateral_tendon = mujoco_node.find(
+            "./tendon/fixed[@name='tail_mediolateral']"
+        )
+        self.assertIsNotNone(sagittal_tendon)
+        self.assertIsNotNone(mediolateral_tendon)
+        self.assertEqual(
+            [
+                ("joint_vertebra_caudal_02", "1"),
+                ("joint_vertebra_caudal_10", "0.75"),
+                ("joint_vertebra_caudal_24", "0.5"),
+            ],
+            [
+                (joint.get("joint"), joint.get("coef"))
+                for joint in sagittal_tendon.findall("joint")
+            ],
+        )
+        self.assertEqual(
+            [
+                ("joint_vertebra_caudal_03", "1"),
+                ("joint_vertebra_caudal_11", "0.75"),
+                ("joint_vertebra_caudal_25", "0.5"),
+                ("joint_vertebra_caudal_34", "0.25"),
+            ],
+            [
+                (joint.get("joint"), joint.get("coef"))
+                for joint in mediolateral_tendon.findall("joint")
+            ],
+        )
+        actuators = mujoco_node.findall("./actuator/motor")
+        self.assertEqual(10, len(actuators))
+        self.assertTrue(all(motor.get("ctrllimited") == "true" for motor in actuators))
+        self.assertTrue(all(motor.get("ctrlrange") == "-1 1" for motor in actuators))
+        self.assertEqual(
+            {
+                "joint_hip_adduction_right",
+                "joint_hip_adduction_left",
+                "joint_femur_right",
+                "joint_femur_left",
+                "joint_tibia_right",
+                "joint_tibia_left",
+                "joint_tarsometatarsus_right",
+                "joint_tarsometatarsus_left",
+            },
+            {motor.get("joint") for motor in actuators if motor.get("joint")},
+        )
+        self.assertEqual(
+            {"tail_sagittal", "tail_mediolateral"},
+            {motor.get("tendon") for motor in actuators if motor.get("tendon")},
+        )
         sacrum = urdf.links["link_vertebrae_sacral"]
         sacrum_inertial = mujoco_node.find(
             "./worldbody/body[@name='link_vertebrae_sacral']/inertial"
