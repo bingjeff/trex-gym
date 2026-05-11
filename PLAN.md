@@ -1,0 +1,147 @@
+# MJX Getup Training Plan
+
+The immediate goal is a first MuJoCo Playground/MJX task where the T-Rex gets
+up from its side and stands. The URDF remains the source of truth, but training
+uses a simplified generated MJCF.
+
+## Constraints
+
+- Keep `assets/trex.urdf` as the source model.
+- Put new training environment code under `mjx_gym`.
+- Start with a getup-and-stand task only.
+- Initial state is side-lying with zero joint configuration.
+- Use position targets with PD gains for controlled joints.
+- The policy action space starts with only the two tail tendon actions:
+  sagittal and medial-lateral.
+- Do not load visual meshes in the MJX training model.
+
+## Phase Workflow
+
+Each phase should end with a stable checkpoint before starting the next phase.
+
+For every phase:
+
+1. Implement the smallest coherent set of changes for that phase.
+2. Test thoroughly for that phase's scope.
+   - Prefer focused unit tests for deterministic model transforms.
+   - Add MuJoCo load checks for every generated MJCF.
+   - Add MJX creation and short-step checks whenever the model or environment
+     changes.
+   - Use tiny PPO smoke runs only after reset/step checks pass.
+3. Update this plan with what was completed, what was learned, and any changed
+   assumptions or next steps.
+4. Commit the code, tests, and plan update together.
+5. Move to the next phase only after the working tree is clean except for
+   intentionally untracked generated artifacts.
+
+## Phase 1: Simplified MJX Model
+
+Build a simplification step that converts the full generated MJCF into a
+training-focused MJCF.
+
+1. Generate full MJCF from the URDF.
+2. Remove all visual mesh assets and visual geoms from the MJX training model.
+3. Keep collision geoms needed for floor interaction and body contacts.
+4. Fuse all bodies connected only by fixed joints.
+   - Preserve the kinematic transforms of child geoms, inertials, sites, and
+     sensors when moving them into the fused parent body.
+   - Preserve revolute, floating, and tendon-actuated DOFs.
+   - Preserve the root free joint.
+5. Keep the existing contact capsule geometry, but verify capsule ownership
+   after fixed-body fusion.
+6. Keep passive joint stiffness, damping, and friction.
+7. Keep the two tail tendons and their actuators.
+8. Convert leg actuators to position-control semantics with PD gains.
+9. Add scene elements after simplification:
+   - floor geom
+   - cameras
+   - root or torso IMU site
+   - foot/contact sites
+   - sensors needed by the getup environment
+   - keyframes for zero/side-lying starting state and any nominal stand target
+
+## Phase 2: Complexity Checks
+
+After simplification, compare the full and simplified models.
+
+Measure:
+
+- body count
+- joint count
+- qpos/qvel dimensions
+- actuator count
+- tendon count
+- geom count, split by visual/contact
+- sensor count
+- total mass
+- approximate center of mass at zero configuration
+
+Pass criteria:
+
+- simplified MJCF loads in MuJoCo
+- simplified MJCF can be copied with `mjx.put_model`
+- zero-action MJX stepping runs for a few steps
+- no visual mesh assets or visual geoms remain in the simplified model
+- all intended DOFs and actuators remain present
+
+## Phase 3: `mjx_gym` Environment
+
+Create a small local package for the T-Rex task.
+
+Files:
+
+- `mjx_gym/__init__.py`
+- `mjx_gym/trex_constants.py`
+- `mjx_gym/trex_getup.py`
+- `mjx_gym/train.py`
+
+The environment should follow the shape of MuJoCo Playground's `Go1Getup`:
+
+- `default_config()`
+- `TrexGetup`
+- `reset(rng)`
+- `step(state, action)`
+- `action_size`
+- `mj_model`
+- `mjx_model`
+- `xml_path`
+
+Observation proposal:
+
+- torso gravity vector
+- torso gyro
+- controlled tail action history
+- selected joint positions and velocities
+- optional full joint state in `privileged_state`
+
+Reward proposal:
+
+- torso upright orientation
+- torso/root height
+- stand-still term once upright
+- posture term near zero or nominal stand target
+- action-rate cost
+- torque or energy cost
+- joint-limit cost
+
+## Phase 4: Local Smoke Tests
+
+Before PPO, add focused tests/scripts that verify:
+
+1. simplified MJCF generation
+2. model complexity report
+3. MuJoCo load
+4. MJX model creation
+5. environment reset
+6. several zero-action steps
+7. JIT reset/step
+8. tiny Playground PPO run with low env count and timestep count
+
+## Open Decisions
+
+- Whether fixed leg PD targets are enough for getup when the policy only
+  controls the two tail tendons. If this cannot make progress, expand the
+  policy action space to include hip, knee, and ankle targets.
+- Exact nominal standing posture for fixed leg PD targets.
+- Exact sensor set for the first version: only torso IMU and foot/contact
+  sites, or additional body pose sensors for debugging.
