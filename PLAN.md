@@ -11,8 +11,8 @@ uses a simplified generated MJCF.
 - Start with a getup-and-stand task only.
 - Initial state is side-lying with zero joint configuration.
 - Use position targets with PD gains for controlled joints.
-- The policy action space starts with only the two tail tendon actions:
-  sagittal and medial-lateral.
+- The policy action space includes the leg position targets and the two tail
+  tendon targets.
 - Do not load visual meshes in the MJX training model.
 
 ## Phase Workflow
@@ -153,6 +153,8 @@ Conclusion:
 
 ## Phase 3: `mjx_gym` Environment
 
+Status: completed for the first getup-and-stand environment skeleton.
+
 Create a small local package for the T-Rex task.
 
 Files:
@@ -177,7 +179,7 @@ Observation proposal:
 
 - torso gravity vector
 - torso gyro
-- controlled tail action history
+- controlled action history
 - selected joint positions and velocities
 - optional full joint state in `privileged_state`
 
@@ -190,6 +192,48 @@ Reward proposal:
 - action-rate cost
 - torque or energy cost
 - joint-limit cost
+
+Phase 3 results:
+
+- Added the `mjx_gym` package to the project package list.
+- Added `mjx_gym/trex_constants.py` for generated T-Rex getup scene MJCF.
+- Added `mjx_gym/trex_getup.py` with a Playground-compatible `TrexGetup`
+  environment.
+- Added `mjx_gym/train.py` to register `TrexGetup` and patch a local PPO
+  config before delegating to MuJoCo Playground's `train_jax_ppo` runner.
+- The generated getup scene adds:
+  - floor geom
+  - tracking camera
+  - torso IMU site
+  - gyro, accelerometer, upvector, global linear velocity, and global angular
+    velocity sensors
+  - zero-upright and side-lying-zero keyframes
+- The first environment version starts side-lying with zero joint
+  configuration.
+- The policy action space is ten-dimensional and maps to all generated
+  position actuators: eight leg joint targets plus the sagittal and
+  medial-lateral tail tendon targets.
+- Current environment model size:
+  - bodies: 31
+  - joints: 32
+  - qpos: 38
+  - qvel: 37
+  - actuators: 10
+  - geoms: 46, including the floor
+  - sensors: 5
+- Observation shapes:
+  - `state`: 78
+  - `privileged_state`: 164
+- Tests verify model construction, environment reset, one zero-action step,
+  observation shapes, sensor names, and local Playground registration.
+- Manual validation confirmed `python -m mjx_gym.train --env_name=TrexGetup
+  --only_check_args=true` succeeds.
+
+Deferred to Phase 4:
+
+- JIT reset/step validation.
+- Tiny PPO smoke run.
+- Reward tuning for a useful first getup policy.
 
 ## Phase 4: Local Smoke Tests
 
@@ -206,9 +250,6 @@ Before PPO, add focused tests/scripts that verify:
 
 ## Open Decisions
 
-- Whether fixed leg PD targets are enough for getup when the policy only
-  controls the two tail tendons. If this cannot make progress, expand the
-  policy action space to include hip, knee, and ankle targets.
 - Exact nominal standing posture for fixed leg PD targets.
 - Exact sensor set for the first version: only torso IMU and foot/contact
   sites, or additional body pose sensors for debugging.

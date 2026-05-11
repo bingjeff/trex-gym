@@ -29,7 +29,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["old*"]
+include = ["mjx_gym*", "old*"]
 
 [tool.black]
 line-length = 88
