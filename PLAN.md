@@ -237,6 +237,8 @@ Deferred to Phase 4:
 
 ## Phase 4: Local Smoke Tests
 
+Status: completed for the first local training smoke path.
+
 Before PPO, add focused tests/scripts that verify:
 
 1. simplified MJCF generation
@@ -247,6 +249,38 @@ Before PPO, add focused tests/scripts that verify:
 6. several zero-action steps
 7. JIT reset/step
 8. tiny Playground PPO run with low env count and timestep count
+
+Phase 4 results:
+
+- Existing tests cover simplified MJCF generation, model complexity reporting,
+  MuJoCo load, MJX creation, environment reset, and one zero-action step.
+- Manual JIT validation succeeded for `TrexGetup` reset and one step:
+  - command shape: `jax.jit(env.reset)` and `jax.jit(env.step)`
+  - output observation shapes remained `state=(78,)` and
+    `privileged_state=(164,)`
+- Manual tiny PPO smoke test succeeded with:
+  - `env_name=TrexGetup`
+  - `num_timesteps=128`
+  - `num_envs=2`
+  - `num_eval_envs=1`
+  - `episode_length=20`
+  - `num_minibatches=1`
+  - `num_updates_per_batch=1`
+  - `batch_size=2`
+  - `unroll_length=2`
+  - `run_evals=false`
+  - `num_videos=0`
+- The smoke run completed training, produced a checkpoint directory under
+  `/tmp/trex-getup-ppo-smoke`, and reached inference/rendering.
+- On local CPU, PPO compile time was about 60 seconds for this tiny run.
+
+Next direction:
+
+- Start reward and initialization tuning for actual getup behavior.
+- Add a more useful nominal standing pose and consider rendering short rollout
+  clips for policy debugging.
+- Once getup/stand is learning, split out a walking task rather than overloading
+  this recovery task.
 
 ## Open Decisions
 
