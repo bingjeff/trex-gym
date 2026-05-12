@@ -1,11 +1,19 @@
 """Training entry point that registers local T-Rex Playground environments."""
 
+from absl import flags
+from absl.flags import _exceptions as flags_exceptions
 from ml_collections import config_dict
 from learning import train_jax_ppo
 from mujoco_playground import registry
 from mujoco_playground._src import locomotion
 
 from mjx_gym import trex_getup
+
+_TREX_NUM_RESETS_PER_EVAL = flags.DEFINE_integer(
+    "trex_num_resets_per_eval",
+    None,
+    "Override TrexGetup PPO num_resets_per_eval.",
+)
 
 
 def register_environments() -> None:
@@ -24,6 +32,12 @@ def register_environments() -> None:
 def trex_ppo_config(env_name: str, impl: str | None = None) -> config_dict.ConfigDict:
     del env_name, impl
     env_config = trex_getup.default_config()
+    try:
+        num_resets_per_eval = _TREX_NUM_RESETS_PER_EVAL.value
+    except flags_exceptions.UnparsedFlagAccessError:
+        num_resets_per_eval = None
+    if num_resets_per_eval is None:
+        num_resets_per_eval = 10
     return config_dict.create(
         num_timesteps=50_000_000,
         num_evals=5,
@@ -46,7 +60,7 @@ def trex_ppo_config(env_name: str, impl: str | None = None) -> config_dict.Confi
             policy_obs_key="state",
             value_obs_key="privileged_state",
         ),
-        num_resets_per_eval=10,
+        num_resets_per_eval=num_resets_per_eval,
     )
 
 

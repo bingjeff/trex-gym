@@ -62,6 +62,7 @@ def trex_getup_mjcf(
         mjx_model_simplification.DEFAULT_PASSIVE_DAMPING_PER_ROW_SUM
     ),
     armature_per_row_sum: float = mjx_model_simplification.DEFAULT_ARMATURE_PER_ROW_SUM,
+    actuated_joint_stiffness_scale: float = 1.0,
 ) -> ElementTree.Element:
     """Builds the simplified T-Rex getup scene MJCF."""
     node = mjx_model_simplification.urdf_to_mjx_mujoco(load_urdf())
@@ -76,6 +77,7 @@ def trex_getup_mjcf(
         damping_per_row_sum=passive_damping_per_row_sum,
         armature_per_row_sum=armature_per_row_sum,
         actuator_kp_per_row_sum=position_kp_per_row_sum,
+        actuated_joint_stiffness_scale=actuated_joint_stiffness_scale,
     )
     return node
 
@@ -91,6 +93,7 @@ def trex_getup_xml(
         mjx_model_simplification.DEFAULT_PASSIVE_DAMPING_PER_ROW_SUM
     ),
     armature_per_row_sum: float = mjx_model_simplification.DEFAULT_ARMATURE_PER_ROW_SUM,
+    actuated_joint_stiffness_scale: float = 1.0,
 ) -> str:
     return mujoco_parsing.to_string(
         trex_getup_mjcf(
@@ -98,6 +101,7 @@ def trex_getup_xml(
             passive_stiffness_per_row_sum=passive_stiffness_per_row_sum,
             passive_damping_per_row_sum=passive_damping_per_row_sum,
             armature_per_row_sum=armature_per_row_sum,
+            actuated_joint_stiffness_scale=actuated_joint_stiffness_scale,
         )
     )
 
@@ -274,6 +278,23 @@ def _ground_clearance_root_height(
     for geom_id in range(model.ngeom):
         if geom_id == floor_id:
             continue
-        geom_bottom = data.geom_xpos[geom_id, 2] - np.max(model.geom_size[geom_id])
+        geom_bottom = data.geom_xpos[geom_id, 2] - _geom_vertical_extent(
+            model, data, geom_id
+        )
         min_z = min(min_z, geom_bottom)
     return float(qpos[2] - min_z + margin)
+
+
+def _geom_vertical_extent(model, data, geom_id: int) -> float:
+    geom_type = model.geom_type[geom_id]
+    size = model.geom_size[geom_id]
+    if geom_type == mujoco.mjtGeom.mjGEOM_SPHERE:
+        return float(size[0])
+    if geom_type == mujoco.mjtGeom.mjGEOM_CAPSULE:
+        xmat = data.geom_xmat[geom_id].reshape(3, 3)
+        local_z_vertical = abs(float(xmat[2, 2]))
+        return float(size[0] + size[1] * local_z_vertical)
+    if geom_type in (mujoco.mjtGeom.mjGEOM_BOX, mujoco.mjtGeom.mjGEOM_ELLIPSOID):
+        xmat = data.geom_xmat[geom_id].reshape(3, 3)
+        return float(np.sum(np.abs(xmat[2, :]) * size))
+    return float(np.max(size))

@@ -329,6 +329,23 @@ Validation:
   - `num_envs=2`
   - compile time around 50 seconds on local CPU.
 
+Follow-up debugging:
+
+- A RunPod PPO smoke reached the end of the first training attempt but failed
+  Brax's final `pmap.assert_is_replicated(training_state)` check.
+- On one device that check can fail when the replicated training-state
+  fingerprint is NaN, so local debugging focused on finding non-finite or
+  explosive rollout values.
+- Reset and zero-action steps remained finite.
+- Random-action rollouts with the original active `Kp=1000` produced actuator
+  forces in the millions and joint velocities in the thousands, which is large
+  enough to destabilize PPO value/optimizer updates.
+- Passive gains remain mass-scaled and stiff, but the default active position
+  actuator gain factor was reduced to `Kp=0.2`.
+- A regression test now checks that short random-action rollouts remain finite,
+  keep bounded joint velocities and actuator forces, and produce nonzero
+  reward.
+
 ## Open Decisions
 
 - Exact nominal standing posture for fixed leg PD targets.

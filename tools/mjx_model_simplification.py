@@ -90,6 +90,7 @@ def apply_mass_scaled_joint_tuning(
     damping_per_row_sum: float = DEFAULT_PASSIVE_DAMPING_PER_ROW_SUM,
     armature_per_row_sum: float = DEFAULT_ARMATURE_PER_ROW_SUM,
     actuator_kp_per_row_sum: float = DEFAULT_PASSIVE_STIFFNESS_PER_ROW_SUM,
+    actuated_joint_stiffness_scale: float = 1.0,
 ) -> dict[str, float]:
     """Applies mass-matrix-row-sum-scaled passive and actuator gains.
 
@@ -101,13 +102,19 @@ def apply_mass_scaled_joint_tuning(
     scales = mass_matrix_row_sum_scales(model)
     joint_scales = _hinge_joint_scales(model, scales)
     tendon_scales = _fixed_tendon_scales(mujoco_node, joint_scales)
+    actuated_joints = _actuated_joint_names(mujoco_node)
 
     for joint in mujoco_node.findall(".//joint"):
         name = joint.get("name")
         if name not in joint_scales:
             continue
         scale = joint_scales[name]
-        joint.set("stiffness", _format_float(stiffness_per_row_sum * scale))
+        stiffness_scale = (
+            actuated_joint_stiffness_scale if name in actuated_joints else 1.0
+        )
+        joint.set(
+            "stiffness", _format_float(stiffness_per_row_sum * scale * stiffness_scale)
+        )
         joint.set("damping", _format_float(damping_per_row_sum * scale))
         joint.set("armature", _format_float(armature_per_row_sum * scale))
 
@@ -122,6 +129,31 @@ def apply_mass_scaled_joint_tuning(
                 continue
             position.set("kp", _format_float(actuator_kp_per_row_sum * scale))
     return joint_scales
+
+
+def _actuated_joint_names(mujoco_node: ElementTree.Element) -> set[str]:
+    """Returns joints directly or tendon-actuated by generated actuators."""
+    names = set()
+    actuator = mujoco_node.find("actuator")
+    if actuator is None:
+        return names
+    tendon_joints: dict[str, set[str]] = defaultdict(set)
+    for tendon in mujoco_node.findall("./tendon/fixed"):
+        tendon_name = tendon.get("name")
+        if tendon_name is None:
+            continue
+        for joint in tendon.findall("joint"):
+            joint_name = joint.get("joint")
+            if joint_name is not None:
+                tendon_joints[tendon_name].add(joint_name)
+    for position in actuator.findall("position"):
+        joint_name = position.get("joint")
+        if joint_name is not None:
+            names.add(joint_name)
+        tendon_name = position.get("tendon")
+        if tendon_name is not None:
+            names.update(tendon_joints.get(tendon_name, set()))
+    return names
 
 
 def mass_matrix_row_sum_scales(model: mujoco.MjModel) -> np.ndarray:
@@ -275,10 +307,58 @@ def convert_motors_to_position_actuators(
     actuator = mujoco.find("actuator")
     if actuator is None:
         return
+    joint_ranges = _joint_control_ranges(mujoco)
+    tendon_ranges = _tendon_control_ranges(mujoco, joint_ranges)
     for motor in actuator.findall("motor"):
         motor.tag = "position"
         motor.attrib.pop("gear", None)
+        joint_name = motor.get("joint")
+        tendon_name = motor.get("tendon")
+        if joint_name in joint_ranges:
+            motor.set("ctrlrange", _format_vec(joint_ranges[joint_name]))
+        elif tendon_name in tendon_ranges:
+            motor.set("ctrlrange", _format_vec(tendon_ranges[tendon_name]))
         motor.set("kp", _format_float(position_kp))
+
+
+def _joint_control_ranges(mujoco: ElementTree.Element) -> dict[str, np.ndarray]:
+    ranges = {}
+    for joint in mujoco.findall(".//joint"):
+        name = joint.get("name")
+        range_text = joint.get("range")
+        if name is None or range_text is None:
+            continue
+        values = np.fromstring(range_text, sep=" ")
+        if values.shape == (2,) and np.all(np.isfinite(values)):
+            ranges[name] = values
+    return ranges
+
+
+def _tendon_control_ranges(
+    mujoco: ElementTree.Element, joint_ranges: dict[str, np.ndarray]
+) -> dict[str, np.ndarray]:
+    ranges = {}
+    for tendon in mujoco.findall("./tendon/fixed"):
+        tendon_name = tendon.get("name")
+        if tendon_name is None:
+            continue
+        lower = 0.0
+        upper = 0.0
+        complete = False
+        for joint in tendon.findall("joint"):
+            joint_name = joint.get("joint")
+            if joint_name not in joint_ranges:
+                complete = False
+                break
+            complete = True
+            coef = float(joint.get("coef", "1.0"))
+            joint_range = joint_ranges[joint_name]
+            values = coef * joint_range
+            lower += float(np.min(values))
+            upper += float(np.max(values))
+        if complete:
+            ranges[tendon_name] = np.array([lower, upper])
+    return ranges
 
 
 def summarize_mujoco_model(model) -> ModelSummary:
@@ -358,6 +438,10 @@ def _format_metric(value: float | int) -> str:
 
 def _format_vec3(vec: np.ndarray) -> str:
     return " ".join(f"{value:.6g}" for value in vec)
+
+
+def _format_vec(vec: np.ndarray) -> str:
+    return " ".join(_format_float(float(value)) for value in vec)
 
 
 def _transform_shape(

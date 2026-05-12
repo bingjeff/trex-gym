@@ -7,22 +7,49 @@ import jax.numpy as jp
 from ml_collections import config_dict
 import mujoco
 from mujoco import mjx
+import numpy as np
 
 from mujoco_playground._src import mjx_env
 from mjx_gym import trex_constants as consts
+
+
+def _side_lying_quat(side: jax.Array, yaw: jax.Array) -> jax.Array:
+    roll = side * (jp.pi / 2.0)
+    roll_quat = jp.array([jp.cos(roll / 2.0), jp.sin(roll / 2.0), 0.0, 0.0])
+    yaw_quat = jp.array([jp.cos(yaw / 2.0), 0.0, 0.0, jp.sin(yaw / 2.0)])
+    return _quat_mul(yaw_quat, roll_quat)
+
+
+def _quat_mul(left: jax.Array, right: jax.Array) -> jax.Array:
+    lw, lx, ly, lz = left
+    rw, rx, ry, rz = right
+    return jp.array(
+        [
+            lw * rw - lx * rx - ly * ry - lz * rz,
+            lw * rx + lx * rw + ly * rz - lz * ry,
+            lw * ry - lx * rz + ly * rw + lz * rx,
+            lw * rz + lx * ry - ly * rx + lz * rw,
+        ]
+    )
 
 
 def default_config() -> config_dict.ConfigDict:
     return config_dict.create(
         ctrl_dt=0.02,
         sim_dt=0.004,
-        Kp=1000.0,
+        Kp=200.0,
         passive_stiffness=1000.0,
+        actuated_joint_passive_stiffness_scale=0.0,
         passive_damping=80.0,
         armature=0.2,
         episode_length=300,
         action_repeat=1,
-        action_scale=0.25,
+        action_scale=0.4,
+        reset_xy_range=0.25,
+        reset_yaw_range=3.141592653589793,
+        reset_joint_noise=0.0,
+        reset_qvel_noise=0.05,
+        reset_height_noise=0.02,
         torso_height=1.0,
         reward_config=config_dict.create(
             scales=config_dict.create(
@@ -57,6 +84,9 @@ class TrexGetup(mjx_env.MjxEnv):
             consts.trex_getup_xml(
                 position_kp_per_row_sum=self._config.Kp,
                 passive_stiffness_per_row_sum=self._config.passive_stiffness,
+                actuated_joint_stiffness_scale=(
+                    self._config.actuated_joint_passive_stiffness_scale
+                ),
                 passive_damping_per_row_sum=self._config.passive_damping,
                 armature_per_row_sum=self._config.armature,
             )
@@ -69,15 +99,60 @@ class TrexGetup(mjx_env.MjxEnv):
             [self._mj_model.actuator(name).id for name in consts.ACTION_ACTUATORS],
             dtype=jp.int32,
         )
+        action_ctrlrange = self._mj_model.actuator_ctrlrange[
+            np.array(self._action_actuator_ids)
+        ]
+        action_ctrl_low = action_ctrlrange[:, 0]
+        action_ctrl_high = action_ctrlrange[:, 1]
+        self._action_ctrl_neutral = jp.zeros(len(consts.ACTION_ACTUATORS))
+        self._action_ctrl_negative_scale = jp.array(
+            self._action_ctrl_neutral - action_ctrl_low
+        )
+        self._action_ctrl_positive_scale = jp.array(
+            action_ctrl_high - self._action_ctrl_neutral
+        )
         self._default_ctrl = jp.zeros(self._mj_model.nu)
         self._side_qpos = jp.array(consts.side_lying_qpos(self._mj_model))
 
     def reset(self, rng: jax.Array) -> mjx_env.State:
-        del rng
-        qvel = jp.zeros(self.mjx_model.nv)
+        side_rng, yaw_rng, xy_rng, joint_rng, qvel_rng, height_rng = jax.random.split(
+            rng, 6
+        )
+        side = jp.where(jax.random.bernoulli(side_rng), 1.0, -1.0)
+        yaw = jax.random.uniform(
+            yaw_rng,
+            (),
+            minval=-self._config.reset_yaw_range,
+            maxval=self._config.reset_yaw_range,
+        )
+        xy = jax.random.uniform(
+            xy_rng,
+            (2,),
+            minval=-self._config.reset_xy_range,
+            maxval=self._config.reset_xy_range,
+        )
+        joint_noise = jax.random.uniform(
+            joint_rng,
+            (self.mjx_model.nq - 7,),
+            minval=-self._config.reset_joint_noise,
+            maxval=self._config.reset_joint_noise,
+        )
+        height_noise = jax.random.uniform(
+            height_rng,
+            (),
+            minval=0.0,
+            maxval=self._config.reset_height_noise,
+        )
+        qpos = self._side_qpos.at[0:2].set(xy)
+        qpos = qpos.at[2].add(height_noise)
+        qpos = qpos.at[3:7].set(_side_lying_quat(side, yaw))
+        qpos = qpos.at[7:].set(joint_noise)
+        qvel = jax.random.normal(qvel_rng, (self.mjx_model.nv,)) * (
+            self._config.reset_qvel_noise
+        )
         data = mjx_env.make_data(
             self.mj_model,
-            qpos=self._side_qpos,
+            qpos=qpos,
             qvel=qvel,
             ctrl=self._default_ctrl,
             impl=self.mjx_model.impl.value,
@@ -96,9 +171,17 @@ class TrexGetup(mjx_env.MjxEnv):
         return mjx_env.State(data, obs, jp.zeros(()), jp.zeros(()), metrics, info)
 
     def step(self, state: mjx_env.State, action: jax.Array) -> mjx_env.State:
-        ctrl = self._default_ctrl.at[self._action_actuator_ids].set(
-            action * self._config.action_scale
+        clipped_action = jp.clip(action, -1.0, 1.0)
+        target_scale = jp.where(
+            clipped_action >= 0.0,
+            self._action_ctrl_positive_scale,
+            self._action_ctrl_negative_scale,
         )
+        target = (
+            self._action_ctrl_neutral
+            + clipped_action * target_scale * self._config.action_scale
+        )
+        ctrl = self._default_ctrl.at[self._action_actuator_ids].set(target)
         data = mjx_env.step(self.mjx_model, state.data, ctrl, self.n_substeps)
         obs = self._get_obs(data, state.info)
         done = jp.zeros(())
@@ -146,9 +229,10 @@ class TrexGetup(mjx_env.MjxEnv):
     ) -> dict[str, jax.Array]:
         gravity = self.get_gravity(data)
         torso_height = data.site_xpos[self._imu_site_id][2]
+        orientation = self._reward_orientation(gravity)
         return {
-            "orientation": self._reward_orientation(gravity),
-            "torso_height": self._reward_height(torso_height),
+            "orientation": orientation,
+            "torso_height": orientation * self._reward_height(torso_height),
             "stand_still": self._reward_stand_still(action, gravity, torso_height),
             "action_rate": self._cost_action_rate(action, info),
             "torques": self._cost_torques(data.actuator_force),
@@ -178,10 +262,12 @@ class TrexGetup(mjx_env.MjxEnv):
         return first + second
 
     def _cost_torques(self, torques: jax.Array) -> jax.Array:
-        return jp.sum(jp.square(torques))
+        return jp.sqrt(jp.sum(jp.square(torques))) + jp.sum(jp.abs(torques))
 
     def _cost_dof_vel(self, qvel: jax.Array) -> jax.Array:
-        return jp.sum(jp.square(qvel))
+        max_velocity = 2.0 * jp.pi
+        excess_velocity = jp.maximum(jp.abs(qvel) - max_velocity, 0.0)
+        return jp.sum(jp.square(excess_velocity))
 
     def get_gyro(self, data: mjx.Data) -> jax.Array:
         return mjx_env.get_sensor_data(self.mj_model, data, consts.GYRO_SENSOR)

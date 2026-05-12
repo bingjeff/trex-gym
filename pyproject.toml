@@ -7,7 +7,7 @@ name = "trex-gym"
 version = "0.1.0"
 description = "Tyrannosaur model tooling."
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12,<3.13"
 license = "MIT"
 authors = [
     { name = "Jeffrey T. Bingham", email = "bingjeff@gmail.com" },
@@ -27,10 +27,13 @@ dependencies = [
 dev = [
     "black",
 ]
+gpu = [
+    "jax[cuda12]<0.10",
+]
 
 [tool.setuptools.packages.find]
 include = ["mjx_gym*", "old*"]
 
 [tool.black]
 line-length = 88
-target-version = ["py313"]
+target-version = ["py312"]
