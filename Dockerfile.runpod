@@ -1,0 +1,38 @@
+FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV MUJOCO_GL=egl
+ENV PYTHONUNBUFFERED=1
+ENV UV_CACHE_DIR=/tmp/uv-cache
+ENV UV_LINK_MODE=copy
+ENV UV_PYTHON=3.12
+ENV PATH="/root/.local/bin:/opt/trex-gym/.venv/bin:/usr/local/cuda/bin:${PATH}"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    ffmpeg \
+    git \
+    libegl1 \
+    libgl1 \
+    libosmesa6 \
+    openssh-server \
+    tmux \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+
+WORKDIR /opt/trex-gym
+
+COPY pyproject.toml uv.lock README.md ./
+COPY mjx_gym ./mjx_gym
+COPY old ./old
+COPY tools ./tools
+COPY assets ./assets
+
+RUN uv sync --locked --python 3.12 --group gpu --group dev \
+    && uv cache clean
+
+# Keep the RunPod base image startup behavior. Its /start.sh launches the
+# services expected by interactive pods, including Jupyter and SSH.
+WORKDIR /opt/trex-gym

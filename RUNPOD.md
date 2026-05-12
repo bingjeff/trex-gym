@@ -70,7 +70,37 @@ PY
 
 ## Rebuild Plan
 
-Start from the same RunPod base image:
+Recommended path: build and push a custom image from `Dockerfile.runpod`, then
+make a private RunPod template that points at that image. This keeps RunPod's
+interactive startup behavior but avoids reinstalling the project stack every
+time a pod launches.
+
+Build locally or in CI:
+
+```bash
+docker build --platform linux/amd64 \
+  -f Dockerfile.runpod \
+  -t <registry>/trex-gym:mjx-<commit>-py312-jax092-mujoco380-cuda124 \
+  .
+```
+
+Push it:
+
+```bash
+docker push <registry>/trex-gym:mjx-<commit>-py312-jax092-mujoco380-cuda124
+```
+
+Create a RunPod template with:
+
+- Container image:
+  `<registry>/trex-gym:mjx-<commit>-py312-jax092-mujoco380-cuda124`
+- Container start command: leave blank, so the RunPod base image `/start.sh`
+  still starts Jupyter, SSH, and nginx.
+- Expose HTTP ports as needed, typically Jupyter and TensorBoard.
+- Volume mount path: `/workspace`
+- Write training outputs under `/workspace/runs`, not under `/opt/trex-gym`.
+
+The Dockerfile starts from the same RunPod base image:
 
 ```dockerfile
 FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
@@ -97,6 +127,7 @@ Install uv:
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:/opt/trex-gym/.venv/bin:/usr/local/cuda/bin:${PATH}"
 ENV UV_CACHE_DIR=/tmp/uv-cache
+ENV UV_PYTHON=3.12
 ENV MUJOCO_GL=egl
 ```
 
@@ -109,7 +140,7 @@ COPY mjx_gym ./mjx_gym
 COPY tools ./tools
 COPY assets ./assets
 COPY old ./old
-RUN uv sync --locked --group gpu --group dev
+RUN uv sync --locked --python 3.12 --group gpu --group dev
 ```
 
 For a development image, copy the whole repo instead of only package/runtime
@@ -160,4 +191,3 @@ For the first reproducible image based on commit `9a01c40`:
 ```text
 trex-gym:mjx-9a01c40-py312-jax092-mujoco380-cuda124
 ```
-
