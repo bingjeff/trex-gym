@@ -133,8 +133,7 @@ def side_lying_qpos(model) -> np.ndarray:
     """Returns a side-lying free-root pose with all joints at zero."""
     qpos = np.zeros(model.nq)
     qpos[0:3] = np.array([0.0, 0.0, 0.0])
-    quat_xyzw = transform.Rotation.from_euler("x", np.pi / 2.0).as_quat()
-    qpos[3:7] = np.array([quat_xyzw[3], quat_xyzw[0], quat_xyzw[1], quat_xyzw[2]])
+    qpos[3:7] = np.array([1.0, 0.0, 0.0, 0.0])
     qpos[2] = _ground_clearance_root_height(model, qpos)
     return qpos
 
