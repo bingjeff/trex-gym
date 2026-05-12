@@ -48,6 +48,36 @@ class TestMjxGym(unittest.TestCase):
         self.assertEqual((164,), next_state.obs["privileged_state"].shape)
         self.assertGreater(float(next_state.data.time), 0.0)
 
+    def test_zero_upright_pose_matches_orientation_goal_and_feet_contact(self):
+        env = trex_getup.TrexGetup()
+        model = env.mj_model
+        data = mujoco.MjData(model)
+        data.qpos[:] = trex_constants.standing_qpos(model)
+        mujoco.mj_forward(model, data)
+
+        imu_id = model.site(trex_constants.IMU_SITE).id
+        gravity = data.site_xmat[imu_id].reshape(3, 3).T @ np.array([0.0, 0.0, -1.0])
+        self.assertTrue(np.allclose(gravity, trex_constants.UPRIGHT_GRAVITY))
+        self.assertAlmostEqual(float(env._reward_orientation(gravity)), 1.0)
+        self.assertEqual(2.5, env._target_torso_height)
+        self.assertGreater(float(data.site_xpos[imu_id, 2]), env._target_torso_height)
+        self.assertAlmostEqual(float(env._reward_height(env._target_torso_height)), 1.0)
+        self.assertAlmostEqual(
+            float(env._reward_height(env._target_torso_height + 0.5)), 1.0
+        )
+        self.assertLess(float(env._reward_height(env._target_torso_height - 0.5)), 1.0)
+
+        floor_id = model.geom("floor").id
+        floor_contacts = []
+        for contact_id in range(data.ncon):
+            geom_pair = data.contact[contact_id].geom
+            if floor_id in geom_pair:
+                other = geom_pair[1] if geom_pair[0] == floor_id else geom_pair[0]
+                floor_contacts.append(
+                    mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, int(other))
+                )
+        self.assertTrue(any("toe" in name for name in floor_contacts))
+
     def test_trex_getup_contacts_are_ground_only(self):
         env = trex_getup.TrexGetup()
         model = env.mj_model
@@ -86,8 +116,21 @@ class TestMjxGym(unittest.TestCase):
 
         self.assertTrue(passive_joint_ids)
         self.assertTrue(actuated_joint_ids)
+        tail_joint_ids = {
+            model.joint(joint_name).id
+            for joint_name in trex_constants.TAIL_TENDON_JOINTS
+        }
+        leg_actuated_joint_ids = actuated_joint_ids - tail_joint_ids
+
         self.assertGreater(np.min(model.jnt_stiffness[passive_joint_ids]), 1000.0)
-        self.assertTrue(np.allclose(model.jnt_stiffness[list(actuated_joint_ids)], 0.0))
+        self.assertTrue(
+            np.allclose(model.jnt_stiffness[list(leg_actuated_joint_ids)], 0.0)
+        )
+        self.assertGreater(np.min(model.jnt_stiffness[list(tail_joint_ids)]), 1000.0)
+        self.assertGreater(
+            np.min(model.dof_damping[[model.jnt_dofadr[j] for j in tail_joint_ids]]),
+            100.0,
+        )
         self.assertGreater(np.min(model.dof_damping[6:]), 100.0)
         self.assertGreater(np.min(model.actuator_gainprm[:, 0]), 100000.0)
         self.assertLess(np.max(model.actuator_gainprm[:, 0]), 2500000.0)
@@ -106,6 +149,17 @@ class TestMjxGym(unittest.TestCase):
                 mujoco.mj_step(model, data)
             self.assertLess(abs(data.qpos[qpos_id]), 1.0e-3)
             self.assertTrue(np.all(data.warning.number == 0))
+
+        data = mujoco.MjData(model)
+        data.qpos[:] = trex_constants.zero_upright_qpos(model)
+        data.qpos[2] += 5.0
+        joint_id = model.joint("joint_vertebra_caudal_34").id
+        qpos_id = model.jnt_qposadr[joint_id]
+        data.qpos[qpos_id] = 0.1
+        for _ in range(1000):
+            mujoco.mj_step(model, data)
+        self.assertLess(abs(data.qpos[qpos_id]), 1.0e-2)
+        self.assertTrue(np.all(data.warning.number == 0))
 
     def test_trex_getup_actions_move_driven_joints(self):
         env = trex_getup.TrexGetup()
@@ -166,8 +220,8 @@ class TestMjxGym(unittest.TestCase):
                 if hasattr(leaf, "dtype") and jp.issubdtype(leaf.dtype, jp.inexact):
                     self.assertTrue(bool(jp.all(jp.isfinite(leaf))))
 
-        self.assertLess(max_abs_qvel, 60.0)
-        self.assertLess(max_abs_actuator_force, 800000.0)
+        self.assertLess(max_abs_qvel, 180.0)
+        self.assertLess(max_abs_actuator_force, 2000000.0)
 
     def test_register_environments_adds_trex_getup(self):
         train.register_environments()

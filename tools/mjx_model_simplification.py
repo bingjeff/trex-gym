@@ -91,6 +91,7 @@ def apply_mass_scaled_joint_tuning(
     armature_per_row_sum: float = DEFAULT_ARMATURE_PER_ROW_SUM,
     actuator_kp_per_row_sum: float = DEFAULT_PASSIVE_STIFFNESS_PER_ROW_SUM,
     actuated_joint_stiffness_scale: float = 1.0,
+    joint_stiffness_scale_overrides: dict[str, float] | None = None,
 ) -> dict[str, float]:
     """Applies mass-matrix-row-sum-scaled passive and actuator gains.
 
@@ -103,15 +104,19 @@ def apply_mass_scaled_joint_tuning(
     joint_scales = _hinge_joint_scales(model, scales)
     tendon_scales = _fixed_tendon_scales(mujoco_node, joint_scales)
     actuated_joints = _actuated_joint_names(mujoco_node)
+    joint_stiffness_scale_overrides = joint_stiffness_scale_overrides or {}
 
     for joint in mujoco_node.findall(".//joint"):
         name = joint.get("name")
         if name not in joint_scales:
             continue
         scale = joint_scales[name]
-        stiffness_scale = (
-            actuated_joint_stiffness_scale if name in actuated_joints else 1.0
-        )
+        if name in joint_stiffness_scale_overrides:
+            stiffness_scale = joint_stiffness_scale_overrides[name]
+        elif name in actuated_joints:
+            stiffness_scale = actuated_joint_stiffness_scale
+        else:
+            stiffness_scale = 1.0
         joint.set(
             "stiffness", _format_float(stiffness_per_row_sum * scale * stiffness_scale)
         )

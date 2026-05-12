@@ -22,10 +22,26 @@ ACCELEROMETER_SENSOR = "accelerometer"
 UPVECTOR_SENSOR = "upvector"
 GLOBAL_LINVEL_SENSOR = "global_linvel"
 GLOBAL_ANGVEL_SENSOR = "global_angvel"
+UPRIGHT_ROOT_ROLL = np.pi / 2.0
+UPRIGHT_GRAVITY = np.array([0.0, -1.0, 0.0])
+STANDING_HIP_FLEXION = np.deg2rad(-30.0)
+STANDING_KNEE_FLEXION = np.deg2rad(30.0)
+STANDING_ANKLE_FLEXION = np.deg2rad(-75.0)
+STANDING_FOOT_PENETRATION = 0.01
 
 TAIL_ACTUATORS = (
     "actuator_tail_sagittal",
     "actuator_tail_mediolateral",
+)
+
+TAIL_TENDON_JOINTS = (
+    "joint_vertebra_caudal_02",
+    "joint_vertebra_caudal_03",
+    "joint_vertebra_caudal_10",
+    "joint_vertebra_caudal_11",
+    "joint_vertebra_caudal_24",
+    "joint_vertebra_caudal_25",
+    "joint_vertebra_caudal_34",
 )
 
 JOINT_QPOS_DOF = 31
@@ -63,6 +79,7 @@ def trex_getup_mjcf(
     ),
     armature_per_row_sum: float = mjx_model_simplification.DEFAULT_ARMATURE_PER_ROW_SUM,
     actuated_joint_stiffness_scale: float = 1.0,
+    tail_joint_stiffness_scale: float = 1.0,
 ) -> ElementTree.Element:
     """Builds the simplified T-Rex getup scene MJCF."""
     node = mjx_model_simplification.urdf_to_mjx_mujoco(load_urdf())
@@ -78,6 +95,10 @@ def trex_getup_mjcf(
         armature_per_row_sum=armature_per_row_sum,
         actuator_kp_per_row_sum=position_kp_per_row_sum,
         actuated_joint_stiffness_scale=actuated_joint_stiffness_scale,
+        joint_stiffness_scale_overrides={
+            joint_name: tail_joint_stiffness_scale
+            for joint_name in TAIL_TENDON_JOINTS
+        },
     )
     return node
 
@@ -94,6 +115,7 @@ def trex_getup_xml(
     ),
     armature_per_row_sum: float = mjx_model_simplification.DEFAULT_ARMATURE_PER_ROW_SUM,
     actuated_joint_stiffness_scale: float = 1.0,
+    tail_joint_stiffness_scale: float = 1.0,
 ) -> str:
     return mujoco_parsing.to_string(
         trex_getup_mjcf(
@@ -102,6 +124,7 @@ def trex_getup_xml(
             passive_damping_per_row_sum=passive_damping_per_row_sum,
             armature_per_row_sum=armature_per_row_sum,
             actuated_joint_stiffness_scale=actuated_joint_stiffness_scale,
+            tail_joint_stiffness_scale=tail_joint_stiffness_scale,
         )
     )
 
@@ -119,9 +142,37 @@ def side_lying_qpos(model) -> np.ndarray:
 def zero_upright_qpos(model) -> np.ndarray:
     qpos = np.zeros(model.nq)
     qpos[0:3] = np.array([0.0, 0.0, 0.0])
-    qpos[3:7] = np.array([1.0, 0.0, 0.0, 0.0])
-    qpos[2] = _ground_clearance_root_height(model, qpos)
+    quat_xyzw = transform.Rotation.from_euler("x", UPRIGHT_ROOT_ROLL).as_quat()
+    qpos[3:7] = np.array([quat_xyzw[3], quat_xyzw[0], quat_xyzw[1], quat_xyzw[2]])
+    qpos[2] = _ground_clearance_root_height(
+        model, qpos, margin=-STANDING_FOOT_PENETRATION
+    )
     return qpos
+
+
+def standing_qpos(model) -> np.ndarray:
+    """Returns the current getup target stance with feet just into the ground."""
+    qpos = zero_upright_qpos(model)
+    qpos[2] = 0.0
+    _set_joint_qpos(model, qpos, "joint_femur_right", STANDING_HIP_FLEXION)
+    _set_joint_qpos(model, qpos, "joint_femur_left", STANDING_HIP_FLEXION)
+    _set_joint_qpos(model, qpos, "joint_tibia_right", STANDING_KNEE_FLEXION)
+    _set_joint_qpos(model, qpos, "joint_tibia_left", STANDING_KNEE_FLEXION)
+    _set_joint_qpos(
+        model, qpos, "joint_tarsometatarsus_right", STANDING_ANKLE_FLEXION
+    )
+    _set_joint_qpos(model, qpos, "joint_tarsometatarsus_left", STANDING_ANKLE_FLEXION)
+    qpos[2] = _ground_clearance_root_height(
+        model, qpos, margin=-STANDING_FOOT_PENETRATION
+    )
+    return qpos
+
+
+def standing_torso_height(model) -> float:
+    data = mujoco.MjData(model)
+    data.qpos[:] = standing_qpos(model)
+    mujoco.mj_forward(model, data)
+    return float(data.site_xpos[model.site(IMU_SITE).id, 2])
 
 
 def _add_scene(node: ElementTree.Element) -> None:
@@ -265,6 +316,10 @@ def _add_keyframes(node: ElementTree.Element) -> None:
 
 def _format_values(values: list[float]) -> str:
     return " ".join(f"{value:.17g}" for value in values)
+
+
+def _set_joint_qpos(model, qpos: np.ndarray, joint_name: str, value: float) -> None:
+    qpos[model.jnt_qposadr[model.joint(joint_name).id]] = value
 
 
 def _ground_clearance_root_height(

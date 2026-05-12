@@ -40,17 +40,18 @@ def default_config() -> config_dict.ConfigDict:
         Kp=200.0,
         passive_stiffness=1000.0,
         actuated_joint_passive_stiffness_scale=0.0,
+        tail_joint_passive_stiffness_scale=1.0,
         passive_damping=80.0,
         armature=0.2,
         episode_length=300,
         action_repeat=1,
-        action_scale=0.4,
+        action_scale=0.9,
         reset_xy_range=0.25,
         reset_yaw_range=3.141592653589793,
         reset_joint_noise=0.0,
         reset_qvel_noise=0.05,
         reset_height_noise=0.02,
-        torso_height=1.0,
+        torso_height=2.5,
         reward_config=config_dict.create(
             scales=config_dict.create(
                 orientation=1.0,
@@ -62,6 +63,7 @@ def default_config() -> config_dict.ConfigDict:
             ),
         ),
         impl="jax",
+        upright_gravity=consts.UPRIGHT_GRAVITY.tolist(),
         naconmax=4096,
         njmax=512,
     )
@@ -86,6 +88,9 @@ class TrexGetup(mjx_env.MjxEnv):
                 passive_stiffness_per_row_sum=self._config.passive_stiffness,
                 actuated_joint_stiffness_scale=(
                     self._config.actuated_joint_passive_stiffness_scale
+                ),
+                tail_joint_stiffness_scale=(
+                    self._config.tail_joint_passive_stiffness_scale
                 ),
                 passive_damping_per_row_sum=self._config.passive_damping,
                 armature_per_row_sum=self._config.armature,
@@ -113,6 +118,8 @@ class TrexGetup(mjx_env.MjxEnv):
         )
         self._default_ctrl = jp.zeros(self._mj_model.nu)
         self._side_qpos = jp.array(consts.side_lying_qpos(self._mj_model))
+        self._standing_qpos = jp.array(consts.standing_qpos(self._mj_model))
+        self._target_torso_height = float(self._config.torso_height)
 
     def reset(self, rng: jax.Array) -> mjx_env.State:
         side_rng, yaw_rng, xy_rng, joint_rng, qvel_rng, height_rng = jax.random.split(
@@ -240,18 +247,18 @@ class TrexGetup(mjx_env.MjxEnv):
         }
 
     def _reward_orientation(self, gravity: jax.Array) -> jax.Array:
-        target = jp.array([0.0, 0.0, -1.0])
+        target = jp.array(self._config.upright_gravity)
         return jp.exp(-2.0 * jp.sum(jp.square(target - gravity)))
 
     def _reward_height(self, torso_height: jax.Array) -> jax.Array:
-        height_error = jp.maximum(self._config.torso_height - torso_height, 0.0)
+        height_error = jp.maximum(self._target_torso_height - torso_height, 0.0)
         return jp.exp(-2.0 * jp.square(height_error))
 
     def _reward_stand_still(
         self, action: jax.Array, gravity: jax.Array, torso_height: jax.Array
     ) -> jax.Array:
         upright = self._reward_orientation(gravity) > 0.95
-        high = torso_height > self._config.torso_height * 0.95
+        high = torso_height > self._target_torso_height * 0.95
         return (upright * high) * jp.exp(-jp.sum(jp.square(action)))
 
     def _cost_action_rate(self, action: jax.Array, info: dict[str, Any]) -> jax.Array:
