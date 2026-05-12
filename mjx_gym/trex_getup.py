@@ -13,11 +13,8 @@ from mujoco_playground._src import mjx_env
 from mjx_gym import trex_constants as consts
 
 
-def _side_lying_quat(side: jax.Array, yaw: jax.Array) -> jax.Array:
-    roll = side * (jp.pi / 2.0)
-    roll_quat = jp.array([jp.cos(roll / 2.0), jp.sin(roll / 2.0), 0.0, 0.0])
-    yaw_quat = jp.array([jp.cos(yaw / 2.0), 0.0, 0.0, jp.sin(yaw / 2.0)])
-    return _quat_mul(yaw_quat, roll_quat)
+def _yaw_quat(yaw: jax.Array) -> jax.Array:
+    return jp.array([jp.cos(yaw / 2.0), 0.0, 0.0, jp.sin(yaw / 2.0)])
 
 
 def _quat_mul(left: jax.Array, right: jax.Array) -> jax.Array:
@@ -122,10 +119,7 @@ class TrexGetup(mjx_env.MjxEnv):
         self._target_torso_height = float(self._config.torso_height)
 
     def reset(self, rng: jax.Array) -> mjx_env.State:
-        side_rng, yaw_rng, xy_rng, joint_rng, qvel_rng, height_rng = jax.random.split(
-            rng, 6
-        )
-        side = jp.where(jax.random.bernoulli(side_rng), 1.0, -1.0)
+        yaw_rng, xy_rng, joint_rng, qvel_rng, height_rng = jax.random.split(rng, 5)
         yaw = jax.random.uniform(
             yaw_rng,
             (),
@@ -152,7 +146,7 @@ class TrexGetup(mjx_env.MjxEnv):
         )
         qpos = self._side_qpos.at[0:2].set(xy)
         qpos = qpos.at[2].add(height_noise)
-        qpos = qpos.at[3:7].set(_side_lying_quat(side, yaw))
+        qpos = qpos.at[3:7].set(_yaw_quat(yaw))
         qpos = qpos.at[7:].set(joint_noise)
         qvel = jax.random.normal(qvel_rng, (self.mjx_model.nv,)) * (
             self._config.reset_qvel_noise

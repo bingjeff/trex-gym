@@ -78,6 +78,18 @@ class TestMjxGym(unittest.TestCase):
                 )
         self.assertTrue(any("toe" in name for name in floor_contacts))
 
+    def test_reset_randomizes_yaw_without_matching_upright_orientation(self):
+        env = trex_getup.TrexGetup()
+
+        for seed in range(8):
+            state = env.reset(jax.random.PRNGKey(seed))
+            orientation = float(env._reward_orientation(env.get_gravity(state.data)))
+            height = float(
+                env._reward_height(state.data.site_xpos[env._imu_site_id, 2])
+            )
+            self.assertLess(orientation, 0.1)
+            self.assertLess(height, 0.1)
+
     def test_trex_getup_contacts_are_ground_only(self):
         env = trex_getup.TrexGetup()
         model = env.mj_model
