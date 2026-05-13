@@ -49,12 +49,17 @@ def analyze(args: argparse.Namespace) -> None:
     max_turn_error = 0.0
     mean_abs_action = 0.0
     max_abs_action = 0.0
+    mean_foot_speed = 0.0
+    max_foot_speed = 0.0
+    mean_stride_extent = 0.0
+    max_stride_extent = 0.0
     min_torso_height = np.inf
     max_torso_height = -np.inf
     min_orientation = np.inf
     max_orientation = -np.inf
     first_xy: np.ndarray | None = None
     last_xy: np.ndarray | None = None
+    previous_foot_centers: np.ndarray | None = None
 
     for step_index in range(args.steps):
         state.info["command"] = command
@@ -88,6 +93,22 @@ def analyze(args: argparse.Namespace) -> None:
         max_turn_error = max(max_turn_error, turn_error)
         mean_abs_action += float(np.mean(np.abs(action_np)))
         max_abs_action = max(max_abs_action, float(np.max(np.abs(action_np))))
+        foot_centers = np.asarray(jax.device_get(env._foot_centers_world(state.data)))
+        if previous_foot_centers is not None:
+            foot_speed = np.linalg.norm(
+                (foot_centers - previous_foot_centers) / env.dt, axis=1
+            )
+            mean_foot_speed += float(np.mean(foot_speed))
+            max_foot_speed = max(max_foot_speed, float(np.max(foot_speed)))
+        previous_foot_centers = foot_centers.copy()
+        left_offset, right_offset = jax.device_get(
+            env._mjx_foot_offsets_in_torso_frame(state.data)
+        )
+        left_stride = abs(float(left_offset[0] - env._standing_left_foot_offset[0]))
+        right_stride = abs(float(right_offset[0] - env._standing_right_foot_offset[0]))
+        stride_extent = 0.5 * (left_stride + right_stride)
+        mean_stride_extent += stride_extent
+        max_stride_extent = max(max_stride_extent, stride_extent)
 
         torso_height = float(np.asarray(data.site_xpos)[env._imu_site_id, 2])
         min_torso_height = min(min_torso_height, torso_height)
@@ -116,6 +137,10 @@ def analyze(args: argparse.Namespace) -> None:
     print(f"max_turn_error: {max_turn_error:.3f}")
     print(f"mean_abs_action: {mean_abs_action / sample_steps:.3f}")
     print(f"max_abs_action: {max_abs_action:.3f}")
+    print(f"mean_foot_speed: {mean_foot_speed / max(sample_steps - 1, 1):.3f}")
+    print(f"max_foot_speed: {max_foot_speed:.3f}")
+    print(f"mean_stride_extent: {mean_stride_extent / sample_steps:.3f}")
+    print(f"max_stride_extent: {max_stride_extent:.3f}")
     if first_xy is not None and last_xy is not None:
         print(f"base_xy_displacement: {np.linalg.norm(last_xy - first_xy):.3f}")
     print(f"torso_height_range: {min_torso_height:.3f} {max_torso_height:.3f}")
