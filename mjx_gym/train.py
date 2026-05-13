@@ -64,6 +64,7 @@ def trex_ppo_config(env_name: str, impl: str | None = None) -> config_dict.Confi
         num_envs=1024,
         batch_size=256,
         max_grad_norm=1.0,
+        restore_value_fn=False,
         network_factory=config_dict.create(
             policy_hidden_layer_sizes=(128, 128, 128),
             value_hidden_layer_sizes=(256, 256, 256),
