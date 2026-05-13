@@ -298,8 +298,12 @@ class TrexJoystick(trex_getup.TrexGetup):
         locomotion_gate = orientation * height * clearance
         standing_gate = self._standing_command_gate(info["command"])
         moving_gate = 1.0 - standing_gate
+        running_height_gate = self._reward_running_height_gate(torso_height)
         running_gate = (
-            locomotion_gate * moving_gate * self._running_speed_gate(info["command"])
+            locomotion_gate
+            * moving_gate
+            * running_height_gate
+            * self._running_speed_gate(info["command"])
         )
         local_linvel = self.get_local_linvel(data)
         local_angvel = self.get_local_angvel(data)
@@ -307,7 +311,9 @@ class TrexJoystick(trex_getup.TrexGetup):
             info["command"], local_linvel
         )
         moving_support_gate = self._moving_foot_support_gate(data)
-        speed_tracking_gate = standing_gate + moving_gate * moving_support_gate
+        speed_tracking_gate = standing_gate + (
+            moving_gate * moving_support_gate * running_height_gate
+        )
         return {
             "orientation": orientation,
             "torso_height": orientation * height,
@@ -352,8 +358,11 @@ class TrexJoystick(trex_getup.TrexGetup):
             "vertical_vel": locomotion_gate * jp.square(local_linvel[1]),
             "base_tilt_ang_vel": locomotion_gate
             * self._cost_base_tilt_ang_vel(local_angvel),
-            "no_foot_contact": running_gate * self._cost_no_foot_contact(data),
-            "running_height_excess": running_gate
+            "no_foot_contact": moving_gate
+            * self._running_speed_gate(info["command"])
+            * self._cost_no_foot_contact(data),
+            "running_height_excess": moving_gate
+            * self._running_speed_gate(info["command"])
             * self._cost_running_height_excess(torso_height),
             "foot_slip": running_gate * self._cost_foot_slip(data, info),
             "stand_still": standing_gate
@@ -506,6 +515,11 @@ class TrexJoystick(trex_getup.TrexGetup):
     def _cost_running_height_excess(self, torso_height: jax.Array) -> jax.Array:
         max_running_height = self._target_torso_height + 0.10
         return jp.square(jp.maximum(torso_height - max_running_height, 0.0))
+
+    def _reward_running_height_gate(self, torso_height: jax.Array) -> jax.Array:
+        max_running_height = self._target_torso_height + 0.10
+        excess = jp.maximum(torso_height - max_running_height, 0.0)
+        return jp.exp(-10.0 * jp.square(excess))
 
     def _reward_commanded_stand_still(
         self,

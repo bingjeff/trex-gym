@@ -504,6 +504,8 @@ class TestMjxGym(unittest.TestCase):
         )
         self.assertAlmostEqual(float(env._cost_running_height_excess(2.55)), 0.0)
         self.assertGreater(float(env._cost_running_height_excess(3.00)), 0.1)
+        self.assertGreater(float(env._reward_running_height_gate(2.55)), 0.9)
+        self.assertLess(float(env._reward_running_height_gate(3.50)), 0.01)
         self.assertAlmostEqual(
             float(env._reward_tracking_turn_vel(command, jp.array([0.0, 0.5, 0.0]))),
             1.0,
