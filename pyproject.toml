@@ -20,6 +20,7 @@ dependencies = [
     "numpy",
     "playground[learning]>=0.2.0",
     "pycollada",
+    "pygame",
     "scipy",
     "warp-lang==1.12.0",
 ]
