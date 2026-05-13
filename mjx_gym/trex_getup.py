@@ -66,7 +66,8 @@ def default_config() -> config_dict.ConfigDict:
                 torques=-1e-9,
                 dof_vel=-1e-6,
                 root_vel=-1e-4,
-                base_ang_vel=-2e-2,
+                base_lin_vel=-5e-1,
+                base_ang_vel=-5e-1,
             ),
         ),
         impl="jax",
@@ -271,6 +272,7 @@ class TrexGetup(mjx_env.MjxEnv):
         gravity = self.get_gravity(data)
         torso_height = data.site_xpos[self._imu_site_id][2]
         orientation = self._reward_orientation(gravity)
+        stillness_gate = orientation * self._reward_height(torso_height)
         return {
             "orientation": orientation,
             "torso_height": orientation * self._reward_height(torso_height),
@@ -284,7 +286,8 @@ class TrexGetup(mjx_env.MjxEnv):
             "torques": self._cost_torques(data.actuator_force),
             "dof_vel": self._cost_dof_vel(data.qvel[6:]),
             "root_vel": self._cost_root_vel(data.qvel[:6]),
-            "base_ang_vel": self._cost_base_ang_vel(data.qvel[3:6]),
+            "base_lin_vel": stillness_gate * self._cost_base_lin_vel(data.qvel[:3]),
+            "base_ang_vel": stillness_gate * self._cost_base_ang_vel(data.qvel[3:6]),
         }
 
     def _is_non_foot_contact_geom(self, geom_id: int) -> bool:
@@ -431,6 +434,9 @@ class TrexGetup(mjx_env.MjxEnv):
 
     def _cost_root_vel(self, qvel: jax.Array) -> jax.Array:
         return jp.sum(jp.square(qvel[:3])) + 0.25 * jp.sum(jp.square(qvel[3:6]))
+
+    def _cost_base_lin_vel(self, qvel: jax.Array) -> jax.Array:
+        return jp.sum(jp.square(qvel))
 
     def _cost_base_ang_vel(self, qvel: jax.Array) -> jax.Array:
         return jp.sum(jp.square(qvel))

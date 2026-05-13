@@ -106,6 +106,9 @@ def analyze(args: argparse.Namespace) -> None:
     max_base_lin_vel = 0.0
     mean_base_ang_vel = 0.0
     max_base_ang_vel = 0.0
+    first_base_xy: np.ndarray | None = None
+    last_base_xy: np.ndarray | None = None
+    max_base_xy_displacement = 0.0
 
     non_foot_geom_ids = np.asarray(env._non_foot_geom_ids, dtype=int)
     left_foot_geom_ids = np.asarray(env._left_foot_geom_ids, dtype=int)
@@ -126,6 +129,14 @@ def analyze(args: argparse.Namespace) -> None:
         mean_abs_action += float(np.mean(np.abs(action_np)))
         max_abs_action = max(max_abs_action, float(np.max(np.abs(action_np))))
         qvel = np.asarray(data.qvel)
+        base_xy = np.asarray(data.qpos[:2])
+        if first_base_xy is None:
+            first_base_xy = base_xy.copy()
+        last_base_xy = base_xy.copy()
+        max_base_xy_displacement = max(
+            max_base_xy_displacement,
+            float(np.linalg.norm(base_xy - first_base_xy)),
+        )
         base_lin_vel = float(np.linalg.norm(qvel[:3]))
         base_ang_vel = float(np.linalg.norm(qvel[3:6]))
         mean_base_lin_vel += base_lin_vel
@@ -152,7 +163,9 @@ def analyze(args: argparse.Namespace) -> None:
         max_orientation = max(max_orientation, orientation)
 
         data_impl = data._impl
-        contact = data_impl.contact
+        contact = getattr(data_impl, "contact", None)
+        if contact is None:
+            continue
         ncon_value = getattr(data_impl, "ncon", None)
         if ncon_value is None:
             ncon_value = getattr(data_impl, "nacon", 0)
@@ -196,12 +209,17 @@ def analyze(args: argparse.Namespace) -> None:
     print(f"max_base_lin_vel: {max_base_lin_vel:.3f}")
     print(f"mean_base_ang_vel: {mean_base_ang_vel / sample_steps:.3f}")
     print(f"max_base_ang_vel: {max_base_ang_vel:.3f}")
+    if first_base_xy is not None and last_base_xy is not None:
+        print(f"base_xy_displacement: {np.linalg.norm(last_base_xy - first_base_xy):.3f}")
+        print(f"max_base_xy_displacement: {max_base_xy_displacement:.3f}")
     print(f"torso_height_range: {min_torso_height:.3f} {max_torso_height:.3f}")
     print(f"orientation_reward_range: {min_orientation:.3f} {max_orientation:.3f}")
     print(f"min_non_foot_bottom: {min_non_foot_bottom:.3f}")
     print(f"min_left_foot_bottom: {min_left_foot_bottom:.3f}")
     print(f"min_right_foot_bottom: {min_right_foot_bottom:.3f}")
     print("contact_steps:")
+    if sample_steps and not hasattr(data._impl, "contact"):
+        print("  skipped: contact data is not exposed by this MJX implementation")
     for key in ("any_floor", "foot_floor", "non_foot_floor", "non_floor"):
         print(f"  {key}: {contact_steps[key]}")
     print("reward_terms:")
