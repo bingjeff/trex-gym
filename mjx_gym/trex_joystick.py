@@ -18,15 +18,32 @@ def default_config() -> config_dict.ConfigDict:
     config.reset_standing_prob = 0.5
     config.reset_command_interval_mean = 3.0
     config.stand_action_smoothing = 0.5
+    config.stand_pose_action = [
+        0.0,
+        0.0,
+        -0.1666667,
+        -0.1666667,
+        0.1111111,
+        0.1111111,
+        -0.7083333,
+        -0.7083333,
+        0.0,
+        0.0,
+    ]
+    config.stand_pose_orientation_threshold = 0.95
+    config.stand_pose_height_fraction = 0.90
+    config.stand_pose_clearance_threshold = 0.90
     config.command_config = config_dict.create(
         forward_min=0.0,
         forward_max=10.0,
+        high_speed_min=7.0,
+        high_speed_prob=0.70,
         turn_max=1.0,
-        zero_prob=0.35,
+        zero_prob=0.25,
         turn_zero_prob=0.5,
     )
     config.reward_config.tracking_sigma = 0.25
-    config.reward_config.high_speed_tracking_sigma_scale = 0.5
+    config.reward_config.high_speed_tracking_sigma_scale = 0.05
     config.reward_config.turn_tracking_sigma = 0.25
     config.reward_config.scales = config_dict.create(
         orientation=2.0,
@@ -36,8 +53,8 @@ def default_config() -> config_dict.ConfigDict:
         foot_balance=1.0,
         foot_placement=1.0,
         standing_pose=1.0,
-        tracking_forward_vel=6.0,
-        forward_progress=4.0,
+        tracking_forward_vel=8.0,
+        forward_progress=8.0,
         tracking_turn_vel=1.0,
         running_stride=0.25,
         running_foot_clearance=0.25,
@@ -64,6 +81,7 @@ class TrexJoystick(trex_getup.TrexGetup):
     ):
         super().__init__(config, config_overrides)
         self._command_zero = jp.zeros(2)
+        self._stand_pose_action = jp.array(self._config.stand_pose_action)
 
     def reset(self, rng: jax.Array) -> mjx_env.State:
         (
@@ -151,6 +169,7 @@ class TrexJoystick(trex_getup.TrexGetup):
     def step(self, state: mjx_env.State, action: jax.Array) -> mjx_env.State:
         clipped_action = jp.clip(action, -1.0, 1.0)
         standing_gate = self._standing_command_gate(state.info["command"])
+        stand_pose_gate = self._stand_pose_gate(state.data, standing_gate)
         start_standing = standing_gate * (1.0 - state.info["was_standing_command"])
         smoothed_stand_act = state.info["stand_hold_act"] + (
             self._config.stand_action_smoothing
@@ -161,7 +180,10 @@ class TrexJoystick(trex_getup.TrexGetup):
             clipped_action,
             smoothed_stand_act,
         )
-        applied_action = jp.where(standing_gate, stand_hold_act, clipped_action)
+        applied_stand_action = jp.where(
+            stand_pose_gate, self._stand_pose_action, stand_hold_act
+        )
+        applied_action = jp.where(standing_gate, applied_stand_action, clipped_action)
         target_scale = jp.where(
             applied_action >= 0.0,
             self._action_ctrl_positive_scale,
@@ -188,7 +210,7 @@ class TrexJoystick(trex_getup.TrexGetup):
         state.info["last_last_act"] = state.info["last_act"]
         state.info["last_act"] = applied_action
         state.info["stand_hold_act"] = jp.where(
-            standing_gate, stand_hold_act, clipped_action
+            standing_gate, applied_action, clipped_action
         )
         state.info["was_standing_command"] = standing_gate
         state.info["last_foot_centers"] = self._foot_centers_world(data)
@@ -306,12 +328,32 @@ class TrexJoystick(trex_getup.TrexGetup):
         }
 
     def _sample_command(self, rng: jax.Array) -> jax.Array:
-        forward_rng, turn_rng, zero_rng, turn_zero_rng = jax.random.split(rng, 4)
+        (
+            forward_rng,
+            high_speed_rng,
+            high_speed_choice_rng,
+            turn_rng,
+            zero_rng,
+            turn_zero_rng,
+        ) = jax.random.split(rng, 6)
         forward = jax.random.uniform(
             forward_rng,
             (),
             minval=self._config.command_config.forward_min,
             maxval=self._config.command_config.forward_max,
+        )
+        high_speed_forward = jax.random.uniform(
+            high_speed_rng,
+            (),
+            minval=self._config.command_config.high_speed_min,
+            maxval=self._config.command_config.forward_max,
+        )
+        forward = jp.where(
+            jax.random.bernoulli(
+                high_speed_choice_rng, self._config.command_config.high_speed_prob
+            ),
+            high_speed_forward,
+            forward,
         )
         turn = jax.random.uniform(
             turn_rng,
@@ -376,6 +418,20 @@ class TrexJoystick(trex_getup.TrexGetup):
 
     def _standing_command_gate(self, command: jax.Array) -> jax.Array:
         return (jp.linalg.norm(command) < 0.05).astype(jp.float32)
+
+    def _stand_pose_gate(self, data: mjx.Data, standing_gate: jax.Array) -> jax.Array:
+        orientation = self._reward_orientation(self.get_gravity(data))
+        torso_height = data.site_xpos[self._imu_site_id, 2]
+        clearance = self._reward_non_foot_clearance(data)
+        ready = (
+            (orientation > self._config.stand_pose_orientation_threshold)
+            & (
+                torso_height
+                > self._target_torso_height * self._config.stand_pose_height_fraction
+            )
+            & (clearance > self._config.stand_pose_clearance_threshold)
+        )
+        return standing_gate * ready.astype(jp.float32)
 
     def _running_speed_gate(self, command: jax.Array) -> jax.Array:
         return jp.clip((jp.abs(command[0]) - 1.0) / 4.0, 0.0, 1.0)

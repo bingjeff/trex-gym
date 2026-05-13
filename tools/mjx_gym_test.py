@@ -387,6 +387,23 @@ class TestMjxGym(unittest.TestCase):
         self.assertGreater(float(next_state.data.time), 0.0)
         self.assertGreaterEqual(float(next_state.reward), env._config.reward_clip_min)
 
+    def test_trex_joystick_zero_command_uses_stable_stand_pose_when_upright(self):
+        config = trex_joystick.default_config()
+        config.reset_standing_prob = 1.0
+        env = trex_joystick.TrexJoystick(config)
+        state = env.reset(jax.random.PRNGKey(0))
+        state.info["command"] = jp.zeros(2)
+
+        requested_action = jp.ones(env.action_size)
+        next_state = env.step(state, requested_action)
+
+        self.assertTrue(
+            np.allclose(
+                np.asarray(next_state.info["last_act"]),
+                np.asarray(config.stand_pose_action),
+            )
+        )
+
     def test_trex_joystick_tracking_rewards_use_forward_and_turn_axes(self):
         env = trex_joystick.TrexJoystick()
         command = jp.array([1.0, 0.5])
