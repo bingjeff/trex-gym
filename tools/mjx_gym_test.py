@@ -417,6 +417,26 @@ class TestMjxGym(unittest.TestCase):
         self.assertLess(small_stride, 0.1)
         self.assertGreater(large_stride, 0.9)
 
+    def test_trex_joystick_running_gait_rewards_require_speed_and_one_foot_duty(self):
+        env = trex_joystick.TrexJoystick()
+        command = jp.array([10.0, 0.0])
+
+        stopped = float(env._achieved_running_speed_gate(command, jp.zeros(3)))
+        running = float(
+            env._achieved_running_speed_gate(command, jp.array([8.0, 0.0, 0.0]))
+        )
+        both_planted = float(
+            jp.exp(-4.0 * jp.square(jp.sum(jp.array([1.0, 1.0])) - 1.0))
+        )
+        alternating_duty = float(
+            jp.exp(-4.0 * jp.square(jp.sum(jp.array([0.5, 0.5])) - 1.0))
+        )
+
+        self.assertLess(stopped, 0.1)
+        self.assertGreater(running, 0.9)
+        self.assertLess(both_planted, 0.1)
+        self.assertGreater(alternating_duty, 0.9)
+
     def test_trex_joystick_tracking_rewards_use_forward_and_turn_axes(self):
         env = trex_joystick.TrexJoystick()
         command = jp.array([1.0, 0.5])

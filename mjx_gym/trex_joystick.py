@@ -59,9 +59,9 @@ def default_config() -> config_dict.ConfigDict:
         tracking_turn_vel=4.0,
         running_stride=0.25,
         running_foot_clearance=0.25,
-        gait_anti_phase=4.0,
-        gait_symmetry=2.0,
-        contact_duty_symmetry=2.0,
+        gait_anti_phase=2.0,
+        gait_symmetry=1.0,
+        contact_duty_symmetry=1.0,
         foot_contact_balance=0.5,
         lateral_vel=-0.25,
         vertical_vel=-0.5,
@@ -289,6 +289,9 @@ class TrexJoystick(trex_getup.TrexGetup):
         )
         local_linvel = self.get_local_linvel(data)
         local_angvel = self.get_local_angvel(data)
+        achieved_running_gate = running_gate * self._achieved_running_speed_gate(
+            info["command"], local_linvel
+        )
         return {
             "orientation": orientation,
             "torso_height": orientation * height,
@@ -311,14 +314,15 @@ class TrexJoystick(trex_getup.TrexGetup):
             * self._reward_forward_progress(info["command"], local_linvel),
             "tracking_turn_vel": locomotion_gate
             * self._reward_tracking_turn_vel(info["command"], local_angvel),
-            "running_stride": running_gate * self._reward_running_stride(data),
-            "running_foot_clearance": running_gate
+            "running_stride": achieved_running_gate * self._reward_running_stride(data),
+            "running_foot_clearance": achieved_running_gate
             * self._reward_running_foot_clearance(data),
-            "gait_anti_phase": running_gate * self._reward_gait_anti_phase(data),
-            "gait_symmetry": running_gate * self._reward_gait_symmetry(data),
-            "contact_duty_symmetry": running_gate
+            "gait_anti_phase": achieved_running_gate
+            * self._reward_gait_anti_phase(data),
+            "gait_symmetry": achieved_running_gate * self._reward_gait_symmetry(data),
+            "contact_duty_symmetry": achieved_running_gate
             * self._reward_contact_duty_symmetry(data, info),
-            "foot_contact_balance": running_gate
+            "foot_contact_balance": achieved_running_gate
             * self._reward_foot_contact_balance(data),
             "lateral_vel": locomotion_gate * jp.square(local_linvel[2]),
             "vertical_vel": locomotion_gate * jp.square(local_linvel[1]),
@@ -451,6 +455,13 @@ class TrexJoystick(trex_getup.TrexGetup):
     def _running_speed_gate(self, command: jax.Array) -> jax.Array:
         return jp.clip((jp.abs(command[0]) - 1.0) / 4.0, 0.0, 1.0)
 
+    def _achieved_running_speed_gate(
+        self, command: jax.Array, local_linvel: jax.Array
+    ) -> jax.Array:
+        commanded_forward = jp.maximum(command[0], 1.0)
+        speed_fraction = local_linvel[0] / commanded_forward
+        return jp.clip((speed_fraction - 0.35) / 0.4, 0.0, 1.0)
+
     def _reward_running_stride(self, data: mjx.Data) -> jax.Array:
         left_offset, right_offset = self._mjx_foot_offsets_in_torso_frame(data)
         left_step = jp.abs(left_offset[0] - self._standing_left_foot_offset[0])
@@ -522,8 +533,9 @@ class TrexJoystick(trex_getup.TrexGetup):
         duty = self._updated_contact_duty(data, info)
         total = jp.sum(duty)
         symmetry = jp.exp(-8.0 * jp.square(duty[0] - duty[1]))
+        one_foot_average = jp.exp(-4.0 * jp.square(total - 1.0))
         active = jp.clip(total / 0.2, 0.0, 1.0)
-        return active * symmetry
+        return active * symmetry * one_foot_average
 
     def _updated_contact_duty(self, data: mjx.Data, info: dict[str, Any]) -> jax.Array:
         contacts = jp.array(self._foot_contact_scores(data))
