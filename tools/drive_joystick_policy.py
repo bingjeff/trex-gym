@@ -87,10 +87,25 @@ def drive(args: argparse.Namespace) -> None:
     env = trex_joystick.TrexJoystick(config)
     policy = jax.jit(_load_policy(args.checkpoint))
     step = jax.jit(env.step)
-    gamepad = Gamepad(args.gamepad, args.deadzone)
 
     rng = jax.random.PRNGKey(args.seed)
     state = env.reset(rng)
+    if args.check_load:
+        state.info["command"] = jp.zeros(2)
+        state.info["steps_until_next_cmd"] = args.hold_steps
+        state = state.replace(obs=env._get_obs(state.data, state.info))
+        rng, action_rng = jax.random.split(rng)
+        action, _ = policy(state.obs, action_rng)
+        state = step(state, action)
+        print(f"Loaded {args.checkpoint}")
+        print(f"Action size: {env.action_size}")
+        print(
+            f"First action mean abs: {float(np.mean(np.abs(jax.device_get(action)))):.3f}"
+        )
+        print(f"Post-step reward: {float(jax.device_get(state.reward)):.3f}")
+        return
+
+    gamepad = Gamepad(args.gamepad, args.deadzone)
     mj_data = mujoco.MjData(env.mj_model)
     _copy_to_mujoco_viewer(state.data, mj_data)
     mujoco.mj_forward(env.mj_model, mj_data)
@@ -135,6 +150,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-turn", type=float, default=1.0)
     parser.add_argument("--hold-steps", type=int, default=10_000)
     parser.add_argument("--start", choices=("standing", "side"), default="standing")
+    parser.add_argument(
+        "--check-load",
+        action="store_true",
+        help="Load the checkpoint and run one policy/env step without viewer input.",
+    )
     return parser.parse_args()
 
 

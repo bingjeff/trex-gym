@@ -146,3 +146,44 @@ uv run python tools/analyze_joystick_rollout.py \
   --steps 1000 \
   --skip-steps 500
 ```
+
+## TrexJoystick speed-only Warp 10M
+
+- Local path: `checkpoints/TrexJoystick-20260513-101726-speedonly-10m/`
+- Checkpoint: `checkpoints/TrexJoystick-20260513-101726-speedonly-10m/000011468800/`
+- Source run on pod: `/workspace/runs/TrexJoystick-20260513-101726-speedonly-10m`
+- Warm start: `/workspace/runs/TrexJoystick-20260513-063049-fast10-upright-20m/checkpoints/000022118400`
+- Training source: `75ba4d485e2e432b519ec04f3f12b2bedf2e1735`
+- Training backend: MuJoCo MJX Warp
+- Training length: 10M requested steps, final saved checkpoint at `000011468800`
+
+This checkpoint is the first joystick policy that combines the stable
+zero-command stand hold with a high-speed bounding run. It was fine-tuned from
+the prior fast joystick policy using standing resets only, no zero-command
+samples, and forward commands concentrated in the 8-10 m/s range. The guarded
+zero-command stand hold comes from the environment code at the source hash
+above, so the checkpoint should be used with that code or newer.
+
+Fixed-command diagnostics on the final checkpoint used the final 500 steps of a
+1000-step rollout with Warp:
+
+- Standing stop command `(0.0 m/s, 0.0 rad/s)`: mean foot speed 0.000 m/s, XY displacement 0.001 m, torso height 2.374 m, orientation reward 1.000-1.000, non-foot clearance full.
+- Standing forward command `(10.0 m/s, 0.0 rad/s)`: mean forward velocity 10.460 m/s, mean turn velocity 0.012 rad/s, mean stride extent 2.020 m, max stride extent 2.651 m, orientation reward 0.978-1.000, non-foot clearance full.
+
+Verify local policy loading without a gamepad or viewer:
+
+```bash
+uv run python tools/drive_joystick_policy.py \
+  /home/bingjeff/projects/trex-gym/checkpoints/TrexJoystick-20260513-101726-speedonly-10m/000011468800 \
+  --check-load \
+  --impl jax
+```
+
+Drive the policy interactively with a connected gamepad:
+
+```bash
+uv run python tools/drive_joystick_policy.py \
+  /home/bingjeff/projects/trex-gym/checkpoints/TrexJoystick-20260513-101726-speedonly-10m/000011468800 \
+  --start standing \
+  --impl jax
+```
