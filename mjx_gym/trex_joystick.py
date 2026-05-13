@@ -28,24 +28,24 @@ def default_config() -> config_dict.ConfigDict:
     config.reward_config.high_speed_tracking_sigma_scale = 0.5
     config.reward_config.turn_tracking_sigma = 0.25
     config.reward_config.scales = config_dict.create(
-        orientation=1.0,
-        torso_height=1.0,
-        non_foot_clearance=1.0,
-        foot_support=1.0,
-        foot_balance=0.5,
-        foot_placement=0.5,
-        standing_pose=0.5,
-        tracking_forward_vel=4.0,
+        orientation=2.0,
+        torso_height=2.0,
+        non_foot_clearance=2.0,
+        foot_support=2.0,
+        foot_balance=1.0,
+        foot_placement=1.0,
+        standing_pose=1.0,
+        tracking_forward_vel=6.0,
+        forward_progress=4.0,
         tracking_turn_vel=1.0,
-        running_stride=0.75,
-        running_foot_clearance=0.5,
+        running_stride=0.25,
+        running_foot_clearance=0.25,
         lateral_vel=-0.25,
         vertical_vel=-0.25,
         stand_still=2.0,
-        standing_base_lin_vel=-2.0,
-        standing_base_ang_vel=-2.0,
-        standing_foot_vel=-1.0,
-        standing_action=-0.05,
+        standing_base_lin_vel=-1.0,
+        standing_base_ang_vel=-1.0,
+        standing_foot_vel=-0.1,
         action_rate=-1e-5,
         torques=-1e-9,
         dof_vel=-1e-6,
@@ -258,6 +258,8 @@ class TrexJoystick(trex_getup.TrexGetup):
             * self._reward_standing_pose(data.qpos),
             "tracking_forward_vel": locomotion_gate
             * self._reward_tracking_forward_vel(info["command"], local_linvel),
+            "forward_progress": locomotion_gate
+            * self._reward_forward_progress(info["command"], local_linvel),
             "tracking_turn_vel": locomotion_gate
             * self._reward_tracking_turn_vel(info["command"], local_angvel),
             "running_stride": running_gate * self._reward_running_stride(data),
@@ -270,10 +272,15 @@ class TrexJoystick(trex_getup.TrexGetup):
             * self._reward_commanded_stand_still(
                 info["command"], local_linvel, local_angvel
             ),
-            "standing_base_lin_vel": standing_gate * jp.sum(jp.square(local_linvel)),
-            "standing_base_ang_vel": standing_gate * jp.sum(jp.square(local_angvel)),
-            "standing_foot_vel": standing_gate * self._cost_foot_vel(data, info),
-            "standing_action": standing_gate * jp.sum(jp.square(action)),
+            "standing_base_lin_vel": standing_gate
+            * locomotion_gate
+            * jp.sum(jp.square(local_linvel)),
+            "standing_base_ang_vel": standing_gate
+            * locomotion_gate
+            * jp.sum(jp.square(local_angvel)),
+            "standing_foot_vel": standing_gate
+            * locomotion_gate
+            * self._cost_foot_vel(data, info),
             "action_rate": self._cost_action_rate(action, info),
             "torques": self._cost_torques(data.actuator_force),
             "dof_vel": self._cost_dof_vel(data.qvel[6:]),
@@ -324,6 +331,14 @@ class TrexJoystick(trex_getup.TrexGetup):
             * jp.square(high_speed)
         )
         return jp.exp(-error / sigma)
+
+    def _reward_forward_progress(
+        self, command: jax.Array, local_linvel: jax.Array
+    ) -> jax.Array:
+        commanded_forward = jp.maximum(command[0], 0.0)
+        moving_forward = commanded_forward > 0.05
+        speed_fraction = local_linvel[0] / jp.maximum(commanded_forward, 1.0)
+        return moving_forward * jp.clip(speed_fraction, 0.0, 1.0)
 
     def _reward_tracking_turn_vel(
         self, command: jax.Array, local_angvel: jax.Array
