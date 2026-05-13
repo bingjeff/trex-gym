@@ -40,28 +40,34 @@ def default_config() -> config_dict.ConfigDict:
         tail_joint_passive_stiffness_scale=1.0,
         passive_damping=80.0,
         armature=0.2,
-        episode_length=300,
+        episode_length=750,
         action_repeat=1,
-        action_scale=0.9,
+        action_scale=1.0,
         reset_xy_range=0.25,
         reset_yaw_range=3.141592653589793,
         reset_joint_noise=0.0,
         reset_qvel_noise=0.05,
         reset_height_noise=0.02,
         torso_height=2.5,
+        clearance_height=0.12,
+        reward_clip_min=-100.0,
+        reward_clip_max=10000.0,
         reward_config=config_dict.create(
             scales=config_dict.create(
                 orientation=1.0,
                 torso_height=1.0,
+                non_foot_clearance=1.0,
+                foot_support=1.0,
                 stand_still=0.25,
-                action_rate=-0.001,
-                torques=-1e-6,
-                dof_vel=-0.01,
+                action_rate=-1e-5,
+                torques=-1e-9,
+                dof_vel=-1e-6,
+                root_vel=-1e-4,
             ),
         ),
         impl="jax",
         upright_gravity=consts.UPRIGHT_GRAVITY.tolist(),
-        naconmax=4096,
+        naconmax=16384,
         njmax=512,
     )
 
@@ -117,6 +123,16 @@ class TrexGetup(mjx_env.MjxEnv):
         self._side_qpos = jp.array(consts.side_lying_qpos(self._mj_model))
         self._standing_qpos = jp.array(consts.standing_qpos(self._mj_model))
         self._target_torso_height = float(self._config.torso_height)
+        self._non_foot_geom_ids = jp.array(
+            [
+                geom_id
+                for geom_id in range(self._mj_model.ngeom)
+                if self._is_non_foot_contact_geom(geom_id)
+            ],
+            dtype=jp.int32,
+        )
+        self._left_foot_geom_ids = self._foot_geom_ids("left")
+        self._right_foot_geom_ids = self._foot_geom_ids("right")
 
     def reset(self, rng: jax.Array) -> mjx_env.State:
         yaw_rng, xy_rng, joint_rng, qvel_rng, height_rng = jax.random.split(rng, 5)
@@ -191,7 +207,11 @@ class TrexGetup(mjx_env.MjxEnv):
             key: value * self._config.reward_config.scales[key]
             for key, value in rewards.items()
         }
-        reward = jp.clip(sum(rewards.values()) * self.dt, 0.0, 10000.0)
+        reward = jp.clip(
+            sum(rewards.values()) * self.dt,
+            self._config.reward_clip_min,
+            self._config.reward_clip_max,
+        )
 
         state.info["last_last_act"] = state.info["last_act"]
         state.info["last_act"] = action
@@ -234,11 +254,40 @@ class TrexGetup(mjx_env.MjxEnv):
         return {
             "orientation": orientation,
             "torso_height": orientation * self._reward_height(torso_height),
+            "non_foot_clearance": self._reward_non_foot_clearance(data),
+            "foot_support": orientation * self._reward_foot_support(data),
             "stand_still": self._reward_stand_still(action, gravity, torso_height),
             "action_rate": self._cost_action_rate(action, info),
             "torques": self._cost_torques(data.actuator_force),
             "dof_vel": self._cost_dof_vel(data.qvel[6:]),
+            "root_vel": self._cost_root_vel(data.qvel[:6]),
         }
+
+    def _is_non_foot_contact_geom(self, geom_id: int) -> bool:
+        if self._mj_model.geom_group[geom_id] != 2:
+            return False
+        name = mujoco.mj_id2name(self._mj_model, mujoco.mjtObj.mjOBJ_GEOM, geom_id)
+        if name is None:
+            return False
+        return "toe" not in name and "tarsometatarsus" not in name
+
+    def _is_foot_contact_geom(self, geom_id: int, side: str) -> bool:
+        if self._mj_model.geom_group[geom_id] != 2:
+            return False
+        name = mujoco.mj_id2name(self._mj_model, mujoco.mjtObj.mjOBJ_GEOM, geom_id)
+        if name is None or side not in name:
+            return False
+        return "toe" in name or "tarsometatarsus" in name
+
+    def _foot_geom_ids(self, side: str) -> jax.Array:
+        return jp.array(
+            [
+                geom_id
+                for geom_id in range(self._mj_model.ngeom)
+                if self._is_foot_contact_geom(geom_id, side)
+            ],
+            dtype=jp.int32,
+        )
 
     def _reward_orientation(self, gravity: jax.Array) -> jax.Array:
         target = jp.array(self._config.upright_gravity)
@@ -247,6 +296,27 @@ class TrexGetup(mjx_env.MjxEnv):
     def _reward_height(self, torso_height: jax.Array) -> jax.Array:
         height_error = jp.maximum(self._target_torso_height - torso_height, 0.0)
         return jp.exp(-2.0 * jp.square(height_error))
+
+    def _reward_non_foot_clearance(self, data: mjx.Data) -> jax.Array:
+        geom_bottom = self._geom_bottom(data, self._non_foot_geom_ids)
+        clearance = jp.minimum(geom_bottom / self._config.clearance_height, 1.0)
+        return jp.mean(jp.clip(clearance, 0.0, 1.0))
+
+    def _reward_foot_support(self, data: mjx.Data) -> jax.Array:
+        left_height = jp.min(jp.abs(self._geom_bottom(data, self._left_foot_geom_ids)))
+        right_height = jp.min(jp.abs(self._geom_bottom(data, self._right_foot_geom_ids)))
+        left = jp.exp(-200.0 * jp.square(left_height))
+        right = jp.exp(-200.0 * jp.square(right_height))
+        return 0.5 * (left + right)
+
+    def _geom_bottom(self, data: mjx.Data, geom_ids: jax.Array) -> jax.Array:
+        geom_xpos = data.geom_xpos[geom_ids]
+        geom_xmat = data.geom_xmat[geom_ids].reshape((-1, 3, 3))
+        geom_size = jp.array(self._mj_model.geom_size)[geom_ids]
+        radius = geom_size[:, 0]
+        half_length = geom_size[:, 1]
+        local_z_vertical = jp.abs(geom_xmat[:, 2, 2])
+        return geom_xpos[:, 2] - radius - half_length * local_z_vertical
 
     def _reward_stand_still(
         self, action: jax.Array, gravity: jax.Array, torso_height: jax.Array
@@ -270,11 +340,21 @@ class TrexGetup(mjx_env.MjxEnv):
         excess_velocity = jp.maximum(jp.abs(qvel) - max_velocity, 0.0)
         return jp.sum(jp.square(excess_velocity))
 
+    def _cost_root_vel(self, qvel: jax.Array) -> jax.Array:
+        return jp.sum(jp.square(qvel[:3])) + 0.25 * jp.sum(jp.square(qvel[3:6]))
+
     def get_gyro(self, data: mjx.Data) -> jax.Array:
         return mjx_env.get_sensor_data(self.mj_model, data, consts.GYRO_SENSOR)
 
     def get_gravity(self, data: mjx.Data) -> jax.Array:
         return data.site_xmat[self._imu_site_id].T @ jp.array([0.0, 0.0, -1.0])
+
+    def render(self, trajectory, height=240, width=320, camera=None, **kwargs):
+        if camera is None:
+            camera = "track"
+        return super().render(
+            trajectory, height=height, width=width, camera=camera, **kwargs
+        )
 
     @property
     def xml_path(self) -> str:

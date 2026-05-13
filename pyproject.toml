@@ -21,6 +21,7 @@ dependencies = [
     "playground[learning]>=0.2.0",
     "pycollada",
     "scipy",
+    "warp-lang==1.12.0",
 ]
 
 [dependency-groups]

@@ -242,8 +242,8 @@ def _add_torso_sites(node: ElementTree.Element) -> None:
         "camera",
         {
             "name": "track",
-            "pos": "-4 -8 3",
-            "xyaxes": "1 0 0 0 0.35 0.94",
+            "pos": "0 -18 6",
+            "xyaxes": "1 0 0 0 0.32 0.95",
             "mode": "trackcom",
         },
     )

@@ -3,6 +3,7 @@ import unittest
 import jax
 import jax.numpy as jp
 import mujoco
+from mujoco import mjx
 import numpy as np
 
 from mjx_gym import train
@@ -42,11 +43,13 @@ class TestMjxGym(unittest.TestCase):
         self.assertEqual((38,), state.data.qpos.shape)
         self.assertEqual((37,), state.data.qvel.shape)
         self.assertEqual((10,), state.data.ctrl.shape)
+        self.assertEqual(750, env._config.episode_length)
 
         next_state = env.step(state, jp.zeros(env.action_size))
         self.assertEqual((78,), next_state.obs["state"].shape)
         self.assertEqual((164,), next_state.obs["privileged_state"].shape)
         self.assertGreater(float(next_state.data.time), 0.0)
+        self.assertGreaterEqual(float(next_state.reward), env._config.reward_clip_min)
 
     def test_zero_upright_pose_matches_orientation_goal_and_feet_contact(self):
         env = trex_getup.TrexGetup()
@@ -66,6 +69,15 @@ class TestMjxGym(unittest.TestCase):
             float(env._reward_height(env._target_torso_height + 0.5)), 1.0
         )
         self.assertLess(float(env._reward_height(env._target_torso_height - 0.5)), 1.0)
+        mjx_data = mjx.put_data(
+            model,
+            data,
+            impl=env.mjx_model.impl.value,
+            naconmax=env._config.naconmax,
+            njmax=env._config.njmax,
+        )
+        self.assertGreater(float(env._reward_non_foot_clearance(mjx_data)), 0.9)
+        self.assertGreater(float(env._reward_foot_support(mjx_data)), 0.9)
 
         floor_id = model.geom("floor").id
         floor_contacts = []
@@ -77,6 +89,81 @@ class TestMjxGym(unittest.TestCase):
                     mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_GEOM, int(other))
                 )
         self.assertTrue(any("toe" in name for name in floor_contacts))
+
+    def test_non_foot_clearance_reward_distinguishes_side_and_standing_pose(self):
+        env = trex_getup.TrexGetup()
+        model = env.mj_model
+
+        standing = mujoco.MjData(model)
+        standing.qpos[:] = trex_constants.standing_qpos(model)
+        mujoco.mj_forward(model, standing)
+
+        side = mujoco.MjData(model)
+        side.qpos[:] = trex_constants.side_lying_qpos(model)
+        mujoco.mj_forward(model, side)
+
+        standing_reward = float(
+            env._reward_non_foot_clearance(
+                mjx.put_data(
+                    model,
+                    standing,
+                    impl=env.mjx_model.impl.value,
+                    naconmax=env._config.naconmax,
+                    njmax=env._config.njmax,
+                )
+            )
+        )
+        side_reward = float(
+            env._reward_non_foot_clearance(
+                mjx.put_data(
+                    model,
+                    side,
+                    impl=env.mjx_model.impl.value,
+                    naconmax=env._config.naconmax,
+                    njmax=env._config.njmax,
+                )
+            )
+        )
+        self.assertGreater(standing_reward, 0.9)
+        self.assertLess(side_reward, standing_reward)
+
+    def test_foot_support_reward_requires_both_feet_near_floor(self):
+        env = trex_getup.TrexGetup()
+        model = env.mj_model
+
+        standing = mujoco.MjData(model)
+        standing.qpos[:] = trex_constants.standing_qpos(model)
+        mujoco.mj_forward(model, standing)
+        standing_reward = float(
+            env._reward_foot_support(
+                mjx.put_data(
+                    model,
+                    standing,
+                    impl=env.mjx_model.impl.value,
+                    naconmax=env._config.naconmax,
+                    njmax=env._config.njmax,
+                )
+            )
+        )
+
+        floating = mujoco.MjData(model)
+        floating.qpos[:] = trex_constants.standing_qpos(model)
+        floating.qpos[2] += 1.0
+        mujoco.mj_forward(model, floating)
+        floating_reward = float(
+            env._reward_foot_support(
+                mjx.put_data(
+                    model,
+                    floating,
+                    impl=env.mjx_model.impl.value,
+                    naconmax=env._config.naconmax,
+                    njmax=env._config.njmax,
+                )
+            )
+        )
+
+        self.assertGreater(standing_reward, 0.9)
+        self.assertLess(floating_reward, 0.1)
 
     def test_reset_randomizes_yaw_without_matching_upright_orientation(self):
         env = trex_getup.TrexGetup()
@@ -113,6 +200,7 @@ class TestMjxGym(unittest.TestCase):
     def test_trex_getup_mass_scaled_passive_gains_settle_joint_perturbations(self):
         env = trex_getup.TrexGetup()
         model = env.mj_model
+        model.opt.gravity[:] = 0
         actuated_joint_names = mjx_model_simplification._actuated_joint_names(
             trex_constants.trex_getup_mjcf()
         )
