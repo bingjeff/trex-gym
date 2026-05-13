@@ -446,6 +446,23 @@ class TestMjxGym(unittest.TestCase):
         self.assertLess(float(no_contact_gate), 0.1)
         self.assertGreater(float(one_foot_gate), 0.9)
 
+    def test_trex_joystick_leg_action_alternation_prefers_opposite_pairs(self):
+        env = trex_joystick.TrexJoystick()
+        alternating = np.asarray(env._stand_pose_action).copy()
+        in_phase = alternating.copy()
+
+        alternating[2:8] += np.array([0.4, -0.4, -0.4, 0.4, 0.4, -0.4])
+        in_phase[2:8] += np.array([0.4, 0.4, -0.4, -0.4, 0.4, 0.4])
+
+        self.assertGreater(
+            float(env._reward_leg_action_alternation(jp.array(alternating))),
+            0.8,
+        )
+        self.assertLess(
+            float(env._reward_leg_action_alternation(jp.array(in_phase))),
+            0.2,
+        )
+
     def test_trex_joystick_tracking_rewards_use_forward_and_turn_axes(self):
         env = trex_joystick.TrexJoystick()
         command = jp.array([1.0, 0.5])

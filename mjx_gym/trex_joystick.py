@@ -60,6 +60,7 @@ def default_config() -> config_dict.ConfigDict:
         tracking_turn_vel=4.0,
         running_stride=0.25,
         running_foot_clearance=0.25,
+        leg_action_alternation=2.0,
         gait_anti_phase=2.0,
         gait_symmetry=1.0,
         contact_duty_symmetry=1.0,
@@ -328,6 +329,8 @@ class TrexJoystick(trex_getup.TrexGetup):
             "running_stride": achieved_running_gate * self._reward_running_stride(data),
             "running_foot_clearance": achieved_running_gate
             * self._reward_running_foot_clearance(data),
+            "leg_action_alternation": running_gate
+            * self._reward_leg_action_alternation(action),
             "gait_anti_phase": achieved_running_gate
             * self._reward_gait_anti_phase(data),
             "gait_symmetry": achieved_running_gate * self._reward_gait_symmetry(data),
@@ -518,6 +521,25 @@ class TrexJoystick(trex_getup.TrexGetup):
         )
         clearance = 0.5 * (left_clearance + right_clearance)
         return jp.clip(clearance / 0.25, 0.0, 1.0)
+
+    def _reward_leg_action_alternation(self, action: jax.Array) -> jax.Array:
+        gait_action = action - self._stand_pose_action
+        pair_scores = jp.array(
+            [
+                self._anti_phase_score(gait_action[2], gait_action[3]),
+                self._anti_phase_score(gait_action[4], gait_action[5]),
+                self._anti_phase_score(gait_action[6], gait_action[7]),
+            ]
+        )
+        pair_magnitudes = jp.array(
+            [
+                0.5 * (jp.abs(gait_action[2]) + jp.abs(gait_action[3])),
+                0.5 * (jp.abs(gait_action[4]) + jp.abs(gait_action[5])),
+                0.5 * (jp.abs(gait_action[6]) + jp.abs(gait_action[7])),
+            ]
+        )
+        amplitude_gate = jp.clip((jp.mean(pair_magnitudes) - 0.05) / 0.35, 0.0, 1.0)
+        return amplitude_gate * jp.mean(pair_scores)
 
     def _reward_gait_anti_phase(self, data: mjx.Data) -> jax.Array:
         left_offset, right_offset = self._mjx_foot_offsets_in_torso_frame(data)
