@@ -95,7 +95,7 @@ uv run python tools/analyze_policy_rollout.py \
 - Checkpoint: `checkpoints/TrexJoystick-20260513-044426-joystick-warm-10m/000011468800/`
 - Source run on pod: `/workspace/runs/TrexJoystick-20260513-044426-joystick-warm-10m`
 - Warm start: `/workspace/runs/TrexJoystick-warmstart-getup/checkpoints/000000000000`
-- Training source: `2c156bbf4b806cbdc9093448927174b58da51098` plus the joystick warm-start converter and observation-order fix committed with this checkpoint record.
+- Training source: `1f514f4aaf9428893fa90030d8051d0d02722bb4`
 - Training backend: MuJoCo MJX Warp
 - Training length: 10M requested steps, final saved checkpoint at `000011468800`
 - Final eval reward: `123.566`
@@ -118,10 +118,14 @@ Fixed-command diagnostics on the final checkpoint used the final 500 steps of a
 1000-step rollout with Warp:
 
 - Standing stop command `(0.0 m/s, 0.0 rad/s)`: mean forward velocity -0.027 m/s, mean turn velocity 0.050 rad/s, XY displacement 0.278 m, orientation reward 0.999-1.000.
+- Standing forward command `(0.5 m/s, 0.0 rad/s)`: mean forward velocity 0.451 m/s, mean turn velocity -0.042 rad/s, XY displacement 4.546 m, orientation reward 0.999-1.000.
 - Standing forward command `(1.0 m/s, 0.0 rad/s)`: mean forward velocity 0.933 m/s, mean turn velocity -0.081 rad/s, XY displacement 9.175 m, orientation reward 0.999-1.000.
+- Standing forward command `(1.5 m/s, 0.0 rad/s)`: mean forward velocity 1.418 m/s, mean turn velocity -0.098 rad/s, XY displacement 13.838 m, orientation reward 0.999-1.000.
 - Standing turn command `(0.0 m/s, 0.5 rad/s)`: mean forward velocity -0.014 m/s, mean turn velocity 0.457 rad/s, XY displacement 0.218 m, orientation reward 0.995-0.999.
+- Standing turn command `(0.0 m/s, -0.5 rad/s)`: mean forward velocity 0.036 m/s, mean turn velocity -0.529 rad/s, XY displacement 0.223 m, orientation reward 0.991-0.997.
 - Side reset stop command `(0.0 m/s, 0.0 rad/s)`: mean forward velocity -0.025 m/s, mean turn velocity 0.040 rad/s, XY displacement 0.345 m, orientation reward 0.999-1.000.
 - Side reset forward command `(1.0 m/s, 0.0 rad/s)`: mean forward velocity 0.935 m/s, mean turn velocity -0.079 rad/s, XY displacement 9.229 m, orientation reward 0.999-1.000.
+- Side reset turn command `(0.0 m/s, -0.5 rad/s)`: mean forward velocity 0.035 m/s, mean turn velocity -0.558 rad/s, XY displacement 0.106 m, orientation reward 0.991-0.996.
 
 Representative rollout videos copied locally:
 
