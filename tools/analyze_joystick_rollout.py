@@ -55,6 +55,7 @@ def analyze(args: argparse.Namespace) -> None:
     max_stride_extent = 0.0
     mean_gait_anti_phase = 0.0
     mean_gait_symmetry = 0.0
+    mean_contact_duty_symmetry = 0.0
     mean_foot_contact_balance = 0.0
     mean_foot_slip = 0.0
     left_contact_duty = 0.0
@@ -121,6 +122,9 @@ def analyze(args: argparse.Namespace) -> None:
         mean_gait_symmetry += float(
             jax.device_get(env._reward_gait_symmetry(state.data))
         )
+        mean_contact_duty_symmetry += float(
+            jax.device_get(env._reward_contact_duty_symmetry(state.data, state.info))
+        )
         mean_foot_contact_balance += float(
             jax.device_get(env._reward_foot_contact_balance(state.data))
         )
@@ -166,6 +170,9 @@ def analyze(args: argparse.Namespace) -> None:
     print(f"max_stride_extent: {max_stride_extent:.3f}")
     print(f"mean_gait_anti_phase: {mean_gait_anti_phase / sample_steps:.3f}")
     print(f"mean_gait_symmetry: {mean_gait_symmetry / sample_steps:.3f}")
+    print(
+        f"mean_contact_duty_symmetry: {mean_contact_duty_symmetry / sample_steps:.3f}"
+    )
     print(f"mean_foot_contact_balance: {mean_foot_contact_balance / sample_steps:.3f}")
     print(f"mean_foot_slip: {mean_foot_slip / sample_steps:.3f}")
     print(f"left_contact_duty: {left_contact_duty / sample_steps:.3f}")
