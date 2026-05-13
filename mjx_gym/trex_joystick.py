@@ -296,6 +296,8 @@ class TrexJoystick(trex_getup.TrexGetup):
         achieved_running_gate = running_gate * self._achieved_running_speed_gate(
             info["command"], local_linvel
         )
+        moving_support_gate = self._moving_foot_support_gate(data)
+        speed_tracking_gate = standing_gate + moving_gate * moving_support_gate
         return {
             "orientation": orientation,
             "torso_height": orientation * height,
@@ -313,12 +315,15 @@ class TrexJoystick(trex_getup.TrexGetup):
             * orientation
             * self._reward_standing_pose(data.qpos),
             "tracking_forward_vel": locomotion_gate
+            * speed_tracking_gate
             * self._reward_tracking_forward_vel(info["command"], local_linvel),
             "forward_progress": locomotion_gate
+            * speed_tracking_gate
             * self._reward_forward_progress(info["command"], local_linvel),
             "forward_speed_deficit": locomotion_gate
             * self._cost_forward_speed_deficit(info["command"], local_linvel),
             "tracking_turn_vel": locomotion_gate
+            * speed_tracking_gate
             * self._reward_tracking_turn_vel(info["command"], local_angvel),
             "running_stride": achieved_running_gate * self._reward_running_stride(data),
             "running_foot_clearance": achieved_running_gate
@@ -452,6 +457,10 @@ class TrexJoystick(trex_getup.TrexGetup):
     def _cost_no_foot_contact(self, data: mjx.Data) -> jax.Array:
         contact_sum = sum(self._foot_contact_scores(data))
         return jp.square(jp.maximum(1.0 - contact_sum, 0.0))
+
+    def _moving_foot_support_gate(self, data: mjx.Data) -> jax.Array:
+        contact_sum = sum(self._foot_contact_scores(data))
+        return jp.clip(contact_sum / 0.75, 0.0, 1.0)
 
     def _cost_running_height_excess(self, torso_height: jax.Array) -> jax.Array:
         max_running_height = self._target_torso_height + 0.10

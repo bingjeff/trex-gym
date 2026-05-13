@@ -437,6 +437,15 @@ class TestMjxGym(unittest.TestCase):
         self.assertLess(both_planted, 0.1)
         self.assertGreater(alternating_duty, 0.9)
 
+    def test_trex_joystick_moving_support_gate_requires_foot_contact(self):
+        env = trex_joystick.TrexJoystick()
+
+        no_contact_gate = jp.clip(0.0 / 0.75, 0.0, 1.0)
+        one_foot_gate = jp.clip(1.0 / 0.75, 0.0, 1.0)
+
+        self.assertLess(float(no_contact_gate), 0.1)
+        self.assertGreater(float(one_foot_gate), 0.9)
+
     def test_trex_joystick_tracking_rewards_use_forward_and_turn_axes(self):
         env = trex_joystick.TrexJoystick()
         command = jp.array([1.0, 0.5])
