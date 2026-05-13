@@ -449,6 +449,14 @@ class TestMjxGym(unittest.TestCase):
             float(env._reward_tracking_forward_vel(command, jp.array([0.0, 0.0, 0.0]))),
             0.1,
         )
+        self.assertGreater(
+            float(env._cost_forward_speed_deficit(command, jp.array([0.0, 0.0, 0.0]))),
+            0.9,
+        )
+        self.assertLess(
+            float(env._cost_forward_speed_deficit(command, jp.array([1.0, 0.0, 0.0]))),
+            0.1,
+        )
         self.assertAlmostEqual(
             float(env._reward_tracking_turn_vel(command, jp.array([0.0, 0.5, 0.0]))),
             1.0,
