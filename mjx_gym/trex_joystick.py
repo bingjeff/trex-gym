@@ -68,6 +68,7 @@ def default_config() -> config_dict.ConfigDict:
         gait_anti_phase=2.0,
         gait_symmetry=1.0,
         phase_contact=1.0,
+        phase_foot_clearance=1.0,
         contact_duty_symmetry=1.0,
         foot_contact_balance=0.5,
         double_foot_contact=-2.0,
@@ -357,6 +358,8 @@ class TrexJoystick(trex_getup.TrexGetup):
             * self._reward_gait_anti_phase(data),
             "gait_symmetry": achieved_running_gate * self._reward_gait_symmetry(data),
             "phase_contact": running_gate * self._reward_phase_contact(data, info),
+            "phase_foot_clearance": running_gate
+            * self._reward_phase_foot_clearance(data, info),
             "contact_duty_symmetry": achieved_running_gate
             * self._reward_contact_duty_symmetry(data, info),
             "foot_contact_balance": achieved_running_gate
@@ -655,6 +658,17 @@ class TrexJoystick(trex_getup.TrexGetup):
         )
         return jp.exp(-2.0 * error)
 
+    def _reward_phase_foot_clearance(
+        self, data: mjx.Data, info: dict[str, Any]
+    ) -> jax.Array:
+        left_contact, right_contact = self._foot_contact_scores(data)
+        left_clearance, right_clearance = self._foot_clearance_scores(data)
+        right_stance = (jp.sin(info["gait_phase"]) > 0.0).astype(jp.float32)
+        left_stance = 1.0 - right_stance
+        stance_contact = right_stance * right_contact + left_stance * left_contact
+        swing_clearance = right_stance * left_clearance + left_stance * right_clearance
+        return stance_contact * jp.clip(swing_clearance / 0.12, 0.0, 1.0)
+
     def _reward_foot_contact_balance(self, data: mjx.Data) -> jax.Array:
         left_contact, right_contact = self._foot_contact_scores(data)
         one_foot_stance = (
@@ -701,6 +715,15 @@ class TrexJoystick(trex_getup.TrexGetup):
             jp.exp(-200.0 * jp.square(left_bottom)),
             jp.exp(-200.0 * jp.square(right_bottom)),
         )
+
+    def _foot_clearance_scores(self, data: mjx.Data) -> tuple[jax.Array, jax.Array]:
+        left_clearance = jp.max(
+            jp.clip(self._geom_bottom(data, self._left_foot_geom_ids), 0.0, 0.3)
+        )
+        right_clearance = jp.max(
+            jp.clip(self._geom_bottom(data, self._right_foot_geom_ids), 0.0, 0.3)
+        )
+        return left_clearance, right_clearance
 
     def _foot_centers_world(self, data: mjx.Data) -> jax.Array:
         left_center = jp.mean(data.geom_xpos[self._left_foot_geom_ids], axis=0)

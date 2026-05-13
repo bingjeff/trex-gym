@@ -454,6 +454,7 @@ class TestMjxGym(unittest.TestCase):
         self.assertLess(float(no_double_support), 0.1)
         self.assertGreater(float(double_support), 0.9)
         self.assertIn("phase_contact", env._config.reward_config.scales)
+        self.assertIn("phase_foot_clearance", env._config.reward_config.scales)
 
     def test_trex_joystick_leg_action_alternation_prefers_opposite_pairs(self):
         env = trex_joystick.TrexJoystick()
