@@ -38,7 +38,7 @@ def default_config() -> config_dict.ConfigDict:
     config.gait_frequency_min = 1.0
     config.gait_frequency_per_mps = 0.15
     config.gait_frequency_max = 2.5
-    config.foot_contact_force_scale = 1000.0
+    config.foot_contact_force_scale = 20000.0
     config.command_config = config_dict.create(
         forward_min=0.0,
         forward_max=10.0,
