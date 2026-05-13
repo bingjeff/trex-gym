@@ -263,6 +263,9 @@ class TrexJoystick(trex_getup.TrexGetup):
         local_angvel = self.get_local_angvel(data)
         joint_angles = data.qpos[7:]
         joint_vel = data.qvel[6:]
+        gait_phase = jp.array(
+            [jp.sin(info["gait_phase"]), jp.cos(info["gait_phase"])]
+        )
         state = jp.concatenate(
             [
                 gyro,
@@ -273,6 +276,7 @@ class TrexJoystick(trex_getup.TrexGetup):
                 local_linvel,
                 local_angvel,
                 info["command"],
+                gait_phase,
             ]
         )
         torso_height = data.site_xpos[self._imu_site_id][2:3]

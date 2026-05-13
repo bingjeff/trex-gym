@@ -25,8 +25,10 @@ from mjx_gym import trex_joystick
 
 def _pad_vector(values, new_size: int, fill: float):
     array = np.asarray(values)
-    if array.shape != (new_size - 8,):
-        raise ValueError(f"Expected vector shape {(new_size - 8,)}, got {array.shape}")
+    if array.ndim != 1 or array.shape[0] > new_size:
+        raise ValueError(
+            f"Expected vector no larger than {(new_size,)}, got {array.shape}"
+        )
     padded = np.full((new_size,), fill, dtype=array.dtype)
     padded[: array.shape[0]] = array
     return padded
@@ -34,8 +36,10 @@ def _pad_vector(values, new_size: int, fill: float):
 
 def _pad_kernel_rows(kernel, new_rows: int):
     array = np.asarray(kernel)
-    if array.shape[0] != new_rows - 8:
-        raise ValueError(f"Expected {new_rows - 8} input rows, got {array.shape[0]}")
+    if array.ndim != 2 or array.shape[0] > new_rows:
+        raise ValueError(
+            f"Expected no more than {new_rows} input rows, got {array.shape}"
+        )
     padded = np.zeros((new_rows, array.shape[1]), dtype=array.dtype)
     padded[: array.shape[0], :] = array
     return padded
@@ -46,13 +50,13 @@ def _pad_running_statistics(running_statistics):
     std = copy.deepcopy(running_statistics.std)
     summed_variance = copy.deepcopy(running_statistics.summed_variance)
 
-    mean["state"] = _pad_vector(mean["state"], 86, 0.0)
-    mean["privileged_state"] = _pad_vector(mean["privileged_state"], 172, 0.0)
-    std["state"] = _pad_vector(std["state"], 86, 1.0)
-    std["privileged_state"] = _pad_vector(std["privileged_state"], 172, 1.0)
-    summed_variance["state"] = _pad_vector(summed_variance["state"], 86, 1.0)
+    mean["state"] = _pad_vector(mean["state"], 88, 0.0)
+    mean["privileged_state"] = _pad_vector(mean["privileged_state"], 174, 0.0)
+    std["state"] = _pad_vector(std["state"], 88, 1.0)
+    std["privileged_state"] = _pad_vector(std["privileged_state"], 174, 1.0)
+    summed_variance["state"] = _pad_vector(summed_variance["state"], 88, 1.0)
     summed_variance["privileged_state"] = _pad_vector(
-        summed_variance["privileged_state"], 172, 1.0
+        summed_variance["privileged_state"], 174, 1.0
     )
 
     return dataclasses.replace(
@@ -71,10 +75,10 @@ def convert(args: argparse.Namespace) -> None:
     running_statistics, policy_params, value_params = copy.deepcopy(params)
     running_statistics = _pad_running_statistics(running_statistics)
     policy_params["params"]["hidden_0"]["kernel"] = _pad_kernel_rows(
-        policy_params["params"]["hidden_0"]["kernel"], 86
+        policy_params["params"]["hidden_0"]["kernel"], 88
     )
     value_params["params"]["hidden_0"]["kernel"] = _pad_kernel_rows(
-        value_params["params"]["hidden_0"]["kernel"], 172
+        value_params["params"]["hidden_0"]["kernel"], 174
     )
     converted_params = [running_statistics, policy_params, value_params]
 

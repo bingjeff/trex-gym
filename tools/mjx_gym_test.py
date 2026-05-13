@@ -376,14 +376,14 @@ class TestMjxGym(unittest.TestCase):
         self.assertFalse(
             np.allclose(state.info["command"], other_state.info["command"])
         )
-        self.assertEqual((86,), state.obs["state"].shape)
-        self.assertEqual((172,), state.obs["privileged_state"].shape)
+        self.assertEqual((88,), state.obs["state"].shape)
+        self.assertEqual((174,), state.obs["privileged_state"].shape)
         self.assertEqual((2,), state.info["command"].shape)
         self.assertGreaterEqual(int(state.info["steps_until_next_cmd"]), 1)
 
         next_state = env.step(state, jp.zeros(env.action_size))
-        self.assertEqual((86,), next_state.obs["state"].shape)
-        self.assertEqual((172,), next_state.obs["privileged_state"].shape)
+        self.assertEqual((88,), next_state.obs["state"].shape)
+        self.assertEqual((174,), next_state.obs["privileged_state"].shape)
         self.assertGreater(float(next_state.data.time), 0.0)
         self.assertGreaterEqual(float(next_state.reward), env._config.reward_clip_min)
 
