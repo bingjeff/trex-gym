@@ -17,6 +17,7 @@ def default_config() -> config_dict.ConfigDict:
     config.episode_length = 1000
     config.reset_standing_prob = 0.5
     config.reset_command_interval_mean = 3.0
+    config.stand_action_smoothing = 0.5
     config.command_config = config_dict.create(
         forward_min=0.0,
         forward_max=10.0,
@@ -137,6 +138,8 @@ class TrexJoystick(trex_getup.TrexGetup):
             "steps_until_next_cmd": self._sample_command_interval(interval_rng),
             "last_act": jp.zeros(self.action_size),
             "last_last_act": jp.zeros(self.action_size),
+            "stand_hold_act": jp.zeros(self.action_size),
+            "was_standing_command": jp.zeros(()),
             "last_foot_centers": self._foot_centers_world(data),
         }
         metrics = {}
@@ -147,7 +150,18 @@ class TrexJoystick(trex_getup.TrexGetup):
 
     def step(self, state: mjx_env.State, action: jax.Array) -> mjx_env.State:
         clipped_action = jp.clip(action, -1.0, 1.0)
-        applied_action = clipped_action
+        standing_gate = self._standing_command_gate(state.info["command"])
+        start_standing = standing_gate * (1.0 - state.info["was_standing_command"])
+        smoothed_stand_act = state.info["stand_hold_act"] + (
+            self._config.stand_action_smoothing
+            * (clipped_action - state.info["stand_hold_act"])
+        )
+        stand_hold_act = jp.where(
+            start_standing,
+            clipped_action,
+            smoothed_stand_act,
+        )
+        applied_action = jp.where(standing_gate, stand_hold_act, clipped_action)
         target_scale = jp.where(
             applied_action >= 0.0,
             self._action_ctrl_positive_scale,
@@ -173,6 +187,10 @@ class TrexJoystick(trex_getup.TrexGetup):
 
         state.info["last_last_act"] = state.info["last_act"]
         state.info["last_act"] = applied_action
+        state.info["stand_hold_act"] = jp.where(
+            standing_gate, stand_hold_act, clipped_action
+        )
+        state.info["was_standing_command"] = standing_gate
         state.info["last_foot_centers"] = self._foot_centers_world(data)
         state.info["steps_until_next_cmd"] -= 1
         state.info["rng"], command_rng, interval_rng = jax.random.split(
