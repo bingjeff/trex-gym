@@ -37,13 +37,13 @@ def default_config() -> config_dict.ConfigDict:
         forward_min=0.0,
         forward_max=10.0,
         high_speed_min=7.0,
-        high_speed_prob=0.70,
+        high_speed_prob=0.50,
         turn_max=1.0,
         zero_prob=0.25,
         turn_zero_prob=0.5,
     )
     config.reward_config.tracking_sigma = 0.25
-    config.reward_config.high_speed_tracking_sigma_scale = 0.05
+    config.reward_config.high_speed_tracking_sigma_scale = 0.5
     config.reward_config.turn_tracking_sigma = 0.25
     config.reward_config.scales = config_dict.create(
         orientation=2.0,
@@ -53,7 +53,7 @@ def default_config() -> config_dict.ConfigDict:
         foot_balance=1.0,
         foot_placement=1.0,
         standing_pose=1.0,
-        tracking_forward_vel=8.0,
+        tracking_forward_vel=6.0,
         forward_progress=8.0,
         tracking_turn_vel=1.0,
         running_stride=0.25,
