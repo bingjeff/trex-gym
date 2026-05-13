@@ -80,6 +80,7 @@ class TestMjxGym(unittest.TestCase):
         self.assertGreater(float(env._reward_non_foot_clearance(mjx_data)), 0.9)
         self.assertGreater(float(env._reward_foot_support(mjx_data)), 0.9)
         self.assertGreater(float(env._reward_foot_balance(mjx_data)), 0.9)
+        self.assertGreater(float(env._reward_foot_placement(mjx_data)), 0.9)
         self.assertAlmostEqual(float(env._reward_standing_pose(mjx_data.qpos)), 1.0)
 
         floor_id = model.geom("floor").id
@@ -198,6 +199,11 @@ class TestMjxGym(unittest.TestCase):
         self.assertLess(
             float(env._reward_foot_balance(zero_pose_mjx)),
             float(env._reward_foot_balance(standing_mjx)),
+        )
+        self.assertGreater(float(env._reward_foot_placement(standing_mjx)), 0.9)
+        self.assertLess(
+            float(env._reward_foot_placement(zero_pose_mjx)),
+            float(env._reward_foot_placement(standing_mjx)),
         )
         self.assertAlmostEqual(float(env._reward_standing_pose(standing_mjx.qpos)), 1.0)
         self.assertLess(float(env._reward_standing_pose(zero_pose_mjx.qpos)), 0.5)

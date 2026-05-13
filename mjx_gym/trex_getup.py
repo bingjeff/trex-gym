@@ -58,8 +58,9 @@ def default_config() -> config_dict.ConfigDict:
                 torso_height=1.0,
                 non_foot_clearance=1.0,
                 foot_support=1.0,
-                foot_balance=1.0,
-                standing_pose=0.5,
+                foot_balance=1.5,
+                foot_placement=2.0,
+                standing_pose=1.0,
                 stand_still=0.25,
                 action_rate=-1e-5,
                 torques=-1e-9,
@@ -146,6 +147,11 @@ class TrexGetup(mjx_env.MjxEnv):
         self._standing_torso_to_support_xy = jp.array(
             self._torso_to_support_xy(np.array(self._standing_qpos))
         )
+        standing_left, standing_right = self._foot_offsets_in_torso_frame(
+            np.array(self._standing_qpos)
+        )
+        self._standing_left_foot_offset = jp.array(standing_left)
+        self._standing_right_foot_offset = jp.array(standing_right)
 
     def reset(self, rng: jax.Array) -> mjx_env.State:
         yaw_rng, xy_rng, joint_rng, qvel_rng, height_rng = jax.random.split(rng, 5)
@@ -270,6 +276,7 @@ class TrexGetup(mjx_env.MjxEnv):
             "non_foot_clearance": self._reward_non_foot_clearance(data),
             "foot_support": orientation * self._reward_foot_support(data),
             "foot_balance": orientation * self._reward_foot_balance(data),
+            "foot_placement": orientation * self._reward_foot_placement(data),
             "standing_pose": orientation * self._reward_standing_pose(data.qpos),
             "stand_still": self._reward_stand_still(action, gravity, torso_height),
             "action_rate": self._cost_action_rate(action, info),
@@ -330,7 +337,28 @@ class TrexGetup(mjx_env.MjxEnv):
         support_center = 0.5 * (left_center + right_center)
         torso_xy = data.site_xpos[self._imu_site_id, :2]
         error = torso_xy - support_center - self._standing_torso_to_support_xy
-        return jp.exp(-0.5 * jp.sum(jp.square(error)))
+        return jp.exp(-2.0 * jp.sum(jp.square(error)))
+
+    def _reward_foot_placement(self, data: mjx.Data) -> jax.Array:
+        left_offset, right_offset = self._mjx_foot_offsets_in_torso_frame(data)
+        left_error = left_offset - self._standing_left_foot_offset
+        right_error = right_offset - self._standing_right_foot_offset
+        error = 0.5 * (
+            jp.sum(jp.square(left_error)) + jp.sum(jp.square(right_error))
+        )
+        return jp.exp(-2.0 * error)
+
+    def _mjx_foot_offsets_in_torso_frame(
+        self, data: mjx.Data
+    ) -> tuple[jax.Array, jax.Array]:
+        torso_pos = data.site_xpos[self._imu_site_id]
+        torso_xmat = data.site_xmat[self._imu_site_id].reshape((3, 3))
+        left_center = jp.mean(data.geom_xpos[self._left_foot_geom_ids], axis=0)
+        right_center = jp.mean(data.geom_xpos[self._right_foot_geom_ids], axis=0)
+        return (
+            torso_xmat.T @ (left_center - torso_pos),
+            torso_xmat.T @ (right_center - torso_pos),
+        )
 
     def _torso_to_support_xy(self, qpos: np.ndarray) -> np.ndarray:
         data = mujoco.MjData(self._mj_model)
@@ -344,6 +372,25 @@ class TrexGetup(mjx_env.MjxEnv):
         )
         support_center = 0.5 * (left_center + right_center)
         return data.site_xpos[self._imu_site_id, :2] - support_center
+
+    def _foot_offsets_in_torso_frame(
+        self, qpos: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
+        data = mujoco.MjData(self._mj_model)
+        data.qpos[:] = qpos
+        mujoco.mj_forward(self._mj_model, data)
+        torso_pos = data.site_xpos[self._imu_site_id]
+        torso_xmat = data.site_xmat[self._imu_site_id].reshape((3, 3))
+        left_center = np.mean(
+            data.geom_xpos[np.array(self._left_foot_geom_ids)], axis=0
+        )
+        right_center = np.mean(
+            data.geom_xpos[np.array(self._right_foot_geom_ids)], axis=0
+        )
+        return (
+            torso_xmat.T @ (left_center - torso_pos),
+            torso_xmat.T @ (right_center - torso_pos),
+        )
 
     def _reward_standing_pose(self, qpos: jax.Array) -> jax.Array:
         error = qpos[self._leg_qpos_ids] - self._standing_leg_qpos
