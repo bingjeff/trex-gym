@@ -9,6 +9,7 @@ import numpy as np
 from mjx_gym import train
 from mjx_gym import trex_constants
 from mjx_gym import trex_getup
+from mjx_gym import trex_joystick
 from tools import mjx_model_simplification
 
 
@@ -366,11 +367,63 @@ class TestMjxGym(unittest.TestCase):
         self.assertLess(max_abs_qvel, 180.0)
         self.assertLess(max_abs_actuator_force, 2000000.0)
 
-    def test_register_environments_adds_trex_getup(self):
+    def test_trex_joystick_model_reset_and_step(self):
+        env = trex_joystick.TrexJoystick()
+
+        self.assertEqual(10, env.action_size)
+        state = env.reset(jax.random.PRNGKey(0))
+        other_state = env.reset(jax.random.PRNGKey(1))
+        self.assertFalse(
+            np.allclose(state.info["command"], other_state.info["command"])
+        )
+        self.assertEqual((86,), state.obs["state"].shape)
+        self.assertEqual((172,), state.obs["privileged_state"].shape)
+        self.assertEqual((2,), state.info["command"].shape)
+        self.assertGreaterEqual(int(state.info["steps_until_next_cmd"]), 1)
+
+        next_state = env.step(state, jp.zeros(env.action_size))
+        self.assertEqual((86,), next_state.obs["state"].shape)
+        self.assertEqual((172,), next_state.obs["privileged_state"].shape)
+        self.assertGreater(float(next_state.data.time), 0.0)
+        self.assertGreaterEqual(float(next_state.reward), env._config.reward_clip_min)
+
+    def test_trex_joystick_tracking_rewards_use_forward_and_turn_axes(self):
+        env = trex_joystick.TrexJoystick()
+        command = jp.array([1.0, 0.5])
+
+        self.assertAlmostEqual(
+            float(env._reward_tracking_forward_vel(command, jp.array([1.0, 0.0, 0.0]))),
+            1.0,
+        )
+        self.assertLess(
+            float(env._reward_tracking_forward_vel(command, jp.array([0.0, 0.0, 0.0]))),
+            0.1,
+        )
+        self.assertAlmostEqual(
+            float(env._reward_tracking_turn_vel(command, jp.array([0.0, 0.5, 0.0]))),
+            1.0,
+        )
+        self.assertLess(
+            float(env._reward_tracking_turn_vel(command, jp.array([0.0, -0.5, 0.0]))),
+            0.1,
+        )
+        self.assertGreater(
+            float(
+                env._reward_commanded_stand_still(jp.zeros(2), jp.zeros(3), jp.zeros(3))
+            ),
+            0.9,
+        )
+        self.assertEqual(
+            float(env._reward_commanded_stand_still(command, jp.zeros(3), jp.zeros(3))),
+            0.0,
+        )
+
+    def test_register_environments_adds_trex_tasks(self):
         train.register_environments()
         from mujoco_playground import registry
 
         self.assertIn("TrexGetup", registry.ALL_ENVS)
+        self.assertIn("TrexJoystick", registry.ALL_ENVS)
 
 
 if __name__ == "__main__":

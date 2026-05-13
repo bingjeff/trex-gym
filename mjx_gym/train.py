@@ -8,6 +8,7 @@ from mujoco_playground import registry
 from mujoco_playground._src import locomotion
 
 from mjx_gym import trex_getup
+from mjx_gym import trex_joystick
 
 _TREX_NUM_RESETS_PER_EVAL = flags.DEFINE_integer(
     "trex_num_resets_per_eval",
@@ -22,6 +23,11 @@ def register_environments() -> None:
         trex_getup.TrexGetup,
         trex_getup.default_config,
     )
+    locomotion.register_environment(
+        "TrexJoystick",
+        trex_joystick.TrexJoystick,
+        trex_joystick.default_config,
+    )
     registry.ALL_ENVS = (
         registry.dm_control_suite.ALL_ENVS
         + locomotion.ALL_ENVS
@@ -31,7 +37,11 @@ def register_environments() -> None:
 
 def trex_ppo_config(env_name: str, impl: str | None = None) -> config_dict.ConfigDict:
     del env_name, impl
-    env_config = trex_getup.default_config()
+    env_config = (
+        trex_joystick.default_config()
+        if env_name == "TrexJoystick"
+        else trex_getup.default_config()
+    )
     try:
         num_resets_per_eval = _TREX_NUM_RESETS_PER_EVAL.value
     except flags_exceptions.UnparsedFlagAccessError:
@@ -68,7 +78,7 @@ def patch_training_config() -> None:
     original_get_rl_config = train_jax_ppo.get_rl_config
 
     def get_rl_config(env_name: str) -> config_dict.ConfigDict:
-        if env_name == "TrexGetup":
+        if env_name in ("TrexGetup", "TrexJoystick"):
             return trex_ppo_config(env_name, train_jax_ppo._IMPL.value)
         return original_get_rl_config(env_name)
 
