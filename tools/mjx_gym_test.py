@@ -404,6 +404,19 @@ class TestMjxGym(unittest.TestCase):
             )
         )
 
+    def test_trex_joystick_gait_phase_scores_prefer_alternating_steps(self):
+        env = trex_joystick.TrexJoystick()
+
+        alternating = float(env._anti_phase_score(jp.array(0.5), jp.array(-0.5)))
+        in_phase = float(env._anti_phase_score(jp.array(0.5), jp.array(0.5)))
+        small_stride = float(env._stride_gate(jp.array(0.05), jp.array(-0.05)))
+        large_stride = float(env._stride_gate(jp.array(0.8), jp.array(-0.8)))
+
+        self.assertGreater(alternating, 0.9)
+        self.assertLess(in_phase, 0.1)
+        self.assertLess(small_stride, 0.1)
+        self.assertGreater(large_stride, 0.9)
+
     def test_trex_joystick_tracking_rewards_use_forward_and_turn_axes(self):
         env = trex_joystick.TrexJoystick()
         command = jp.array([1.0, 0.5])

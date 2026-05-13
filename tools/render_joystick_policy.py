@@ -11,6 +11,7 @@ import jax.numpy as jp
 import mediapy
 import mujoco
 import numpy as np
+from PIL import Image
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -64,6 +65,7 @@ def render(args: argparse.Namespace) -> None:
     mj_data = mujoco.MjData(model)
     renderer = mujoco.Renderer(model, height=args.height, width=args.width)
     frames = []
+    frame_steps = _parse_frame_steps(args.frame_steps)
     try:
         for step_index in range(args.steps):
             state.info["command"] = command
@@ -83,7 +85,15 @@ def render(args: argparse.Namespace) -> None:
             renderer.update_scene(
                 mj_data, camera=_camera_for_frame(model, mj_data, args)
             )
-            frames.append(renderer.render())
+            frame = renderer.render()
+            if step_index in frame_steps:
+                args.frames_dir.mkdir(parents=True, exist_ok=True)
+                frame_path = (
+                    args.frames_dir / f"{args.output.stem}_{step_index:04d}.png"
+                )
+                Image.fromarray(frame).save(frame_path)
+                print(f"wrote {frame_path}")
+            frames.append(frame)
     finally:
         renderer.close()
 
@@ -92,6 +102,12 @@ def render(args: argparse.Namespace) -> None:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     mediapy.write_video(args.output, frames, fps=args.fps)
     print(f"wrote {args.output} frames={len(frames)} fps={args.fps}")
+
+
+def _parse_frame_steps(value: str) -> set[int]:
+    if not value:
+        return set()
+    return {int(item) for item in value.split(",") if item}
 
 
 def parse_args() -> argparse.Namespace:
@@ -103,6 +119,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--steps", type=int, default=500)
     parser.add_argument("--skip-steps", type=int, default=0)
     parser.add_argument("--frame-stride", type=int, default=1)
+    parser.add_argument(
+        "--frame-steps",
+        default="",
+        help="Comma-separated simulation step indices to save as PNG frames.",
+    )
+    parser.add_argument(
+        "--frames-dir",
+        type=Path,
+        default=Path("frames"),
+        help="Directory for PNG frames requested by --frame-steps.",
+    )
     parser.add_argument("--fps", type=int, default=50)
     parser.add_argument("--forward", type=float, default=0.0)
     parser.add_argument("--turn", type=float, default=0.0)

@@ -58,8 +58,12 @@ def default_config() -> config_dict.ConfigDict:
         tracking_turn_vel=1.0,
         running_stride=0.25,
         running_foot_clearance=0.25,
+        gait_anti_phase=1.0,
+        gait_symmetry=0.5,
+        foot_contact_balance=0.5,
         lateral_vel=-0.25,
         vertical_vel=-0.25,
+        foot_slip=-0.2,
         stand_still=4.0,
         standing_base_lin_vel=-10.0,
         standing_base_ang_vel=-5.0,
@@ -306,8 +310,13 @@ class TrexJoystick(trex_getup.TrexGetup):
             "running_stride": running_gate * self._reward_running_stride(data),
             "running_foot_clearance": running_gate
             * self._reward_running_foot_clearance(data),
+            "gait_anti_phase": running_gate * self._reward_gait_anti_phase(data),
+            "gait_symmetry": running_gate * self._reward_gait_symmetry(data),
+            "foot_contact_balance": running_gate
+            * self._reward_foot_contact_balance(data),
             "lateral_vel": locomotion_gate * jp.square(local_linvel[2]),
             "vertical_vel": locomotion_gate * jp.square(local_linvel[1]),
+            "foot_slip": running_gate * self._cost_foot_slip(data, info),
             "stand_still": standing_gate
             * locomotion_gate
             * self._reward_commanded_stand_still(
@@ -453,10 +462,86 @@ class TrexJoystick(trex_getup.TrexGetup):
         clearance = 0.5 * (left_clearance + right_clearance)
         return jp.clip(clearance / 0.25, 0.0, 1.0)
 
+    def _reward_gait_anti_phase(self, data: mjx.Data) -> jax.Array:
+        left_offset, right_offset = self._mjx_foot_offsets_in_torso_frame(data)
+        left_step = left_offset[0] - self._standing_left_foot_offset[0]
+        right_step = right_offset[0] - self._standing_right_foot_offset[0]
+        foot_phase = self._anti_phase_score(left_step, right_step, epsilon=0.05)
+
+        qpos = data.qpos[self._leg_qpos_ids]
+        standing = self._standing_leg_qpos
+        pair_scores = jp.array(
+            [
+                self._anti_phase_score(qpos[2] - standing[2], qpos[3] - standing[3]),
+                self._anti_phase_score(qpos[4] - standing[4], qpos[5] - standing[5]),
+                self._anti_phase_score(qpos[6] - standing[6], qpos[7] - standing[7]),
+            ]
+        )
+        joint_phase = jp.mean(pair_scores)
+        return self._stride_gate(left_step, right_step) * (
+            0.6 * foot_phase + 0.4 * joint_phase
+        )
+
+    def _reward_gait_symmetry(self, data: mjx.Data) -> jax.Array:
+        left_offset, right_offset = self._mjx_foot_offsets_in_torso_frame(data)
+        left_step = left_offset[0] - self._standing_left_foot_offset[0]
+        right_step = right_offset[0] - self._standing_right_foot_offset[0]
+        foot_symmetry = jp.exp(-2.0 * jp.square(jp.abs(left_step) - jp.abs(right_step)))
+
+        qpos = data.qpos[self._leg_qpos_ids]
+        standing = self._standing_leg_qpos
+        pair_errors = jp.array(
+            [
+                jp.abs(qpos[2] - standing[2]) - jp.abs(qpos[3] - standing[3]),
+                jp.abs(qpos[4] - standing[4]) - jp.abs(qpos[5] - standing[5]),
+                jp.abs(qpos[6] - standing[6]) - jp.abs(qpos[7] - standing[7]),
+            ]
+        )
+        joint_symmetry = jp.exp(-2.0 * jp.mean(jp.square(pair_errors)))
+        return self._stride_gate(left_step, right_step) * (
+            0.6 * foot_symmetry + 0.4 * joint_symmetry
+        )
+
+    def _reward_foot_contact_balance(self, data: mjx.Data) -> jax.Array:
+        left_contact, right_contact = self._foot_contact_scores(data)
+        one_foot_stance = (
+            left_contact + right_contact - 2.0 * left_contact * right_contact
+        )
+        any_contact = jp.clip(left_contact + right_contact, 0.0, 1.0)
+        return 0.5 * any_contact + 0.5 * one_foot_stance
+
+    def _anti_phase_score(
+        self, left: jax.Array, right: jax.Array, epsilon: float = 0.02
+    ) -> jax.Array:
+        phase = -(left * right) / (jp.abs(left) * jp.abs(right) + epsilon)
+        return jp.clip(phase, 0.0, 1.0)
+
+    def _stride_gate(self, left_step: jax.Array, right_step: jax.Array) -> jax.Array:
+        stride = 0.5 * (jp.abs(left_step) + jp.abs(right_step))
+        return jp.clip((stride - 0.15) / 0.65, 0.0, 1.0)
+
+    def _foot_contact_scores(self, data: mjx.Data) -> tuple[jax.Array, jax.Array]:
+        left_bottom = jp.min(jp.abs(self._geom_bottom(data, self._left_foot_geom_ids)))
+        right_bottom = jp.min(
+            jp.abs(self._geom_bottom(data, self._right_foot_geom_ids))
+        )
+        return (
+            jp.exp(-200.0 * jp.square(left_bottom)),
+            jp.exp(-200.0 * jp.square(right_bottom)),
+        )
+
     def _foot_centers_world(self, data: mjx.Data) -> jax.Array:
         left_center = jp.mean(data.geom_xpos[self._left_foot_geom_ids], axis=0)
         right_center = jp.mean(data.geom_xpos[self._right_foot_geom_ids], axis=0)
         return jp.stack([left_center, right_center])
+
+    def _cost_foot_slip(self, data: mjx.Data, info: dict[str, Any]) -> jax.Array:
+        foot_delta = self._foot_centers_world(data) - info["last_foot_centers"]
+        foot_vel = foot_delta / self.dt
+        horizontal_speed_sq = jp.sum(jp.square(foot_vel[:, :2]), axis=1)
+        left_contact, right_contact = self._foot_contact_scores(data)
+        contact = jp.stack([left_contact, right_contact])
+        return jp.sum(contact * horizontal_speed_sq) / (jp.sum(contact) + 1.0e-6)
 
     def _cost_foot_vel(self, data: mjx.Data, info: dict[str, Any]) -> jax.Array:
         foot_delta = self._foot_centers_world(data) - info["last_foot_centers"]

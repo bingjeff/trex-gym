@@ -53,6 +53,12 @@ def analyze(args: argparse.Namespace) -> None:
     max_foot_speed = 0.0
     mean_stride_extent = 0.0
     max_stride_extent = 0.0
+    mean_gait_anti_phase = 0.0
+    mean_gait_symmetry = 0.0
+    mean_foot_contact_balance = 0.0
+    mean_foot_slip = 0.0
+    left_contact_duty = 0.0
+    right_contact_duty = 0.0
     min_torso_height = np.inf
     max_torso_height = -np.inf
     min_orientation = np.inf
@@ -109,6 +115,23 @@ def analyze(args: argparse.Namespace) -> None:
         stride_extent = 0.5 * (left_stride + right_stride)
         mean_stride_extent += stride_extent
         max_stride_extent = max(max_stride_extent, stride_extent)
+        mean_gait_anti_phase += float(
+            jax.device_get(env._reward_gait_anti_phase(state.data))
+        )
+        mean_gait_symmetry += float(
+            jax.device_get(env._reward_gait_symmetry(state.data))
+        )
+        mean_foot_contact_balance += float(
+            jax.device_get(env._reward_foot_contact_balance(state.data))
+        )
+        mean_foot_slip += float(
+            jax.device_get(env._cost_foot_slip(state.data, state.info))
+        )
+        left_contact, right_contact = jax.device_get(
+            env._foot_contact_scores(state.data)
+        )
+        left_contact_duty += float(left_contact > 0.5)
+        right_contact_duty += float(right_contact > 0.5)
 
         torso_height = float(np.asarray(data.site_xpos)[env._imu_site_id, 2])
         min_torso_height = min(min_torso_height, torso_height)
@@ -141,6 +164,12 @@ def analyze(args: argparse.Namespace) -> None:
     print(f"max_foot_speed: {max_foot_speed:.3f}")
     print(f"mean_stride_extent: {mean_stride_extent / sample_steps:.3f}")
     print(f"max_stride_extent: {max_stride_extent:.3f}")
+    print(f"mean_gait_anti_phase: {mean_gait_anti_phase / sample_steps:.3f}")
+    print(f"mean_gait_symmetry: {mean_gait_symmetry / sample_steps:.3f}")
+    print(f"mean_foot_contact_balance: {mean_foot_contact_balance / sample_steps:.3f}")
+    print(f"mean_foot_slip: {mean_foot_slip / sample_steps:.3f}")
+    print(f"left_contact_duty: {left_contact_duty / sample_steps:.3f}")
+    print(f"right_contact_duty: {right_contact_duty / sample_steps:.3f}")
     if first_xy is not None and last_xy is not None:
         print(f"base_xy_displacement: {np.linalg.norm(last_xy - first_xy):.3f}")
     print(f"torso_height_range: {min_torso_height:.3f} {max_torso_height:.3f}")
