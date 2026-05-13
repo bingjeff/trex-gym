@@ -322,7 +322,7 @@ class TrexGetup(mjx_env.MjxEnv):
     def _reward_non_foot_clearance(self, data: mjx.Data) -> jax.Array:
         geom_bottom = self._geom_bottom(data, self._non_foot_geom_ids)
         clearance = jp.minimum(geom_bottom / self._config.clearance_height, 1.0)
-        return jp.mean(jp.clip(clearance, 0.0, 1.0))
+        return jp.min(jp.clip(clearance, 0.0, 1.0))
 
     def _reward_foot_support(self, data: mjx.Data) -> jax.Array:
         left_height = jp.min(jp.abs(self._geom_bottom(data, self._left_foot_geom_ids)))
