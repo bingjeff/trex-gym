@@ -421,6 +421,7 @@ class TestMjxGym(unittest.TestCase):
         env = trex_joystick.TrexJoystick()
         command = jp.array([10.0, 0.0])
 
+        low_speed_gate = float(env._running_speed_gate(jp.array([2.0, 0.0])))
         stopped = float(env._achieved_running_speed_gate(command, jp.zeros(3)))
         running = float(
             env._achieved_running_speed_gate(command, jp.array([8.0, 0.0, 0.0]))
@@ -432,6 +433,7 @@ class TestMjxGym(unittest.TestCase):
             jp.exp(-4.0 * jp.square(jp.sum(jp.array([0.5, 0.5])) - 1.0))
         )
 
+        self.assertGreater(low_speed_gate, 0.9)
         self.assertLess(stopped, 0.1)
         self.assertGreater(running, 0.9)
         self.assertLess(both_planted, 0.1)

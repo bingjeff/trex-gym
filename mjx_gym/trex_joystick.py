@@ -561,7 +561,7 @@ class TrexJoystick(trex_getup.TrexGetup):
         return standing_gate * ready.astype(jp.float32)
 
     def _running_speed_gate(self, command: jax.Array) -> jax.Array:
-        return jp.clip((jp.abs(command[0]) - 1.0) / 4.0, 0.0, 1.0)
+        return jp.clip((jp.abs(command[0]) - 0.5) / 1.5, 0.0, 1.0)
 
     def _achieved_running_speed_gate(
         self, command: jax.Array, local_linvel: jax.Array
