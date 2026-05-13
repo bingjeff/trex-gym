@@ -38,6 +38,7 @@ def default_config() -> config_dict.ConfigDict:
     config.gait_frequency_min = 1.0
     config.gait_frequency_per_mps = 0.15
     config.gait_frequency_max = 2.5
+    config.foot_contact_force_scale = 1000.0
     config.command_config = config_dict.create(
         forward_min=0.0,
         forward_max=10.0,
@@ -100,6 +101,7 @@ class TrexJoystick(trex_getup.TrexGetup):
         super().__init__(config, config_overrides)
         self._command_zero = jp.zeros(2)
         self._stand_pose_action = jp.array(self._config.stand_pose_action)
+        self._floor_geom_id = self._mj_model.geom("floor").id
 
     def reset(self, rng: jax.Array) -> mjx_env.State:
         (
@@ -707,14 +709,60 @@ class TrexJoystick(trex_getup.TrexGetup):
         return jp.clip((stride - 0.15) / 0.65, 0.0, 1.0)
 
     def _foot_contact_scores(self, data: mjx.Data) -> tuple[jax.Array, jax.Array]:
-        left_bottom = jp.min(jp.abs(self._geom_bottom(data, self._left_foot_geom_ids)))
-        right_bottom = jp.min(
-            jp.abs(self._geom_bottom(data, self._right_foot_geom_ids))
-        )
+        left_force = self._foot_ground_force(data, self._left_foot_geom_ids)
+        right_force = self._foot_ground_force(data, self._right_foot_geom_ids)
         return (
-            jp.exp(-200.0 * jp.square(left_bottom)),
-            jp.exp(-200.0 * jp.square(right_bottom)),
+            jp.clip(left_force / self._config.foot_contact_force_scale, 0.0, 1.0),
+            jp.clip(right_force / self._config.foot_contact_force_scale, 0.0, 1.0),
         )
+
+    def _foot_ground_force(self, data: mjx.Data, foot_geom_ids: jax.Array) -> jax.Array:
+        contact_geom = self._contact_geom(data)
+        geom_a = contact_geom[:, 0]
+        geom_b = contact_geom[:, 1]
+        has_floor = (geom_a == self._floor_geom_id) | (geom_b == self._floor_geom_id)
+        has_foot = jp.any(
+            (geom_a[:, None] == foot_geom_ids[None, :])
+            | (geom_b[:, None] == foot_geom_ids[None, :]),
+            axis=1,
+        )
+        valid = self._contact_dim(data) > 0
+        contact_force = self._contact_force(data)
+        return jp.sum(jp.where(valid & has_floor & has_foot, contact_force, 0.0))
+
+    def _contact_geom(self, data: mjx.Data) -> jax.Array:
+        impl = data._impl
+        if hasattr(impl, "contact__geom"):
+            return impl.contact__geom
+        return impl.contact.geom
+
+    def _contact_dim(self, data: mjx.Data) -> jax.Array:
+        impl = data._impl
+        if hasattr(impl, "contact__dim"):
+            return impl.contact__dim
+        return impl.contact.dim
+
+    def _contact_efc_address(self, data: mjx.Data) -> jax.Array:
+        impl = data._impl
+        if hasattr(impl, "contact__efc_address"):
+            return impl.contact__efc_address
+        return impl.contact.efc_address[:, None]
+
+    def _efc_force(self, data: mjx.Data) -> jax.Array:
+        impl = data._impl
+        if hasattr(impl, "efc__force"):
+            return impl.efc__force
+        if hasattr(impl, "efc_force"):
+            return impl.efc_force
+        return data.efc_force
+
+    def _contact_force(self, data: mjx.Data) -> jax.Array:
+        address = self._contact_efc_address(data)
+        valid_address = address >= 0
+        safe_address = jp.maximum(address, 0)
+        force = jp.take(self._efc_force(data), safe_address, mode="clip")
+        force = jp.where(valid_address, jp.maximum(force, 0.0), 0.0)
+        return jp.sum(force, axis=1)
 
     def _foot_clearance_scores(self, data: mjx.Data) -> tuple[jax.Array, jax.Array]:
         left_clearance = jp.max(
