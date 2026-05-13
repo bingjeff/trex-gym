@@ -58,6 +58,8 @@ def default_config() -> config_dict.ConfigDict:
                 torso_height=1.0,
                 non_foot_clearance=1.0,
                 foot_support=1.0,
+                foot_balance=1.0,
+                standing_pose=0.5,
                 stand_still=0.25,
                 action_rate=-1e-5,
                 torques=-1e-9,
@@ -123,6 +125,14 @@ class TrexGetup(mjx_env.MjxEnv):
         self._side_qpos = jp.array(consts.side_lying_qpos(self._mj_model))
         self._standing_qpos = jp.array(consts.standing_qpos(self._mj_model))
         self._target_torso_height = float(self._config.torso_height)
+        self._leg_qpos_ids = jp.array(
+            [
+                self._mj_model.jnt_qposadr[self._mj_model.joint(joint_name).id]
+                for joint_name in consts.LEG_JOINTS
+            ],
+            dtype=jp.int32,
+        )
+        self._standing_leg_qpos = self._standing_qpos[self._leg_qpos_ids]
         self._non_foot_geom_ids = jp.array(
             [
                 geom_id
@@ -133,6 +143,9 @@ class TrexGetup(mjx_env.MjxEnv):
         )
         self._left_foot_geom_ids = self._foot_geom_ids("left")
         self._right_foot_geom_ids = self._foot_geom_ids("right")
+        self._standing_torso_to_support_xy = jp.array(
+            self._torso_to_support_xy(np.array(self._standing_qpos))
+        )
 
     def reset(self, rng: jax.Array) -> mjx_env.State:
         yaw_rng, xy_rng, joint_rng, qvel_rng, height_rng = jax.random.split(rng, 5)
@@ -256,6 +269,8 @@ class TrexGetup(mjx_env.MjxEnv):
             "torso_height": orientation * self._reward_height(torso_height),
             "non_foot_clearance": self._reward_non_foot_clearance(data),
             "foot_support": orientation * self._reward_foot_support(data),
+            "foot_balance": orientation * self._reward_foot_balance(data),
+            "standing_pose": orientation * self._reward_standing_pose(data.qpos),
             "stand_still": self._reward_stand_still(action, gravity, torso_height),
             "action_rate": self._cost_action_rate(action, info),
             "torques": self._cost_torques(data.actuator_force),
@@ -308,6 +323,31 @@ class TrexGetup(mjx_env.MjxEnv):
         left = jp.exp(-200.0 * jp.square(left_height))
         right = jp.exp(-200.0 * jp.square(right_height))
         return 0.5 * (left + right)
+
+    def _reward_foot_balance(self, data: mjx.Data) -> jax.Array:
+        left_center = jp.mean(data.geom_xpos[self._left_foot_geom_ids, :2], axis=0)
+        right_center = jp.mean(data.geom_xpos[self._right_foot_geom_ids, :2], axis=0)
+        support_center = 0.5 * (left_center + right_center)
+        torso_xy = data.site_xpos[self._imu_site_id, :2]
+        error = torso_xy - support_center - self._standing_torso_to_support_xy
+        return jp.exp(-0.5 * jp.sum(jp.square(error)))
+
+    def _torso_to_support_xy(self, qpos: np.ndarray) -> np.ndarray:
+        data = mujoco.MjData(self._mj_model)
+        data.qpos[:] = qpos
+        mujoco.mj_forward(self._mj_model, data)
+        left_center = np.mean(
+            data.geom_xpos[np.array(self._left_foot_geom_ids), :2], axis=0
+        )
+        right_center = np.mean(
+            data.geom_xpos[np.array(self._right_foot_geom_ids), :2], axis=0
+        )
+        support_center = 0.5 * (left_center + right_center)
+        return data.site_xpos[self._imu_site_id, :2] - support_center
+
+    def _reward_standing_pose(self, qpos: jax.Array) -> jax.Array:
+        error = qpos[self._leg_qpos_ids] - self._standing_leg_qpos
+        return jp.exp(-0.5 * jp.sum(jp.square(error)))
 
     def _geom_bottom(self, data: mjx.Data, geom_ids: jax.Array) -> jax.Array:
         geom_xpos = data.geom_xpos[geom_ids]

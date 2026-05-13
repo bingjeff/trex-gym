@@ -23,6 +23,7 @@ class TestMjxGym(unittest.TestCase):
         self.assertEqual(37, env.mj_model.nv)
         self.assertEqual(10, env.mj_model.nu)
         self.assertEqual(46, env.mj_model.ngeom)
+        self.assertGreaterEqual(env.mj_model.nlight, 1)
         self.assertEqual(5, env.mj_model.nsensor)
         self.assertEqual(
             [
@@ -78,6 +79,8 @@ class TestMjxGym(unittest.TestCase):
         )
         self.assertGreater(float(env._reward_non_foot_clearance(mjx_data)), 0.9)
         self.assertGreater(float(env._reward_foot_support(mjx_data)), 0.9)
+        self.assertGreater(float(env._reward_foot_balance(mjx_data)), 0.9)
+        self.assertAlmostEqual(float(env._reward_standing_pose(mjx_data.qpos)), 1.0)
 
         floor_id = model.geom("floor").id
         floor_contacts = []
@@ -164,6 +167,40 @@ class TestMjxGym(unittest.TestCase):
 
         self.assertGreater(standing_reward, 0.9)
         self.assertLess(floating_reward, 0.1)
+
+    def test_balance_and_pose_rewards_penalize_zero_leg_pose(self):
+        env = trex_getup.TrexGetup()
+        model = env.mj_model
+
+        standing = mujoco.MjData(model)
+        standing.qpos[:] = trex_constants.standing_qpos(model)
+        mujoco.mj_forward(model, standing)
+        standing_mjx = mjx.put_data(
+            model,
+            standing,
+            impl=env.mjx_model.impl.value,
+            naconmax=env._config.naconmax,
+            njmax=env._config.njmax,
+        )
+
+        zero_pose = mujoco.MjData(model)
+        zero_pose.qpos[:] = trex_constants.zero_upright_qpos(model)
+        mujoco.mj_forward(model, zero_pose)
+        zero_pose_mjx = mjx.put_data(
+            model,
+            zero_pose,
+            impl=env.mjx_model.impl.value,
+            naconmax=env._config.naconmax,
+            njmax=env._config.njmax,
+        )
+
+        self.assertGreater(float(env._reward_foot_balance(standing_mjx)), 0.9)
+        self.assertLess(
+            float(env._reward_foot_balance(zero_pose_mjx)),
+            float(env._reward_foot_balance(standing_mjx)),
+        )
+        self.assertAlmostEqual(float(env._reward_standing_pose(standing_mjx.qpos)), 1.0)
+        self.assertLess(float(env._reward_standing_pose(zero_pose_mjx.qpos)), 0.5)
 
     def test_reset_randomizes_yaw_without_matching_upright_orientation(self):
         env = trex_getup.TrexGetup()

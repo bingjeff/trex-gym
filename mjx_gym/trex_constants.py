@@ -60,6 +60,17 @@ LEG_ACTUATORS = (
 
 ACTION_ACTUATORS = LEG_ACTUATORS + TAIL_ACTUATORS
 
+LEG_JOINTS = (
+    "joint_hip_adduction_right",
+    "joint_hip_adduction_left",
+    "joint_femur_right",
+    "joint_femur_left",
+    "joint_tibia_right",
+    "joint_tibia_left",
+    "joint_tarsometatarsus_right",
+    "joint_tarsometatarsus_left",
+)
+
 
 def load_urdf() -> urdf_parsing.Urdf:
     return urdf_parsing.Urdf.from_element(
@@ -215,6 +226,19 @@ def _add_scene(node: ElementTree.Element) -> None:
     )
 
     worldbody = node.find("worldbody")
+    ElementTree.SubElement(
+        worldbody,
+        "light",
+        {
+            "name": "key",
+            "pos": "0 -6 8",
+            "dir": "0 0.6 -1",
+            "directional": "true",
+            "diffuse": "0.85 0.85 0.8",
+            "specular": "0.2 0.2 0.2",
+            "castshadow": "true",
+        },
+    )
     ElementTree.SubElement(
         worldbody,
         "geom",
