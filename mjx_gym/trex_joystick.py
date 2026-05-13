@@ -66,6 +66,7 @@ def default_config() -> config_dict.ConfigDict:
         foot_contact_balance=0.5,
         lateral_vel=-0.25,
         vertical_vel=-0.5,
+        base_tilt_ang_vel=-1.0,
         foot_slip=-0.2,
         stand_still=4.0,
         standing_base_lin_vel=-10.0,
@@ -329,6 +330,8 @@ class TrexJoystick(trex_getup.TrexGetup):
             * self._reward_foot_contact_balance(data),
             "lateral_vel": locomotion_gate * jp.square(local_linvel[2]),
             "vertical_vel": locomotion_gate * jp.square(local_linvel[1]),
+            "base_tilt_ang_vel": locomotion_gate
+            * self._cost_base_tilt_ang_vel(local_angvel),
             "foot_slip": running_gate * self._cost_foot_slip(data, info),
             "stand_still": standing_gate
             * locomotion_gate
@@ -437,6 +440,9 @@ class TrexJoystick(trex_getup.TrexGetup):
     ) -> jax.Array:
         error = jp.square(command[1] - local_angvel[1])
         return jp.exp(-error / self._config.reward_config.turn_tracking_sigma)
+
+    def _cost_base_tilt_ang_vel(self, local_angvel: jax.Array) -> jax.Array:
+        return jp.square(local_angvel[0]) + jp.square(local_angvel[2])
 
     def _reward_commanded_stand_still(
         self,
