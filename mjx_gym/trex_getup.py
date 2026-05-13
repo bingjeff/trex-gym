@@ -66,6 +66,7 @@ def default_config() -> config_dict.ConfigDict:
                 torques=-1e-9,
                 dof_vel=-1e-6,
                 root_vel=-1e-4,
+                base_ang_vel=-2e-2,
             ),
         ),
         impl="jax",
@@ -283,6 +284,7 @@ class TrexGetup(mjx_env.MjxEnv):
             "torques": self._cost_torques(data.actuator_force),
             "dof_vel": self._cost_dof_vel(data.qvel[6:]),
             "root_vel": self._cost_root_vel(data.qvel[:6]),
+            "base_ang_vel": self._cost_base_ang_vel(data.qvel[3:6]),
         }
 
     def _is_non_foot_contact_geom(self, geom_id: int) -> bool:
@@ -429,6 +431,9 @@ class TrexGetup(mjx_env.MjxEnv):
 
     def _cost_root_vel(self, qvel: jax.Array) -> jax.Array:
         return jp.sum(jp.square(qvel[:3])) + 0.25 * jp.sum(jp.square(qvel[3:6]))
+
+    def _cost_base_ang_vel(self, qvel: jax.Array) -> jax.Array:
+        return jp.sum(jp.square(qvel))
 
     def get_gyro(self, data: mjx.Data) -> jax.Array:
         return mjx_env.get_sensor_data(self.mj_model, data, consts.GYRO_SENSOR)

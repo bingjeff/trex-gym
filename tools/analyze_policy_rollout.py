@@ -102,6 +102,10 @@ def analyze(args: argparse.Namespace) -> None:
     max_orientation = -np.inf
     mean_abs_action = 0.0
     max_abs_action = 0.0
+    mean_base_lin_vel = 0.0
+    max_base_lin_vel = 0.0
+    mean_base_ang_vel = 0.0
+    max_base_ang_vel = 0.0
 
     non_foot_geom_ids = np.asarray(env._non_foot_geom_ids, dtype=int)
     left_foot_geom_ids = np.asarray(env._left_foot_geom_ids, dtype=int)
@@ -121,6 +125,13 @@ def analyze(args: argparse.Namespace) -> None:
         reward_sum += float(jax.device_get(state.reward))
         mean_abs_action += float(np.mean(np.abs(action_np)))
         max_abs_action = max(max_abs_action, float(np.max(np.abs(action_np))))
+        qvel = np.asarray(data.qvel)
+        base_lin_vel = float(np.linalg.norm(qvel[:3]))
+        base_ang_vel = float(np.linalg.norm(qvel[3:6]))
+        mean_base_lin_vel += base_lin_vel
+        max_base_lin_vel = max(max_base_lin_vel, base_lin_vel)
+        mean_base_ang_vel += base_ang_vel
+        max_base_ang_vel = max(max_base_ang_vel, base_ang_vel)
         for key, value in state.metrics.items():
             metric_sums[key] += float(jax.device_get(value))
 
@@ -181,6 +192,10 @@ def analyze(args: argparse.Namespace) -> None:
     print(f"episode_reward_sum: {reward_sum:.3f}")
     print(f"mean_abs_action: {mean_abs_action / sample_steps:.3f}")
     print(f"max_abs_action: {max_abs_action:.3f}")
+    print(f"mean_base_lin_vel: {mean_base_lin_vel / sample_steps:.3f}")
+    print(f"max_base_lin_vel: {max_base_lin_vel:.3f}")
+    print(f"mean_base_ang_vel: {mean_base_ang_vel / sample_steps:.3f}")
+    print(f"max_base_ang_vel: {max_base_ang_vel:.3f}")
     print(f"torso_height_range: {min_torso_height:.3f} {max_torso_height:.3f}")
     print(f"orientation_reward_range: {min_orientation:.3f} {max_orientation:.3f}")
     print(f"min_non_foot_bottom: {min_non_foot_bottom:.3f}")
