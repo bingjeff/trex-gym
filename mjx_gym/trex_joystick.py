@@ -6,6 +6,7 @@ import jax
 import jax.numpy as jp
 from ml_collections import config_dict
 from mujoco import mjx
+import numpy as np
 
 from mujoco_playground._src import mjx_env
 from mjx_gym import trex_constants as consts
@@ -18,11 +19,11 @@ def default_config() -> config_dict.ConfigDict:
     config.reset_standing_prob = 0.5
     config.reset_command_interval_mean = 3.0
     config.command_config = config_dict.create(
-        forward_min=-0.25,
+        forward_min=0.0,
         forward_max=10.0,
         turn_max=1.0,
-        zero_prob=0.25,
-        turn_zero_prob=0.35,
+        zero_prob=0.35,
+        turn_zero_prob=0.5,
     )
     config.reward_config.tracking_sigma = 0.25
     config.reward_config.high_speed_tracking_sigma_scale = 0.5
@@ -42,10 +43,10 @@ def default_config() -> config_dict.ConfigDict:
         running_foot_clearance=0.25,
         lateral_vel=-0.25,
         vertical_vel=-0.25,
-        stand_still=2.0,
-        standing_base_lin_vel=-1.0,
-        standing_base_ang_vel=-1.0,
-        standing_foot_vel=-0.1,
+        stand_still=4.0,
+        standing_base_lin_vel=-10.0,
+        standing_base_ang_vel=-5.0,
+        standing_foot_vel=-1.0,
         action_rate=-1e-5,
         torques=-1e-9,
         dof_vel=-1e-6,
@@ -63,6 +64,7 @@ class TrexJoystick(trex_getup.TrexGetup):
     ):
         super().__init__(config, config_overrides)
         self._command_zero = jp.zeros(2)
+        self._standing_action = self._normalized_standing_action()
 
     def reset(self, rng: jax.Array) -> mjx_env.State:
         (
@@ -147,19 +149,21 @@ class TrexJoystick(trex_getup.TrexGetup):
 
     def step(self, state: mjx_env.State, action: jax.Array) -> mjx_env.State:
         clipped_action = jp.clip(action, -1.0, 1.0)
+        standing_gate = self._standing_command_gate(state.info["command"])
+        applied_action = jp.where(standing_gate, self._standing_action, clipped_action)
         target_scale = jp.where(
-            clipped_action >= 0.0,
+            applied_action >= 0.0,
             self._action_ctrl_positive_scale,
             self._action_ctrl_negative_scale,
         )
         target = (
             self._action_ctrl_neutral
-            + clipped_action * target_scale * self._config.action_scale
+            + applied_action * target_scale * self._config.action_scale
         )
         ctrl = self._default_ctrl.at[self._action_actuator_ids].set(target)
         data = mjx_env.step(self.mjx_model, state.data, ctrl, self.n_substeps)
         done = jp.zeros(())
-        rewards = self._get_reward(data, action, state.info)
+        rewards = self._get_reward(data, applied_action, state.info)
         rewards = {
             key: value * self._config.reward_config.scales[key]
             for key, value in rewards.items()
@@ -171,7 +175,7 @@ class TrexJoystick(trex_getup.TrexGetup):
         )
 
         state.info["last_last_act"] = state.info["last_act"]
-        state.info["last_act"] = action
+        state.info["last_act"] = applied_action
         state.info["last_foot_centers"] = self._foot_centers_world(data)
         state.info["steps_until_next_cmd"] -= 1
         state.info["rng"], command_rng, interval_rng = jax.random.split(
@@ -256,11 +260,13 @@ class TrexJoystick(trex_getup.TrexGetup):
             "standing_pose": standing_gate
             * orientation
             * self._reward_standing_pose(data.qpos),
-            "tracking_forward_vel": locomotion_gate
+            "tracking_forward_vel": moving_gate
+            * locomotion_gate
             * self._reward_tracking_forward_vel(info["command"], local_linvel),
             "forward_progress": locomotion_gate
             * self._reward_forward_progress(info["command"], local_linvel),
-            "tracking_turn_vel": locomotion_gate
+            "tracking_turn_vel": moving_gate
+            * locomotion_gate
             * self._reward_tracking_turn_vel(info["command"], local_angvel),
             "running_stride": running_gate * self._reward_running_stride(data),
             "running_foot_clearance": running_gate
@@ -352,8 +358,22 @@ class TrexJoystick(trex_getup.TrexGetup):
         local_linvel: jax.Array,
         local_angvel: jax.Array,
     ) -> jax.Array:
-        speed = jp.sum(jp.square(local_linvel)) + jp.square(local_angvel[1])
-        return (jp.linalg.norm(command) < 0.05) * jp.exp(-2.0 * speed)
+        speed = jp.sum(jp.square(local_linvel)) + jp.sum(jp.square(local_angvel))
+        return self._standing_command_gate(command) * jp.exp(-10.0 * speed)
+
+    def _normalized_standing_action(self) -> jax.Array:
+        targets = np.zeros(self.action_size)
+        for actuator_index, joint_name in enumerate(consts.LEG_JOINTS):
+            joint_id = self._mj_model.joint(joint_name).id
+            qpos_id = self._mj_model.jnt_qposadr[joint_id]
+            targets[actuator_index] = float(self._standing_qpos[qpos_id])
+        targets = jp.array(targets)
+        scale = jp.where(
+            targets >= self._action_ctrl_neutral,
+            self._action_ctrl_positive_scale,
+            self._action_ctrl_negative_scale,
+        )
+        return jp.clip((targets - self._action_ctrl_neutral) / scale, -1.0, 1.0)
 
     def _standing_command_gate(self, command: jax.Array) -> jax.Array:
         return (jp.linalg.norm(command) < 0.05).astype(jp.float32)
