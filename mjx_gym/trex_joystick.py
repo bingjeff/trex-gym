@@ -17,6 +17,7 @@ def default_config() -> config_dict.ConfigDict:
     config.episode_length = 1000
     config.reset_standing_prob = 0.5
     config.reset_command_interval_mean = 3.0
+    config.stand_action_smoothing = 0.05
     config.command_config = config_dict.create(
         forward_min=0.0,
         forward_max=10.0,
@@ -151,10 +152,14 @@ class TrexJoystick(trex_getup.TrexGetup):
         clipped_action = jp.clip(action, -1.0, 1.0)
         standing_gate = self._standing_command_gate(state.info["command"])
         start_standing = standing_gate * (1.0 - state.info["was_standing_command"])
+        smoothed_stand_act = state.info["stand_hold_act"] + (
+            self._config.stand_action_smoothing
+            * (clipped_action - state.info["stand_hold_act"])
+        )
         stand_hold_act = jp.where(
             start_standing,
             clipped_action,
-            state.info["stand_hold_act"],
+            smoothed_stand_act,
         )
         applied_action = jp.where(standing_gate, stand_hold_act, clipped_action)
         target_scale = jp.where(
