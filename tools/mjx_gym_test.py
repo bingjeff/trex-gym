@@ -461,8 +461,8 @@ class TestMjxGym(unittest.TestCase):
             float(env._cost_base_tilt_ang_vel(jp.array([1.0, 10.0, 2.0]))),
             5.0,
         )
-        self.assertAlmostEqual(float(env._cost_running_height_excess(2.80)), 0.0)
-        self.assertGreater(float(env._cost_running_height_excess(3.50)), 0.1)
+        self.assertAlmostEqual(float(env._cost_running_height_excess(2.55)), 0.0)
+        self.assertGreater(float(env._cost_running_height_excess(3.00)), 0.1)
         self.assertAlmostEqual(
             float(env._reward_tracking_turn_vel(command, jp.array([0.0, 0.5, 0.0]))),
             1.0,

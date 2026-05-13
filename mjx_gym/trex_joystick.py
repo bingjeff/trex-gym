@@ -67,8 +67,8 @@ def default_config() -> config_dict.ConfigDict:
         lateral_vel=-0.25,
         vertical_vel=-0.5,
         base_tilt_ang_vel=-1.0,
-        no_foot_contact=-5.0,
-        running_height_excess=-2.0,
+        no_foot_contact=-12.0,
+        running_height_excess=-8.0,
         foot_slip=-0.2,
         stand_still=4.0,
         standing_base_lin_vel=-10.0,
@@ -451,10 +451,10 @@ class TrexJoystick(trex_getup.TrexGetup):
 
     def _cost_no_foot_contact(self, data: mjx.Data) -> jax.Array:
         contact_sum = sum(self._foot_contact_scores(data))
-        return jp.square(jp.maximum(0.75 - contact_sum, 0.0))
+        return jp.square(jp.maximum(1.0 - contact_sum, 0.0))
 
     def _cost_running_height_excess(self, torso_height: jax.Array) -> jax.Array:
-        max_running_height = self._target_torso_height + 0.35
+        max_running_height = self._target_torso_height + 0.10
         return jp.square(jp.maximum(torso_height - max_running_height, 0.0))
 
     def _reward_commanded_stand_still(
