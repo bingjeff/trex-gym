@@ -231,6 +231,8 @@ class TestMujocoParsing(unittest.TestCase):
         self.assertIsNotNone(contact_default)
         self.assertEqual("1", contact_default.get("contype"))
         self.assertEqual("1", contact_default.get("conaffinity"))
+        self.assertEqual("4", contact_default.get("condim"))
+        self.assertEqual("3.0 0.1 0.1", contact_default.get("friction"))
         self.assertEqual("2", contact_default.get("group"))
         self.assertEqual("0.5 0.8 1.0 0.5", contact_default.get("rgba"))
         self.assertTrue(
