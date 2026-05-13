@@ -193,13 +193,13 @@ class TrexJoystick(trex_getup.TrexGetup):
         joint_vel = data.qvel[6:]
         state = jp.concatenate(
             [
-                local_linvel,
-                local_angvel,
                 gyro,
                 gravity,
                 joint_angles,
                 joint_vel,
                 info["last_act"],
+                local_linvel,
+                local_angvel,
                 info["command"],
             ]
         )

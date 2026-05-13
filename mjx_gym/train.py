@@ -36,7 +36,7 @@ def register_environments() -> None:
 
 
 def trex_ppo_config(env_name: str, impl: str | None = None) -> config_dict.ConfigDict:
-    del env_name, impl
+    del impl
     env_config = (
         trex_joystick.default_config()
         if env_name == "TrexJoystick"

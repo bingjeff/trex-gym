@@ -88,3 +88,57 @@ uv run python tools/analyze_policy_rollout.py \
   --steps 750 \
   --skip-steps 500
 ```
+
+## TrexJoystick warm-start Warp 10M
+
+- Local path: `checkpoints/TrexJoystick-20260513-044426-joystick-warm-10m/`
+- Checkpoint: `checkpoints/TrexJoystick-20260513-044426-joystick-warm-10m/000011468800/`
+- Source run on pod: `/workspace/runs/TrexJoystick-20260513-044426-joystick-warm-10m`
+- Warm start: `/workspace/runs/TrexJoystick-warmstart-getup/checkpoints/000000000000`
+- Training source: `2c156bbf4b806cbdc9093448927174b58da51098` plus the joystick warm-start converter and observation-order fix committed with this checkpoint record.
+- Training backend: MuJoCo MJX Warp
+- Training length: 10M requested steps, final saved checkpoint at `000011468800`
+- Final eval reward: `123.566`
+
+This is the first successful joystick policy. It was initialized by padding the
+`TrexGetup` policy checkpoint into the larger `TrexJoystick` observation space:
+the original 78 policy observation entries stay in the same order and the new
+local velocity / command entries are appended with zero input weights. The run
+then fine-tuned command tracking for forward speed and turn rate.
+
+Final TensorBoard eval terms showed the intended trend:
+
+- Episode reward improved from `107.023` to `123.566`.
+- Forward tracking reward improved from `819.784` to `1666.087`.
+- Turn tracking reward improved from `660.320` to `771.518`.
+- Orientation stayed high, ending at `963.327`.
+- Non-foot clearance stayed high, ending at `985.632`.
+
+Fixed-command diagnostics on the final checkpoint used the final 500 steps of a
+1000-step rollout with Warp:
+
+- Standing stop command `(0.0 m/s, 0.0 rad/s)`: mean forward velocity -0.027 m/s, mean turn velocity 0.050 rad/s, XY displacement 0.278 m, orientation reward 0.999-1.000.
+- Standing forward command `(1.0 m/s, 0.0 rad/s)`: mean forward velocity 0.933 m/s, mean turn velocity -0.081 rad/s, XY displacement 9.175 m, orientation reward 0.999-1.000.
+- Standing turn command `(0.0 m/s, 0.5 rad/s)`: mean forward velocity -0.014 m/s, mean turn velocity 0.457 rad/s, XY displacement 0.218 m, orientation reward 0.995-0.999.
+- Side reset stop command `(0.0 m/s, 0.0 rad/s)`: mean forward velocity -0.025 m/s, mean turn velocity 0.040 rad/s, XY displacement 0.345 m, orientation reward 0.999-1.000.
+- Side reset forward command `(1.0 m/s, 0.0 rad/s)`: mean forward velocity 0.935 m/s, mean turn velocity -0.079 rad/s, XY displacement 9.229 m, orientation reward 0.999-1.000.
+
+Representative rollout videos copied locally:
+
+- `checkpoints/TrexJoystick-20260513-044426-joystick-warm-10m/videos/rollout0.mp4`
+- `checkpoints/TrexJoystick-20260513-044426-joystick-warm-10m/videos/rollout1.mp4`
+- `checkpoints/TrexJoystick-20260513-044426-joystick-warm-10m/videos/rollout2.mp4`
+- `checkpoints/TrexJoystick-20260513-044426-joystick-warm-10m/videos/rollout3.mp4`
+
+Re-run the fixed-command diagnostic with:
+
+```bash
+uv run python tools/analyze_joystick_rollout.py \
+  checkpoints/TrexJoystick-20260513-044426-joystick-warm-10m/000011468800 \
+  --impl warp \
+  --reset-pose standing \
+  --forward 1.0 \
+  --turn 0.0 \
+  --steps 1000 \
+  --skip-steps 500
+```
