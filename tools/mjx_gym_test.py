@@ -446,6 +446,14 @@ class TestMjxGym(unittest.TestCase):
         self.assertLess(float(no_contact_gate), 0.1)
         self.assertGreater(float(one_foot_gate), 0.9)
 
+    def test_trex_joystick_double_foot_contact_cost_prefers_single_support(self):
+        env = trex_joystick.TrexJoystick()
+        no_double_support = jp.array(1.0) * jp.array(0.0)
+        double_support = jp.array(1.0) * jp.array(1.0)
+
+        self.assertLess(float(no_double_support), 0.1)
+        self.assertGreater(float(double_support), 0.9)
+
     def test_trex_joystick_leg_action_alternation_prefers_opposite_pairs(self):
         env = trex_joystick.TrexJoystick()
         alternating = np.asarray(env._stand_pose_action).copy()

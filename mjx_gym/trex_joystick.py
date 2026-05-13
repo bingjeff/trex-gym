@@ -69,6 +69,7 @@ def default_config() -> config_dict.ConfigDict:
         gait_symmetry=1.0,
         contact_duty_symmetry=1.0,
         foot_contact_balance=0.5,
+        double_foot_contact=-2.0,
         lateral_vel=-0.25,
         vertical_vel=-0.5,
         base_tilt_ang_vel=-1.0,
@@ -358,6 +359,9 @@ class TrexJoystick(trex_getup.TrexGetup):
             * self._reward_contact_duty_symmetry(data, info),
             "foot_contact_balance": achieved_running_gate
             * self._reward_foot_contact_balance(data),
+            "double_foot_contact": moving_gate
+            * self._running_speed_gate(info["command"])
+            * self._cost_double_foot_contact(data),
             "lateral_vel": locomotion_gate * jp.square(local_linvel[2]),
             "vertical_vel": locomotion_gate * jp.square(local_linvel[1]),
             "base_tilt_ang_vel": locomotion_gate
@@ -644,6 +648,10 @@ class TrexJoystick(trex_getup.TrexGetup):
         )
         any_contact = jp.clip(left_contact + right_contact, 0.0, 1.0)
         return 0.5 * any_contact + 0.5 * one_foot_stance
+
+    def _cost_double_foot_contact(self, data: mjx.Data) -> jax.Array:
+        left_contact, right_contact = self._foot_contact_scores(data)
+        return left_contact * right_contact
 
     def _reward_contact_duty_symmetry(
         self, data: mjx.Data, info: dict[str, Any]
