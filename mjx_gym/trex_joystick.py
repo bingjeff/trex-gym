@@ -70,6 +70,7 @@ def default_config() -> config_dict.ConfigDict:
         gait_symmetry=1.0,
         phase_contact=1.0,
         phase_foot_clearance=1.0,
+        feet_air_time=0.5,
         contact_duty_symmetry=1.0,
         foot_contact_balance=0.5,
         double_foot_contact=-2.0,
@@ -180,6 +181,8 @@ class TrexJoystick(trex_getup.TrexGetup):
             "was_standing_command": jp.zeros(()),
             "last_foot_centers": self._foot_centers_world(data),
             "contact_duty": jp.zeros(2),
+            "feet_air_time": jp.zeros(2),
+            "last_contact": jp.zeros(2, dtype=bool),
             "gait_phase": jp.zeros(()),
         }
         metrics = {}
@@ -220,8 +223,14 @@ class TrexJoystick(trex_getup.TrexGetup):
         )
         ctrl = self._default_ctrl.at[self._action_actuator_ids].set(target)
         data = mjx_env.step(self.mjx_model, state.data, ctrl, self.n_substeps)
+        contact = jp.array(self._foot_contact_scores(data)) > 0.2
+        contact_filt = contact | state.info["last_contact"]
+        feet_air_time = state.info["feet_air_time"] + self.dt
+        first_contact = (feet_air_time > 0.0) & contact_filt
         done = jp.zeros(())
-        rewards = self._get_reward(data, applied_action, state.info)
+        rewards = self._get_reward(
+            data, applied_action, state.info, first_contact, feet_air_time
+        )
         rewards = {
             key: value * self._config.reward_config.scales[key]
             for key, value in rewards.items()
@@ -240,6 +249,8 @@ class TrexJoystick(trex_getup.TrexGetup):
         state.info["was_standing_command"] = standing_gate
         state.info["last_foot_centers"] = self._foot_centers_world(data)
         state.info["contact_duty"] = self._updated_contact_duty(data, state.info)
+        state.info["feet_air_time"] = feet_air_time * ~contact
+        state.info["last_contact"] = contact
         state.info["gait_phase"] = self._updated_gait_phase(state.info, standing_gate)
         state.info["steps_until_next_cmd"] -= 1
         state.info["rng"], command_rng, interval_rng = jax.random.split(
@@ -297,7 +308,12 @@ class TrexJoystick(trex_getup.TrexGetup):
         return {"state": state, "privileged_state": privileged_state}
 
     def _get_reward(
-        self, data: mjx.Data, action: jax.Array, info: dict[str, Any]
+        self,
+        data: mjx.Data,
+        action: jax.Array,
+        info: dict[str, Any],
+        first_contact: jax.Array,
+        feet_air_time: jax.Array,
     ) -> dict[str, jax.Array]:
         gravity = self.get_gravity(data)
         torso_height = data.site_xpos[self._imu_site_id][2]
@@ -362,6 +378,8 @@ class TrexJoystick(trex_getup.TrexGetup):
             "phase_contact": running_gate * self._reward_phase_contact(data, info),
             "phase_foot_clearance": running_gate
             * self._reward_phase_foot_clearance(data, info),
+            "feet_air_time": running_gate
+            * self._reward_feet_air_time(feet_air_time, first_contact, info["command"]),
             "contact_duty_symmetry": achieved_running_gate
             * self._reward_contact_duty_symmetry(data, info),
             "foot_contact_balance": achieved_running_gate
@@ -678,6 +696,16 @@ class TrexJoystick(trex_getup.TrexGetup):
         )
         any_contact = jp.clip(left_contact + right_contact, 0.0, 1.0)
         return 0.5 * any_contact + 0.5 * one_foot_stance
+
+    def _reward_feet_air_time(
+        self,
+        feet_air_time: jax.Array,
+        first_contact: jax.Array,
+        command: jax.Array,
+    ) -> jax.Array:
+        moving = self._running_speed_gate(command) > 0.0
+        air_time_reward = jp.sum((feet_air_time - 0.12) * first_contact)
+        return moving * jp.clip(air_time_reward, 0.0, 0.5)
 
     def _cost_double_foot_contact(self, data: mjx.Data) -> jax.Array:
         left_contact, right_contact = self._foot_contact_scores(data)
