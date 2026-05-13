@@ -330,7 +330,8 @@ class TrexJoystick(trex_getup.TrexGetup):
             "forward_progress": locomotion_gate
             * speed_tracking_gate
             * self._reward_forward_progress(info["command"], local_linvel),
-            "forward_speed_deficit": locomotion_gate
+            "forward_speed_deficit": moving_gate
+            * self._running_speed_gate(info["command"])
             * self._cost_forward_speed_deficit(info["command"], local_linvel),
             "tracking_turn_vel": locomotion_gate
             * speed_tracking_gate
