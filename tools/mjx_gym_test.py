@@ -463,6 +463,21 @@ class TestMjxGym(unittest.TestCase):
             0.2,
         )
 
+    def test_trex_joystick_gait_prior_alternates_leg_pairs_when_running(self):
+        env = trex_joystick.TrexJoystick()
+        prior = np.asarray(
+            env._gait_prior_action(
+                {"command": jp.array([10.0, 0.0]), "gait_phase": jp.pi / 2.0}
+            )
+        )
+
+        self.assertGreater(prior[2], 0.1)
+        self.assertLess(prior[3], -0.1)
+        self.assertLess(prior[4], -0.1)
+        self.assertGreater(prior[5], 0.1)
+        self.assertAlmostEqual(prior[8], 0.0)
+        self.assertAlmostEqual(prior[9], 0.0)
+
     def test_trex_joystick_tracking_rewards_use_forward_and_turn_axes(self):
         env = trex_joystick.TrexJoystick()
         command = jp.array([1.0, 0.5])

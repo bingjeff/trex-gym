@@ -34,6 +34,10 @@ def default_config() -> config_dict.ConfigDict:
     config.stand_pose_orientation_threshold = 0.95
     config.stand_pose_height_fraction = 0.90
     config.stand_pose_clearance_threshold = 0.90
+    config.gait_prior_scale = 0.35
+    config.gait_frequency_min = 1.0
+    config.gait_frequency_per_mps = 0.15
+    config.gait_frequency_max = 2.5
     config.command_config = config_dict.create(
         forward_min=0.0,
         forward_max=10.0,
@@ -171,6 +175,7 @@ class TrexJoystick(trex_getup.TrexGetup):
             "was_standing_command": jp.zeros(()),
             "last_foot_centers": self._foot_centers_world(data),
             "contact_duty": jp.zeros(2),
+            "gait_phase": jp.zeros(()),
         }
         metrics = {}
         for key in self._config.reward_config.scales.keys():
@@ -195,7 +200,10 @@ class TrexJoystick(trex_getup.TrexGetup):
         applied_stand_action = jp.where(
             stand_pose_gate, self._stand_pose_action, stand_hold_act
         )
-        applied_action = jp.where(standing_gate, applied_stand_action, clipped_action)
+        running_action = jp.clip(
+            clipped_action + self._gait_prior_action(state.info), -1.0, 1.0
+        )
+        applied_action = jp.where(standing_gate, applied_stand_action, running_action)
         target_scale = jp.where(
             applied_action >= 0.0,
             self._action_ctrl_positive_scale,
@@ -227,6 +235,7 @@ class TrexJoystick(trex_getup.TrexGetup):
         state.info["was_standing_command"] = standing_gate
         state.info["last_foot_centers"] = self._foot_centers_world(data)
         state.info["contact_duty"] = self._updated_contact_duty(data, state.info)
+        state.info["gait_phase"] = self._updated_gait_phase(state.info, standing_gate)
         state.info["steps_until_next_cmd"] -= 1
         state.info["rng"], command_rng, interval_rng = jax.random.split(
             state.info["rng"], 3
@@ -418,6 +427,34 @@ class TrexJoystick(trex_getup.TrexGetup):
             jax.random.exponential(rng) * self._config.reset_command_interval_mean
         )
         return jp.maximum(1, jp.round(interval / self.dt)).astype(jp.int32)
+
+    def _gait_prior_action(self, info: dict[str, Any]) -> jax.Array:
+        phase = info["gait_phase"]
+        right = jp.sin(phase)
+        left = -right
+        gait = jp.zeros(self.action_size)
+        gait = gait.at[2].set(right)
+        gait = gait.at[3].set(left)
+        gait = gait.at[4].set(-right)
+        gait = gait.at[5].set(-left)
+        gait = gait.at[6].set(0.75 * right)
+        gait = gait.at[7].set(0.75 * left)
+        moving_gate = 1.0 - self._standing_command_gate(info["command"])
+        speed_gate = self._running_speed_gate(info["command"])
+        return moving_gate * speed_gate * self._config.gait_prior_scale * gait
+
+    def _updated_gait_phase(
+        self, info: dict[str, Any], standing_gate: jax.Array
+    ) -> jax.Array:
+        frequency = jp.clip(
+            self._config.gait_frequency_min
+            + self._config.gait_frequency_per_mps * jp.maximum(info["command"][0], 0.0),
+            self._config.gait_frequency_min,
+            self._config.gait_frequency_max,
+        )
+        phase = info["gait_phase"] + 2.0 * jp.pi * frequency * self.dt
+        phase = jp.mod(phase, 2.0 * jp.pi)
+        return jp.where(standing_gate, 0.0, phase)
 
     def _reward_tracking_forward_vel(
         self, command: jax.Array, local_linvel: jax.Array
