@@ -1,4 +1,4 @@
-"""Render fixed-command videos for a trained TrexJoystick PPO checkpoint."""
+"""Render fixed-command or scripted-command videos for a TrexJoystick checkpoint."""
 
 from __future__ import annotations
 
@@ -57,7 +57,7 @@ def render(args: argparse.Namespace) -> None:
 
     rng = jax.random.PRNGKey(args.seed)
     state = env.reset(rng)
-    command = jp.array([args.forward, args.turn])
+    command_sequence = _parse_command_sequence(args.command_sequence)
 
     model = env.mj_model
     model.vis.global_.offwidth = max(model.vis.global_.offwidth, args.width)
@@ -68,6 +68,7 @@ def render(args: argparse.Namespace) -> None:
     frame_steps = _parse_frame_steps(args.frame_steps)
     try:
         for step_index in range(args.steps):
+            command = _command_for_step(step_index, command_sequence, args)
             state.info["command"] = command
             state.info["steps_until_next_cmd"] = args.steps + 1
             state = state.replace(obs=env._get_obs(state.data, state.info))
@@ -110,6 +111,54 @@ def _parse_frame_steps(value: str) -> set[int]:
     return {int(item) for item in value.split(",") if item}
 
 
+def _parse_command_sequence(value: str) -> tuple[tuple[int, float, float], ...]:
+    """Parses START:FORWARD:TURN entries separated by semicolons."""
+    if not value:
+        return ()
+
+    sequence: list[tuple[int, float, float]] = []
+    for item in value.split(";"):
+        if not item:
+            continue
+        parts = item.split(":")
+        if len(parts) != 3:
+            raise ValueError(
+                "--command-sequence entries must look like START:FORWARD:TURN"
+            )
+        start_step = int(parts[0])
+        if start_step < 0:
+            raise ValueError("--command-sequence start steps must be non-negative")
+        sequence.append((start_step, float(parts[1]), float(parts[2])))
+
+    if not sequence:
+        return ()
+    sequence.sort(key=lambda item: item[0])
+    if sequence[0][0] != 0:
+        raise ValueError("--command-sequence must include an entry starting at step 0")
+    for previous, current in zip(sequence, sequence[1:]):
+        if previous[0] == current[0]:
+            raise ValueError("--command-sequence start steps must be unique")
+    return tuple(sequence)
+
+
+def _command_for_step(
+    step_index: int,
+    command_sequence: tuple[tuple[int, float, float], ...],
+    args: argparse.Namespace,
+) -> jax.Array:
+    if not command_sequence:
+        return jp.array([args.forward, args.turn])
+
+    forward = command_sequence[0][1]
+    turn = command_sequence[0][2]
+    for start_step, sequence_forward, sequence_turn in command_sequence:
+        if step_index < start_step:
+            break
+        forward = sequence_forward
+        turn = sequence_turn
+    return jp.array([forward, turn])
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("checkpoint", type=Path)
@@ -133,6 +182,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fps", type=int, default=50)
     parser.add_argument("--forward", type=float, default=0.0)
     parser.add_argument("--turn", type=float, default=0.0)
+    parser.add_argument(
+        "--command-sequence",
+        default="",
+        help=(
+            "Optional semicolon-separated START:FORWARD:TURN schedule, e.g. "
+            "'0:0:0;400:10:0;900:3:1'. Overrides --forward/--turn per step."
+        ),
+    )
     parser.add_argument(
         "--reset-pose", choices=("mixed", "standing", "side"), default="standing"
     )
