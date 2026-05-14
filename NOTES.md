@@ -361,3 +361,14 @@ May 14 parallel GPU experiments:
   `batch_size=1024`, `num_eval_envs=32`, and contact budget
   `naconmax=131072,njmax=4096`. Purpose: determine whether the L40S should run
   larger batches/env counts rather than the A5000-style 1024-env setup.
+- A5000 low-speed standing-start seed 3 completed:
+  `/workspace/runs/TrexJoystick-20260514-160555-humanoid-reset-a5000-walk-standing-5m-seed3`.
+  Rewards were `-2.110`, `4.221`, `9.204`, `7.599`, `9.328`; compile
+  `40.3 s`, train `191.6 s`. This is still positive, though noisier than seeds
+  0 and 1.
+- The L40S 4096-env run reached 100% GPU utilization, about 17.5 GB VRAM, and
+  about 270 W, which is a much better use of the card than the 1024-env runs.
+- Started A5000 20M low-speed standing-start seed 5 in tmux
+  `train-a5000-walk-standing-20m-seed5`, log
+  `/workspace/train-a5000-walk-standing-20m-seed5.log`, to compare a longer
+  known-good 1024-env run against the larger L40S run.
