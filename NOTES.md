@@ -616,3 +616,16 @@ May 14 parallel GPU experiments:
   away from the ground without standing. Fixed both `TrexGetup` and
   `TrexJoystick` so non-foot clearance is multiplied by the upright orientation
   reward. Added a focused test proving side-lying clearance no longer pays.
+- L40S corrected `TrexGetup` seed 25:
+  `/workspace/runs/TrexGetup-20260514-200431-getup-gatedclearance-l40s-20m-seed25`.
+  With the clearance gate fixed, scalar reward was no longer inflated
+  (`-0.087` to `3.211`). The rollout still failed: orientation reward range
+  `0.006-0.233`, torso height range `0.661-1.532`, and base displacement
+  `6.977 m`.
+- The earlier local successful joystick checkpoints from `CHECKPOINTS.md` were
+  copied to the L40S for warm-start reuse. They were trained with 86 state
+  observation entries and 172 privileged entries, while current `TrexJoystick`
+  emits 88 and 174. Added `tools/upgrade_joystick_checkpoint.py` to pad running
+  statistics and first-layer kernels with neutral values for newly appended
+  observation features. Local check-load passed on the upgraded
+  `TrexJoystick-20260513-044426-joystick-warm-10m` checkpoint.
