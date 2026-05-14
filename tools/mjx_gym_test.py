@@ -429,6 +429,28 @@ class TestMjxGym(unittest.TestCase):
         self.assertGreater(float(next_state.data.time), 0.0)
         self.assertGreaterEqual(float(next_state.reward), env._config.reward_clip_min)
 
+    def test_trex_joystick_side_reset_curriculum_can_start_near_standing(self):
+        config = trex_joystick.default_config()
+        config.reset_standing_prob = 0.0
+        config.reset_yaw_range = 0.0
+        config.reset_xy_range = 0.0
+        config.reset_height_noise = 0.0
+        config.reset_joint_noise = 0.0
+        config.reset_qvel_noise = 0.0
+        config.side_upright_roll_min = np.pi / 2.0
+        config.side_upright_roll_max = np.pi / 2.0
+        config.side_standing_joint_blend_min = 1.0
+        config.side_standing_joint_blend_max = 1.0
+        env = trex_joystick.TrexJoystick(config)
+
+        state = env.reset(jax.random.PRNGKey(0))
+
+        np.testing.assert_allclose(
+            np.asarray(state.data.qpos),
+            np.asarray(env._standing_qpos),
+            atol=1e-6,
+        )
+
     def test_trex_joystick_fall_termination_is_opt_in(self):
         config = trex_joystick.default_config()
         config.reset_standing_prob = 0.0

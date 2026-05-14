@@ -175,7 +175,9 @@ class TrexJoystick(trex_getup.TrexGetup):
             command_rng,
             interval_rng,
             phase_rng,
-        ) = jax.random.split(rng, 10)
+            roll_rng,
+            blend_rng,
+        ) = jax.random.split(rng, 12)
         yaw = jax.random.uniform(
             yaw_rng,
             (),
@@ -200,11 +202,33 @@ class TrexJoystick(trex_getup.TrexGetup):
             minval=0.0,
             maxval=self._config.reset_height_noise,
         )
+        roll = jax.random.uniform(
+            roll_rng,
+            (),
+            minval=self._config.side_upright_roll_min,
+            maxval=self._config.side_upright_roll_max,
+        )
+        standing_blend = jax.random.uniform(
+            blend_rng,
+            (),
+            minval=self._config.side_standing_joint_blend_min,
+            maxval=self._config.side_standing_joint_blend_max,
+        )
 
         side_qpos = self._side_qpos.at[0:2].set(xy)
-        side_qpos = side_qpos.at[2].add(height_noise)
-        side_qpos = side_qpos.at[3:7].set(trex_getup._yaw_quat(yaw))
-        side_qpos = side_qpos.at[7:].set(joint_noise)
+        side_qpos = side_qpos.at[2].set(
+            (1.0 - standing_blend) * self._side_qpos[2]
+            + standing_blend * self._standing_qpos[2]
+            + height_noise
+        )
+        side_qpos = side_qpos.at[3:7].set(
+            trex_getup._quat_mul(
+                trex_getup._yaw_quat(yaw), trex_getup._roll_quat(roll)
+            )
+        )
+        side_qpos = side_qpos.at[7:].set(
+            standing_blend * self._standing_qpos[7:] + joint_noise
+        )
 
         standing_qpos = self._standing_qpos.at[0:2].set(xy)
         standing_qpos = standing_qpos.at[2].add(height_noise)

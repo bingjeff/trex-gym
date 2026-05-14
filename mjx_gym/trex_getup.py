@@ -17,6 +17,10 @@ def _yaw_quat(yaw: jax.Array) -> jax.Array:
     return jp.array([jp.cos(yaw / 2.0), 0.0, 0.0, jp.sin(yaw / 2.0)])
 
 
+def _roll_quat(roll: jax.Array) -> jax.Array:
+    return jp.array([jp.cos(roll / 2.0), jp.sin(roll / 2.0), 0.0, 0.0])
+
+
 def _quat_mul(left: jax.Array, right: jax.Array) -> jax.Array:
     lw, lx, ly, lz = left
     rw, rx, ry, rz = right
@@ -48,6 +52,10 @@ def default_config() -> config_dict.ConfigDict:
         reset_joint_noise=0.0,
         reset_qvel_noise=0.05,
         reset_height_noise=0.02,
+        side_upright_roll_min=0.0,
+        side_upright_roll_max=0.0,
+        side_standing_joint_blend_min=0.0,
+        side_standing_joint_blend_max=0.0,
         torso_height=2.5,
         clearance_height=0.12,
         reward_clip_min=-100.0,
@@ -156,7 +164,9 @@ class TrexGetup(mjx_env.MjxEnv):
         self._standing_right_foot_offset = jp.array(standing_right)
 
     def reset(self, rng: jax.Array) -> mjx_env.State:
-        yaw_rng, xy_rng, joint_rng, qvel_rng, height_rng = jax.random.split(rng, 5)
+        yaw_rng, xy_rng, joint_rng, qvel_rng, height_rng, roll_rng, blend_rng = (
+            jax.random.split(rng, 7)
+        )
         yaw = jax.random.uniform(
             yaw_rng,
             (),
@@ -181,10 +191,28 @@ class TrexGetup(mjx_env.MjxEnv):
             minval=0.0,
             maxval=self._config.reset_height_noise,
         )
+        roll = jax.random.uniform(
+            roll_rng,
+            (),
+            minval=self._config.side_upright_roll_min,
+            maxval=self._config.side_upright_roll_max,
+        )
+        standing_blend = jax.random.uniform(
+            blend_rng,
+            (),
+            minval=self._config.side_standing_joint_blend_min,
+            maxval=self._config.side_standing_joint_blend_max,
+        )
         qpos = self._side_qpos.at[0:2].set(xy)
-        qpos = qpos.at[2].add(height_noise)
-        qpos = qpos.at[3:7].set(_yaw_quat(yaw))
-        qpos = qpos.at[7:].set(joint_noise)
+        qpos = qpos.at[2].set(
+            (1.0 - standing_blend) * self._side_qpos[2]
+            + standing_blend * self._standing_qpos[2]
+            + height_noise
+        )
+        qpos = qpos.at[3:7].set(_quat_mul(_yaw_quat(yaw), _roll_quat(roll)))
+        qpos = qpos.at[7:].set(
+            standing_blend * self._standing_qpos[7:] + joint_noise
+        )
         qvel = jax.random.normal(qvel_rng, (self.mjx_model.nv,)) * (
             self._config.reset_qvel_noise
         )

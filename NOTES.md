@@ -694,3 +694,64 @@ May 14 parallel GPU experiments:
   `0.595/0.448`. Seed 32 is the best corrected get-up branch so far, but it is
   not yet a successful checkpoint because it only reaches upright
   intermittently and still has too much drift/instability.
+
+May 14 reset summary:
+
+- Current status: no May 14 checkpoint satisfies the full target. The combined
+  objective remains unsolved: clean get-up from a fall, quiet stand, full-speed
+  running with moderate turning, and bipedal alternating footfalls in one policy.
+  Do not promote any of the May 14 runs to `CHECKPOINTS.md`.
+- L40S cleanup status at reset: no Trex training/render/analyze processes, no
+  tmux sessions, and GPU idle (`0%`, `1 MiB` memory used).
+- Preserved committed code changes since the last logged experiments:
+  `e04ed7b` added zero-default `getup_base_lin_vel` and `getup_base_ang_vel`
+  reward terms to `TrexJoystick`; `038edb9` added zero-default
+  `getup_non_foot_clearance_deficit`. Focused reward-term tests passed for both.
+  These terms only affect behavior when explicitly enabled in run config.
+- Seed 32 visual diagnosis:
+  `/workspace/runs/TrexJoystick-20260514-215420-residual-sidegetup-scale1-l40s-20m-seed32/videos/`.
+  The 13.1M checkpoint was a fling: it reached height/orientation briefly but
+  with high vertical velocity and poor control. The final checkpoint was quieter
+  but remained a low crouch, propped by tail/body geometry rather than standing
+  on the feet. This explained why scalar metrics looked partially promising but
+  the rollout was not physically acceptable.
+- Seed 33:
+  `/workspace/runs/TrexJoystick-20260514-221845-residual-sidegetup-damped-l40s-10m-seed33`.
+  It continued from seed 32 final with lower LR, earlier stillness gate, and
+  enabled base linear/angular velocity costs. Scalar reward started at
+  `-204.481`, then degraded to `-314.712` final. The 3.27M checkpoint was the
+  only useful one: side diagnostic episode reward `-5.512`, near-zero base
+  velocity, `0.261 m` displacement, torso height `1.969-1.982`, orientation
+  `0.823-0.838`, and both feet in contact. Visual inspection showed it was a
+  quiet, tail/body-propped crouch, not an upright stand.
+- Seed 34 failed startup:
+  `/workspace/runs/TrexJoystick-20260514-223516-residual-sidegetup-clearance-l40s-10m-seed34`.
+  The run stopped before restore/training because the load path pointed at a
+  specific numeric checkpoint instead of a parent checkpoint directory.
+- Seed 34b:
+  `/workspace/runs/TrexJoystick-20260514-223732-residual-sidegetup-clearance-l40s-10m-seed34b`.
+  It restarted from a one-checkpoint warm-start directory pointing at seed 33's
+  3.27M checkpoint, enabled strong non-foot-clearance deficit cost, and increased
+  height/orientation shaping. Rewards were `-415.131`, `-397.516`, `-368.256`,
+  `-181.799`, then `-628.442`. The best scalar checkpoint (`000009830400`) had
+  episode reward `-49.698`, near-zero velocities, `1.205 m` displacement, height
+  `1.883-2.283`, and orientation `0.485-0.843`, but non-foot clearance remained
+  zero and visual inspection still showed a body/tail-propped posture.
+- Practical conclusion from seeds 32-34b: added damping/stillness can suppress
+  the fling, and stronger height/clearance shaping can improve height, but PPO
+  keeps finding a local optimum where the body or tail props the dinosaur up.
+  The reward-only approach is not reliably discovering a clean transition from
+  side-lying to foot-supported standing.
+- Last uncommitted local direction before the reset: a reset-curriculum hook was
+  being added to `TrexGetup`/`TrexJoystick` to sample partially rolled-upright
+  side starts and optionally blend side-start joints toward the standing pose.
+  The idea was to train intermediate recovery states before full side-zero
+  get-up. This work is dirty in the local tree and should be reviewed, kept, or
+  discarded deliberately before more training.
+- Recommended reset decision points:
+  use seed 19 only as the best known standing-start residual locomotion base;
+  do not continue seed 28-30; treat seed 33 3.27M and seed 34b 9.83M as
+  diagnostics only; strongly consider changing the task formulation before more
+  GPU time, for example a staged reset curriculum, explicit contact-state
+  objective for "only feet touching", or splitting get-up and locomotion into
+  separate skills before attempting a unified joystick policy.
