@@ -101,6 +101,7 @@ def default_config() -> config_dict.ConfigDict:
         moving_non_foot_clearance=-20.0,
         moving_lateral_vel=-1.0,
         moving_vertical_vel=-2.0,
+        moving_action_deviation=-20.0,
         contact_duty_error=-8.0,
         no_foot_contact=-12.0,
         running_height_excess=-8.0,
@@ -444,6 +445,9 @@ class TrexJoystick(trex_getup.TrexGetup):
             * jp.square(1.0 - clearance),
             "moving_lateral_vel": moving_gate * jp.square(local_linvel[2]),
             "moving_vertical_vel": moving_gate * jp.square(local_linvel[1]),
+            "moving_action_deviation": moving_gate
+            * (1.0 - locomotion_gate)
+            * self._cost_moving_action_deviation(action),
             "contact_duty_error": moving_gate
             * self._cost_contact_duty_error(data, info),
             "no_foot_contact": moving_gate
@@ -602,6 +606,11 @@ class TrexJoystick(trex_getup.TrexGetup):
 
     def _cost_base_tilt_ang_vel(self, local_angvel: jax.Array) -> jax.Array:
         return jp.square(local_angvel[0]) + jp.square(local_angvel[2])
+
+    def _cost_moving_action_deviation(self, action: jax.Array) -> jax.Array:
+        leg_action = action[:8]
+        stand_leg_action = self._stand_pose_action[:8]
+        return jp.mean(jp.square(leg_action - stand_leg_action))
 
     def _cost_no_foot_contact(self, data: mjx.Data) -> jax.Array:
         contact_sum = sum(self._foot_contact_scores(data))

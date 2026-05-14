@@ -636,6 +636,21 @@ class TestMjxGym(unittest.TestCase):
             0.2,
         )
 
+    def test_trex_joystick_moving_action_deviation_prefers_stand_pose(self):
+        env = trex_joystick.TrexJoystick()
+        stand_action = env._stand_pose_action
+        deviated_action = stand_action.at[:8].add(0.5)
+
+        self.assertLess(
+            float(env._cost_moving_action_deviation(stand_action)),
+            0.01,
+        )
+        self.assertGreater(
+            float(env._cost_moving_action_deviation(deviated_action)),
+            0.2,
+        )
+        self.assertIn("moving_action_deviation", env._config.reward_config.scales)
+
     def test_trex_joystick_gait_prior_alternates_leg_pairs_when_running(self):
         env = trex_joystick.TrexJoystick()
         prior = np.asarray(
