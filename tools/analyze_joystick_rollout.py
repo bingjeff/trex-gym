@@ -95,6 +95,7 @@ def analyze(args: argparse.Namespace) -> None:
     max_torso_height = -np.inf
     min_orientation = np.inf
     max_orientation = -np.inf
+    first_done_step: int | None = None
     first_xy: np.ndarray | None = None
     last_xy: np.ndarray | None = None
     previous_foot_centers: np.ndarray | None = None
@@ -108,6 +109,11 @@ def analyze(args: argparse.Namespace) -> None:
         state = jit_step(state, action)
         data = jax.device_get(state.data)
         action_np = np.asarray(jax.device_get(action))
+        done = bool(np.asarray(jax.device_get(state.done)))
+        if done and first_done_step is None:
+            first_done_step = step_index
+        if done and args.stop_on_done:
+            break
 
         if step_index < args.skip_steps:
             continue
@@ -184,6 +190,9 @@ def analyze(args: argparse.Namespace) -> None:
     print(f"steps: {args.steps}")
     print(f"skip_steps: {args.skip_steps}")
     print(f"sample_steps: {sample_steps}")
+    print(f"first_done_step: {first_done_step}")
+    if sample_steps == 0:
+        return
     print(f"episode_reward_sum: {reward_sum:.3f}")
     print(f"mean_forward_vel: {mean_forward / sample_steps:.3f}")
     print(f"mean_lateral_vel: {mean_lateral / sample_steps:.3f}")
@@ -228,6 +237,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--turn", type=float, default=0.0)
     parser.add_argument(
         "--reset-pose", choices=("mixed", "standing", "side"), default="standing"
+    )
+    parser.add_argument(
+        "--stop-on-done",
+        action="store_true",
+        help="Stop rollout analysis at the first environment termination.",
     )
     parser.add_argument(
         "--no-checkpoint-config",
