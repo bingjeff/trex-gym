@@ -44,6 +44,18 @@ def default_config() -> config_dict.ConfigDict:
     config.stand_pose_orientation_threshold = 0.95
     config.stand_pose_height_fraction = 0.90
     config.stand_pose_clearance_threshold = 0.90
+    config.action_residual_scale = [
+        0.35,
+        0.35,
+        0.35,
+        0.35,
+        0.35,
+        0.35,
+        0.35,
+        0.35,
+        0.75,
+        0.75,
+    ]
     config.running_action_residual_scale = [
         0.25,
         0.25,
@@ -92,65 +104,23 @@ def default_config() -> config_dict.ConfigDict:
     config.reward_config.high_speed_tracking_sigma_scale = 0.5
     config.reward_config.turn_tracking_sigma = 0.25
     config.reward_config.scales = config_dict.create(
-        orientation=2.0,
-        torso_height=2.0,
-        non_foot_clearance=2.0,
-        foot_support=2.0,
-        foot_balance=1.0,
-        foot_placement=1.0,
-        standing_pose=1.0,
-        tracking_forward_vel=6.0,
-        first_step_forward_progress=20.0,
-        first_step_contact_balance=2.0,
-        first_step_contact_duty_symmetry=2.0,
-        forward_progress=12.0,
-        forward_speed_deficit=-20.0,
-        moving_forward_vel_error=-1.0,
-        tracking_turn_vel=4.0,
-        running_stride=0.25,
-        running_foot_clearance=0.25,
-        gait_prior_tracking=1.0,
-        leg_action_alternation=2.0,
-        gait_anti_phase=2.0,
-        gait_symmetry=1.0,
-        phase_contact=1.0,
-        phase_contact_error=-2.0,
-        phase_foot_clearance=1.0,
-        phase_swing_clearance=1.0,
-        phase_swing_lift=1.0,
-        phase_swing_release=1.0,
-        phase_swing_contact=-1.0,
-        phase_stance_contact=1.0,
-        feet_phase_height=1.0,
-        phase_clearance_error=-1.0,
-        phase_clearance_max_error=-1.0,
-        single_support_balance=1.0,
-        feet_air_time=0.5,
-        contact_duty_symmetry=1.0,
-        foot_contact_balance=0.5,
-        double_foot_contact=-2.0,
-        lateral_vel=-0.25,
-        vertical_vel=-0.5,
-        base_tilt_ang_vel=-1.0,
-        moving_orientation=-20.0,
-        moving_torso_height=-20.0,
-        moving_non_foot_clearance=-20.0,
-        moving_lateral_vel=-1.0,
-        moving_vertical_vel=-2.0,
-        moving_action_deviation=-20.0,
-        contact_duty_error=-8.0,
-        no_foot_contact=-12.0,
-        running_height_excess=-8.0,
-        foot_slip=-0.2,
-        hip_adduction_neutral=-0.5,
-        fall=-1000.0,
-        stand_still=4.0,
-        standing_base_lin_vel=-10.0,
-        standing_base_ang_vel=-5.0,
-        standing_foot_vel=-1.0,
-        action_rate=-1e-5,
-        torques=-1e-9,
-        dof_vel=-1e-6,
+        tracking_lin_vel=1.0,
+        tracking_ang_vel=0.5,
+        orientation=-2.0,
+        base_height=-0.5,
+        non_foot_clearance=1.0,
+        lin_vel_z=-0.5,
+        ang_vel_xy=-0.15,
+        feet_phase=1.0,
+        feet_air_time=1.0,
+        feet_slip=-0.25,
+        stand_still=-1.0,
+        pose=-0.25,
+        hip_adduction_neutral=-0.1,
+        termination=-100.0,
+        action_rate=-0.01,
+        torques=-1e-7,
+        dof_vel=-1e-5,
     )
     return config
 
@@ -166,6 +136,7 @@ class TrexJoystick(trex_getup.TrexGetup):
         super().__init__(config, config_overrides)
         self._command_zero = jp.zeros(2)
         self._stand_pose_action = jp.array(self._config.stand_pose_action)
+        self._action_residual_scale = jp.array(self._config.action_residual_scale)
         self._running_action_residual_scale = jp.array(
             self._config.running_action_residual_scale
         )
@@ -286,33 +257,11 @@ class TrexJoystick(trex_getup.TrexGetup):
     def step(self, state: mjx_env.State, action: jax.Array) -> mjx_env.State:
         clipped_action = jp.clip(action, -1.0, 1.0)
         standing_gate = self._standing_command_gate(state.info["command"])
-        stand_pose_gate = self._stand_pose_gate(state.data, standing_gate)
-        start_standing = standing_gate * (1.0 - state.info["was_standing_command"])
-        smoothed_stand_act = state.info["stand_hold_act"] + (
-            self._config.stand_action_smoothing
-            * (clipped_action - state.info["stand_hold_act"])
-        )
-        stand_hold_act = jp.where(
-            start_standing,
-            clipped_action,
-            smoothed_stand_act,
-        )
-        applied_stand_action = jp.where(
-            stand_pose_gate, self._stand_pose_action, stand_hold_act
-        )
-        residual_scale = jp.where(
-            self._is_walk_task(),
-            self._walk_action_residual_scale,
-            self._running_action_residual_scale,
-        )
-        running_action = jp.clip(
-            self._stand_pose_action
-            + clipped_action * residual_scale
-            + self._gait_prior_action(state.info),
+        applied_action = jp.clip(
+            self._stand_pose_action + clipped_action * self._action_residual_scale,
             -1.0,
             1.0,
         )
-        applied_action = jp.where(standing_gate, applied_stand_action, running_action)
         target_scale = jp.where(
             applied_action >= 0.0,
             self._action_ctrl_positive_scale,
@@ -344,10 +293,10 @@ class TrexJoystick(trex_getup.TrexGetup):
 
         state.info["last_last_act"] = state.info["last_act"]
         state.info["last_act"] = applied_action
-        state.info["stand_hold_act"] = jp.where(
-            standing_gate, applied_action, clipped_action
+        state.info["stand_hold_act"] = applied_action
+        state.info["was_standing_command"] = self._standing_command_gate(
+            state.info["command"]
         )
-        state.info["was_standing_command"] = standing_gate
         state.info["last_foot_centers"] = self._foot_centers_world(data)
         state.info["contact_duty"] = self._updated_contact_duty(data, state.info)
         state.info["feet_air_time"] = feet_air_time * ~contact
@@ -419,155 +368,35 @@ class TrexJoystick(trex_getup.TrexGetup):
         first_contact: jax.Array,
         feet_air_time: jax.Array,
     ) -> dict[str, jax.Array]:
-        if self._is_march_task():
-            return self._get_march_reward(
-                data, action, info, first_contact, feet_air_time
-            )
-
         gravity = self.get_gravity(data)
         torso_height = data.site_xpos[self._imu_site_id][2]
         orientation = self._reward_orientation(gravity)
         height = self._reward_height(torso_height)
         clearance = self._reward_non_foot_clearance(data)
-        locomotion_gate = orientation * height * clearance
-        standing_gate = self._standing_command_gate(info["command"])
-        moving_gate = 1.0 - standing_gate
-        running_height_gate = self._reward_running_height_gate(torso_height)
-        running_gate = (
-            locomotion_gate
-            * moving_gate
-            * running_height_gate
-            * self._running_speed_gate(info["command"])
-        )
         local_linvel = self.get_local_linvel(data)
         local_angvel = self.get_local_angvel(data)
-        moving_support_gate = self._moving_foot_support_gate(data)
-        speed_tracking_gate = standing_gate + (
-            moving_gate * moving_support_gate * running_height_gate
-        )
-        action_deviation_gate = moving_gate * jp.where(
-            self._is_walk_task(), 1.0, 1.0 - locomotion_gate
-        )
+        done = self._fall_done(data)
         return {
-            "orientation": orientation,
-            "torso_height": orientation * height,
-            "non_foot_clearance": clearance,
-            "foot_support": standing_gate
-            * orientation
-            * self._reward_foot_support(data),
-            "foot_balance": standing_gate
-            * orientation
-            * self._reward_foot_balance(data),
-            "foot_placement": standing_gate
-            * orientation
-            * self._reward_foot_placement(data),
-            "standing_pose": standing_gate
-            * orientation
-            * self._reward_standing_pose(data.qpos),
-            "tracking_forward_vel": locomotion_gate
-            * speed_tracking_gate
-            * self._reward_tracking_forward_vel(info["command"], local_linvel),
-            "first_step_forward_progress": moving_gate
-            * locomotion_gate
-            * self._reward_first_step_forward_progress(info["command"], local_linvel),
-            "first_step_contact_balance": moving_gate
-            * locomotion_gate
-            * self._reward_foot_contact_balance(data),
-            "first_step_contact_duty_symmetry": moving_gate
-            * locomotion_gate
-            * self._reward_contact_duty_symmetry(data, info),
-            "forward_progress": locomotion_gate
-            * speed_tracking_gate
-            * self._reward_forward_progress(info["command"], local_linvel),
-            "forward_speed_deficit": moving_gate
-            * self._running_speed_gate(info["command"])
-            * self._cost_forward_speed_deficit(info["command"], local_linvel),
-            "moving_forward_vel_error": moving_gate
-            * self._cost_forward_speed_error(info["command"], local_linvel),
-            "tracking_turn_vel": locomotion_gate
-            * speed_tracking_gate
-            * self._reward_tracking_turn_vel(info["command"], local_angvel),
-            "running_stride": running_gate * self._reward_running_stride(data),
-            "running_foot_clearance": running_gate
-            * self._reward_running_foot_clearance(data),
-            "gait_prior_tracking": moving_gate
-            * self._reward_gait_prior_tracking(action, info),
-            "leg_action_alternation": running_gate
-            * self._reward_leg_action_alternation(action),
-            "gait_anti_phase": running_gate
-            * self._reward_gait_anti_phase(data),
-            "gait_symmetry": running_gate * self._reward_gait_symmetry(data),
-            "phase_contact": running_gate * self._reward_phase_contact(data, info),
-            "phase_contact_error": running_gate
-            * self._cost_phase_contact_error(data, info),
-            "phase_foot_clearance": running_gate
-            * self._reward_phase_foot_clearance(data, info),
-            "phase_swing_clearance": moving_gate
-            * self._reward_phase_swing_clearance(data, info["gait_phase"]),
-            "phase_swing_lift": moving_gate
-            * self._reward_phase_swing_lift(data, info["gait_phase"]),
-            "phase_swing_release": moving_gate
-            * self._reward_phase_swing_release(data, info["gait_phase"]),
-            "phase_swing_contact": moving_gate
-            * self._cost_phase_swing_contact(data, info["gait_phase"]),
-            "phase_stance_contact": moving_gate
-            * self._reward_phase_stance_contact(data, info["gait_phase"]),
-            "feet_phase_height": moving_gate
-            * self._reward_feet_phase_height(data, info["gait_phase"], info["command"]),
-            "phase_clearance_error": moving_gate
-            * self._cost_phase_clearance_error(data, info["gait_phase"]),
-            "phase_clearance_max_error": moving_gate
-            * self._cost_phase_clearance_max_error(data, info["gait_phase"]),
-            "single_support_balance": moving_gate
-            * self._reward_single_support_balance(data, info["gait_phase"]),
-            "feet_air_time": running_gate
-            * self._reward_feet_air_time(feet_air_time, first_contact, info["command"]),
-            "contact_duty_symmetry": running_gate
-            * self._reward_contact_duty_symmetry(data, info),
-            "foot_contact_balance": running_gate
-            * self._reward_foot_contact_balance(data),
-            "double_foot_contact": moving_gate
-            * self._running_speed_gate(info["command"])
-            * self._cost_double_foot_contact(data),
-            "lateral_vel": locomotion_gate * jp.square(local_linvel[2]),
-            "vertical_vel": locomotion_gate * jp.square(local_linvel[1]),
-            "base_tilt_ang_vel": locomotion_gate
-            * self._cost_base_tilt_ang_vel(local_angvel),
-            "moving_orientation": moving_gate
-            * jp.square(1.0 - orientation),
-            "moving_torso_height": moving_gate
-            * jp.square(1.0 - height),
-            "moving_non_foot_clearance": moving_gate
-            * jp.square(1.0 - clearance),
-            "moving_lateral_vel": moving_gate * jp.square(local_linvel[2]),
-            "moving_vertical_vel": moving_gate * jp.square(local_linvel[1]),
-            "moving_action_deviation": action_deviation_gate
-            * self._cost_moving_action_deviation(action),
-            "contact_duty_error": moving_gate
-            * self._cost_contact_duty_error(data, info),
-            "no_foot_contact": moving_gate
-            * self._cost_no_foot_contact(data),
-            "running_height_excess": moving_gate
-            * self._running_speed_gate(info["command"])
-            * self._cost_running_height_excess(torso_height),
-            "foot_slip": running_gate * self._cost_foot_slip(data, info),
-            "hip_adduction_neutral": moving_gate
-            * self._cost_hip_adduction_neutral(data),
-            "fall": self._fall_done(data),
-            "stand_still": standing_gate
-            * locomotion_gate
-            * self._reward_commanded_stand_still(
-                info["command"], local_linvel, local_angvel
+            "tracking_lin_vel": self._reward_tracking_lin_vel(
+                info["command"], local_linvel
             ),
-            "standing_base_lin_vel": standing_gate
-            * locomotion_gate
-            * jp.sum(jp.square(local_linvel)),
-            "standing_base_ang_vel": standing_gate
-            * locomotion_gate
-            * jp.sum(jp.square(local_angvel)),
-            "standing_foot_vel": standing_gate
-            * locomotion_gate
-            * self._cost_foot_vel(data, info),
+            "tracking_ang_vel": self._reward_tracking_ang_vel(
+                info["command"], local_angvel
+            ),
+            "orientation": jp.square(1.0 - orientation),
+            "base_height": jp.square(1.0 - height),
+            "non_foot_clearance": clearance,
+            "lin_vel_z": jp.square(local_linvel[1]),
+            "ang_vel_xy": self._cost_base_tilt_ang_vel(local_angvel),
+            "feet_phase": self._reward_feet_phase(data, info["gait_phase"]),
+            "feet_air_time": self._reward_feet_air_time(
+                feet_air_time, first_contact, info["command"]
+            ),
+            "feet_slip": self._cost_foot_slip(data, info),
+            "stand_still": self._cost_stand_still(info["command"], data.qpos[7:]),
+            "pose": self._cost_pose(data.qpos),
+            "hip_adduction_neutral": self._cost_hip_adduction_neutral(data),
+            "termination": done,
             "action_rate": self._cost_action_rate(action, info),
             "torques": self._cost_torques(data.actuator_force),
             "dof_vel": self._cost_dof_vel(data.qvel[6:]),
@@ -780,6 +609,20 @@ class TrexJoystick(trex_getup.TrexGetup):
         phase = jp.mod(phase, 2.0 * jp.pi)
         return jp.where(standing_gate, 0.0, phase)
 
+    def _reward_tracking_lin_vel(
+        self, command: jax.Array, local_linvel: jax.Array
+    ) -> jax.Array:
+        target = jp.array([command[0], 0.0])
+        velocity = jp.array([local_linvel[0], local_linvel[2]])
+        error = jp.sum(jp.square(target - velocity))
+        return jp.exp(-error / self._config.reward_config.tracking_sigma)
+
+    def _reward_tracking_ang_vel(
+        self, command: jax.Array, local_angvel: jax.Array
+    ) -> jax.Array:
+        error = jp.square(command[1] - local_angvel[1])
+        return jp.exp(-error / self._config.reward_config.turn_tracking_sigma)
+
     def _reward_tracking_forward_vel(
         self, command: jax.Array, local_linvel: jax.Array
     ) -> jax.Array:
@@ -841,6 +684,14 @@ class TrexJoystick(trex_getup.TrexGetup):
         leg_action = action[:8]
         stand_leg_action = self._stand_pose_action[:8]
         return jp.mean(jp.square(leg_action - stand_leg_action))
+
+    def _cost_stand_still(self, command: jax.Array, joint_qpos: jax.Array) -> jax.Array:
+        return self._standing_command_gate(command) * jp.sum(
+            jp.square(joint_qpos - self._standing_qpos[7:])
+        )
+
+    def _cost_pose(self, qpos: jax.Array) -> jax.Array:
+        return jp.sum(jp.square(qpos[self._leg_qpos_ids] - self._standing_leg_qpos))
 
     def _cost_no_foot_contact(self, data: mjx.Data) -> jax.Array:
         contact_sum = sum(self._foot_contact_scores(data))
@@ -1026,6 +877,13 @@ class TrexJoystick(trex_getup.TrexGetup):
             / self._phase_clearance_error_denominator()
         )
         return stance_contact * clearance_score
+
+    def _reward_feet_phase(self, data: mjx.Data, phase: jax.Array) -> jax.Array:
+        left_clearance, right_clearance = self._foot_clearance_scores(data)
+        target_clearance = self._phase_foot_clearance_targets(phase)
+        clearance = jp.array([left_clearance, right_clearance])
+        error = jp.sum(jp.square(clearance - target_clearance))
+        return jp.exp(-error / self._phase_clearance_error_denominator())
 
     def _reward_feet_phase_height(
         self, data: mjx.Data, phase: jax.Array, command: jax.Array

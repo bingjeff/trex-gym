@@ -408,7 +408,7 @@ class TestMjxGym(unittest.TestCase):
             jp.zeros(2, dtype=bool),
             jp.zeros(2),
         )
-        self.assertEqual(1.0, float(side_rewards["fall"]))
+        self.assertEqual(1.0, float(side_rewards["termination"]))
 
         config = trex_joystick.default_config()
         config.terminate_on_fall = True
@@ -423,230 +423,92 @@ class TestMjxGym(unittest.TestCase):
             jp.zeros(2, dtype=bool),
             jp.zeros(2),
         )
-        self.assertEqual(0.0, float(standing_rewards["fall"]))
+        self.assertEqual(0.0, float(standing_rewards["termination"]))
 
-    def test_trex_joystick_zero_command_uses_stable_stand_pose_when_upright(self):
+    def test_trex_joystick_actions_are_default_pose_residuals(self):
         config = trex_joystick.default_config()
         config.reset_standing_prob = 1.0
-        env = trex_joystick.TrexJoystick(config)
-        state = env.reset(jax.random.PRNGKey(0))
-        state.info["command"] = jp.zeros(2)
-
-        requested_action = jp.ones(env.action_size)
-        next_state = env.step(state, requested_action)
-
-        self.assertTrue(
-            np.allclose(
-                np.asarray(next_state.info["last_act"]),
-                np.asarray(config.stand_pose_action),
-            )
-        )
-
-    def test_trex_joystick_running_actions_are_stand_pose_residuals(self):
-        config = trex_joystick.default_config()
-        config.reset_standing_prob = 1.0
-        config.gait_prior_scale = 0.0
-        env = trex_joystick.TrexJoystick(config)
-        state = env.reset(jax.random.PRNGKey(0))
-        state.info["command"] = jp.array([2.0, 0.0])
-
-        next_state = env.step(state, jp.zeros(env.action_size))
-
-        self.assertTrue(
-            np.allclose(
-                np.asarray(next_state.info["last_act"]),
-                np.asarray(config.stand_pose_action),
-            )
-        )
-
-    def test_trex_joystick_walk_actions_use_smaller_residuals(self):
-        config = trex_joystick.default_config()
-        config.curriculum_task = "walk"
-        config.reset_standing_prob = 1.0
-        config.gait_prior_scale = 0.0
         env = trex_joystick.TrexJoystick(config)
         state = env.reset(jax.random.PRNGKey(0))
         state.info["command"] = jp.array([0.5, 0.0])
+        other_state = env.reset(jax.random.PRNGKey(0))
+        other_state.info["command"] = jp.array([0.5, 0.0])
 
-        next_state = env.step(state, jp.ones(env.action_size))
-        expected = np.asarray(config.stand_pose_action) + np.asarray(
-            config.walk_action_residual_scale
-        )
+        zero_state = env.step(state, jp.zeros(env.action_size))
+        one_state = env.step(other_state, jp.ones(env.action_size))
 
         np.testing.assert_allclose(
-            np.asarray(next_state.info["last_act"]),
+            np.asarray(zero_state.info["last_act"]),
+            np.asarray(config.stand_pose_action),
+            atol=1e-6,
+        )
+        expected = np.asarray(config.stand_pose_action) + np.asarray(
+            config.action_residual_scale
+        )
+        np.testing.assert_allclose(
+            np.asarray(one_state.info["last_act"]),
             np.clip(expected, -1.0, 1.0),
             atol=1e-6,
         )
 
-    def test_trex_joystick_randomizes_initial_moving_gait_phase(self):
-        config = trex_joystick.default_config()
-        config.reset_standing_prob = 1.0
-        config.command_config.forward_min = 0.2
-        config.command_config.forward_max = 0.2
-        config.command_config.high_speed_prob = 0.0
-        config.command_config.turn_max = 0.0
-        config.command_config.zero_prob = 0.0
-        env = trex_joystick.TrexJoystick(config)
-
-        state = env.reset(jax.random.PRNGKey(7))
-        phase = float(state.info["gait_phase"])
-
-        self.assertGreaterEqual(phase, 0.0)
-        self.assertLess(phase, 2.0 * np.pi)
-        self.assertGreater(phase, 1.0e-6)
-
-    def test_trex_joystick_standing_command_starts_at_zero_gait_phase(self):
-        config = trex_joystick.default_config()
-        config.reset_standing_prob = 1.0
-        config.command_config.zero_prob = 1.0
-        env = trex_joystick.TrexJoystick(config)
-
-        state = env.reset(jax.random.PRNGKey(7))
-
-        self.assertAlmostEqual(float(state.info["gait_phase"]), 0.0)
-
-    def test_trex_joystick_gait_phase_scores_prefer_alternating_steps(self):
+    def test_trex_joystick_humanoid_style_reward_terms(self):
         env = trex_joystick.TrexJoystick()
+        expected_terms = {
+            "tracking_lin_vel",
+            "tracking_ang_vel",
+            "orientation",
+            "base_height",
+            "non_foot_clearance",
+            "lin_vel_z",
+            "ang_vel_xy",
+            "feet_phase",
+            "feet_air_time",
+            "feet_slip",
+            "stand_still",
+            "pose",
+            "hip_adduction_neutral",
+            "termination",
+            "action_rate",
+            "torques",
+            "dof_vel",
+        }
 
-        alternating = float(env._anti_phase_score(jp.array(0.5), jp.array(-0.5)))
-        in_phase = float(env._anti_phase_score(jp.array(0.5), jp.array(0.5)))
-        small_stride = float(env._stride_gate(jp.array(0.05), jp.array(-0.05)))
-        large_stride = float(env._stride_gate(jp.array(0.8), jp.array(-0.8)))
+        self.assertEqual(expected_terms, set(env._config.reward_config.scales.keys()))
 
-        self.assertGreater(alternating, 0.9)
-        self.assertLess(in_phase, 0.1)
-        self.assertLess(small_stride, 0.1)
-        self.assertGreater(large_stride, 0.9)
-
-    def test_trex_joystick_feet_phase_height_prefers_alternating_clearance(self):
+    def test_trex_joystick_tracking_rewards_use_forward_lateral_and_turn_axes(self):
         env = trex_joystick.TrexJoystick()
-        moving_command = jp.array([0.5, 0.0])
-        standing_command = jp.zeros(2)
-        phase = jp.array(0.0)
+        command = jp.array([1.0, 0.5])
 
-        target = jp.array([env._config.gait_swing_height, 0.0])
-        both_down = jp.zeros(2)
-        both_up = jp.ones(2) * env._config.gait_swing_height
-
-        self.assertGreater(
-            float(
-                env._reward_feet_phase_height_from_clearance(
-                    target, phase, moving_command
-                )
-            ),
-            0.9,
+        self.assertAlmostEqual(
+            float(env._reward_tracking_lin_vel(command, jp.array([1.0, 0.0, 0.0]))),
+            1.0,
         )
         self.assertLess(
-            float(
-                env._reward_feet_phase_height_from_clearance(
-                    both_down, phase, moving_command
-                )
-            ),
-            0.3,
+            float(env._reward_tracking_lin_vel(command, jp.array([0.0, 0.0, 0.0]))),
+            0.1,
         )
         self.assertLess(
-            float(
-                env._reward_feet_phase_height_from_clearance(
-                    both_up, phase, moving_command
-                )
-            ),
-            0.3,
+            float(env._reward_tracking_lin_vel(command, jp.array([1.0, 0.0, 1.0]))),
+            0.1,
         )
         self.assertAlmostEqual(
-            float(
-                env._reward_feet_phase_height_from_clearance(
-                    target, phase, standing_command
-                )
-            ),
-            0.0,
-        )
-        self.assertIn("feet_phase_height", env._config.reward_config.scales)
-
-    def test_trex_joystick_feet_phase_height_scales_with_swing_height(self):
-        config = trex_joystick.default_config()
-        config.gait_swing_height = 0.045
-        env = trex_joystick.TrexJoystick(config)
-        moving_command = jp.array([0.2, 0.0])
-        phase = jp.array(0.0)
-
-        target = jp.array([config.gait_swing_height, 0.0])
-        both_down = jp.zeros(2)
-
-        self.assertGreater(
-            float(
-                env._reward_feet_phase_height_from_clearance(
-                    target, phase, moving_command
-                )
-            ),
-            0.9,
+            float(env._reward_tracking_ang_vel(command, jp.array([0.0, 0.5, 0.0]))),
+            1.0,
         )
         self.assertLess(
-            float(
-                env._reward_feet_phase_height_from_clearance(
-                    both_down, phase, moving_command
-                )
-            ),
-            0.3,
+            float(env._reward_tracking_ang_vel(command, jp.array([0.0, -0.5, 0.0]))),
+            0.1,
+        )
+        self.assertAlmostEqual(
+            float(env._cost_base_tilt_ang_vel(jp.array([1.0, 10.0, 2.0]))),
+            5.0,
         )
 
-    def test_trex_joystick_phase_clearance_error_scales_with_swing_height(self):
-        config = trex_joystick.default_config()
-        config.gait_swing_height = 0.045
-        env = trex_joystick.TrexJoystick(config)
-        phase = jp.array(0.0)
-
-        target = jp.array([config.gait_swing_height, 0.0])
-        both_down = jp.zeros(2)
-
-        self.assertLess(
-            float(env._cost_phase_clearance_error_from_clearance(target, phase)),
-            0.01,
-        )
-        self.assertGreater(
-            float(env._cost_phase_clearance_error_from_clearance(both_down, phase)),
-            0.4,
-        )
-        self.assertIn("phase_clearance_error", env._config.reward_config.scales)
-
-    def test_trex_joystick_phase_clearance_max_error_focuses_worst_foot(self):
-        config = trex_joystick.default_config()
-        config.gait_swing_height = 0.045
-        env = trex_joystick.TrexJoystick(config)
-        phase = jp.array(0.0)
-
-        target = jp.array([config.gait_swing_height, 0.0])
-        both_down = jp.zeros(2)
-        half_lift = jp.array([0.5 * config.gait_swing_height, 0.0])
-
-        self.assertLess(
-            float(env._cost_phase_clearance_max_error_from_clearance(target, phase)),
-            0.01,
-        )
-        self.assertGreater(
-            float(env._cost_phase_clearance_max_error_from_clearance(both_down, phase)),
-            0.9,
-        )
-        self.assertGreater(
-            float(
-                env._cost_phase_clearance_max_error_from_clearance(
-                    both_down, phase
-                )
-            ),
-            float(
-                env._cost_phase_clearance_max_error_from_clearance(
-                    half_lift, phase
-                )
-            ),
-        )
-        self.assertIn("phase_clearance_max_error", env._config.reward_config.scales)
-
-    def test_trex_joystick_foot_phase_targets_are_opposite(self):
+    def test_trex_joystick_gait_phase_targets_are_antiphase(self):
         env = trex_joystick.TrexJoystick()
 
         phase_zero = env._phase_foot_clearance_targets(jp.array(0.0))
         phase_pi = env._phase_foot_clearance_targets(jp.pi)
-        phase_half = env._phase_foot_clearance_targets(jp.pi / 2.0)
 
         self.assertAlmostEqual(
             float(phase_zero[0]), env._config.gait_swing_height, places=5
@@ -655,378 +517,6 @@ class TestMjxGym(unittest.TestCase):
         self.assertAlmostEqual(float(phase_pi[0]), 0.0, places=5)
         self.assertAlmostEqual(
             float(phase_pi[1]), env._config.gait_swing_height, places=5
-        )
-        self.assertLess(float(phase_half[0]), env._config.gait_swing_height)
-        self.assertGreater(float(phase_half[0]), 0.0)
-        self.assertLess(float(phase_half[1]), env._config.gait_swing_height)
-        self.assertGreater(float(phase_half[1]), 0.0)
-
-    def test_trex_joystick_phase_contact_targets_match_clearance_targets(self):
-        env = trex_joystick.TrexJoystick()
-
-        phase_zero = env._phase_contact_targets(jp.array(0.0))
-        phase_pi = env._phase_contact_targets(jp.pi)
-        phase_half = env._phase_contact_targets(jp.pi / 2.0)
-
-        self.assertLess(float(phase_zero[0]), 0.1)
-        self.assertGreater(float(phase_zero[1]), 0.9)
-        self.assertGreater(float(phase_pi[0]), 0.9)
-        self.assertLess(float(phase_pi[1]), 0.1)
-        self.assertGreater(float(phase_half[0]), 0.0)
-        self.assertLess(float(phase_half[0]), 1.0)
-        self.assertGreater(float(phase_half[1]), 0.0)
-        self.assertLess(float(phase_half[1]), 1.0)
-
-    def test_trex_joystick_phase_swing_rewards_prefer_released_swing_foot(self):
-        config = trex_joystick.default_config()
-        config.gait_swing_height = 0.045
-        env = trex_joystick.TrexJoystick(config)
-        phase = jp.array(0.0)
-
-        target_clearance = jp.array([config.gait_swing_height, 0.0])
-        both_down_clearance = jp.zeros(2)
-        target_contact = jp.array([0.0, 1.0])
-        both_down_contact = jp.ones(2)
-
-        self.assertGreater(
-            float(
-                env._reward_phase_swing_clearance_from_clearance(
-                    target_clearance, phase
-                )
-            ),
-            0.9,
-        )
-        self.assertLess(
-            float(
-                env._reward_phase_swing_clearance_from_clearance(
-                    both_down_clearance, phase
-                )
-            ),
-            0.1,
-        )
-        self.assertGreater(
-            float(env._reward_phase_swing_release_from_contact(target_contact, phase)),
-            0.9,
-        )
-        self.assertLess(
-            float(env._reward_phase_swing_release_from_contact(both_down_contact, phase)),
-            0.1,
-        )
-        self.assertGreater(
-            float(
-                env._reward_phase_swing_lift_from_clearance(
-                    target_clearance, phase
-                )
-            ),
-            0.9,
-        )
-        self.assertLess(
-            float(
-                env._reward_phase_swing_lift_from_clearance(
-                    both_down_clearance, phase
-                )
-            ),
-            0.1,
-        )
-        self.assertLess(
-            float(env._cost_phase_swing_contact_from_contact(target_contact, phase)),
-            0.1,
-        )
-        self.assertGreater(
-            float(env._cost_phase_swing_contact_from_contact(both_down_contact, phase)),
-            0.9,
-        )
-        self.assertIn("phase_swing_clearance", env._config.reward_config.scales)
-        self.assertIn("phase_swing_lift", env._config.reward_config.scales)
-        self.assertIn("phase_swing_release", env._config.reward_config.scales)
-        self.assertIn("phase_swing_contact", env._config.reward_config.scales)
-
-    def test_trex_joystick_phase_stance_contact_prefers_planted_stance_foot(self):
-        env = trex_joystick.TrexJoystick()
-        phase = jp.array(0.0)
-
-        right_stance_contact = jp.array([0.0, 1.0])
-        no_stance_contact = jp.array([1.0, 0.0])
-
-        self.assertGreater(
-            float(
-                env._reward_phase_stance_contact_from_contact(
-                    right_stance_contact, phase
-                )
-            ),
-            0.9,
-        )
-        self.assertLess(
-            float(
-                env._reward_phase_stance_contact_from_contact(
-                    no_stance_contact, phase
-                )
-            ),
-            0.1,
-        )
-        self.assertIn("phase_stance_contact", env._config.reward_config.scales)
-
-    def test_trex_joystick_single_support_balance_prefers_stance_under_torso(self):
-        env = trex_joystick.TrexJoystick()
-        support_xz = env._standing_support_offset_xz
-        left_under_torso = jp.array([support_xz[0], 0.0, support_xz[1]])
-        right_under_torso = jp.array([support_xz[0], 0.0, support_xz[1]])
-        left_far = left_under_torso.at[2].add(1.0)
-
-        balanced = env._reward_single_support_balance_from_offsets(
-            left_under_torso,
-            right_under_torso,
-            jp.array([1.0, 0.0]),
-        )
-        unbalanced = env._reward_single_support_balance_from_offsets(
-            left_far,
-            right_under_torso,
-            jp.array([1.0, 0.0]),
-        )
-        double_support_phase = env._reward_single_support_balance_from_offsets(
-            left_under_torso,
-            right_under_torso,
-            jp.array([0.5, 0.5]),
-        )
-
-        self.assertGreater(float(balanced), 0.9)
-        self.assertLess(float(unbalanced), 0.1)
-        self.assertAlmostEqual(float(double_support_phase), 0.0)
-        self.assertIn("single_support_balance", env._config.reward_config.scales)
-
-    def test_trex_joystick_foot_clearance_uses_lowest_foot_capsule(self):
-        env = trex_joystick.TrexJoystick()
-
-        bottoms = jp.array([-0.02, 0.12, 0.18])
-        clearance = jp.min(jp.clip(bottoms, 0.0, 0.3))
-
-        self.assertAlmostEqual(float(clearance), 0.0)
-
-    def test_trex_joystick_height_contact_score_tracks_clearance(self):
-        config = trex_joystick.default_config()
-        config.foot_contact_height = 0.03
-        env = trex_joystick.TrexJoystick(config)
-
-        self.assertAlmostEqual(float(env._height_contact_score(jp.array(0.0))), 1.0)
-        self.assertGreater(float(env._height_contact_score(jp.array(0.015))), 0.4)
-        self.assertLess(float(env._height_contact_score(jp.array(0.045))), 0.1)
-
-    def test_trex_joystick_running_gait_rewards_require_speed_and_one_foot_duty(self):
-        env = trex_joystick.TrexJoystick()
-        command = jp.array([10.0, 0.0])
-
-        slow_speed_gate = float(env._running_speed_gate(jp.array([0.25, 0.0])))
-        low_speed_gate = float(env._running_speed_gate(jp.array([2.0, 0.0])))
-        standing_gate = float(env._running_speed_gate(jp.array([0.0, 0.0])))
-        stopped = float(env._achieved_running_speed_gate(command, jp.zeros(3)))
-        running = float(
-            env._achieved_running_speed_gate(command, jp.array([8.0, 0.0, 0.0]))
-        )
-        both_planted = float(
-            jp.exp(-4.0 * jp.square(jp.sum(jp.array([1.0, 1.0])) - 1.0))
-        )
-        alternating_duty = float(
-            jp.exp(-4.0 * jp.square(jp.sum(jp.array([0.5, 0.5])) - 1.0))
-        )
-
-        self.assertLess(standing_gate, 0.1)
-        self.assertGreater(slow_speed_gate, 0.9)
-        self.assertGreater(low_speed_gate, 0.9)
-        self.assertLess(stopped, 0.1)
-        self.assertGreater(running, 0.9)
-        self.assertLess(both_planted, 0.1)
-        self.assertGreater(alternating_duty, 0.9)
-
-    def test_trex_joystick_moving_costs_penalize_collapsed_posture(self):
-        env = trex_joystick.TrexJoystick()
-        standing_data = mjx_env.make_data(
-            env.mj_model,
-            qpos=env._standing_qpos,
-            qvel=jp.zeros(env.mjx_model.nv),
-            ctrl=env._default_ctrl,
-            impl=env.mjx_model.impl.value,
-            naconmax=env._config.naconmax,
-            njmax=env._config.njmax,
-        )
-        standing_data = mjx.forward(env.mjx_model, standing_data)
-        collapsed_qpos = env._side_qpos.at[2].set(0.7)
-        collapsed_data = mjx_env.make_data(
-            env.mj_model,
-            qpos=collapsed_qpos,
-            qvel=jp.zeros(env.mjx_model.nv),
-            ctrl=env._default_ctrl,
-            impl=env.mjx_model.impl.value,
-            naconmax=env._config.naconmax,
-            njmax=env._config.njmax,
-        )
-        collapsed_data = mjx.forward(env.mjx_model, collapsed_data)
-        info = {
-            "command": jp.array([0.25, 0.0]),
-            "last_act": jp.zeros(env.action_size),
-            "last_last_act": jp.zeros(env.action_size),
-            "stand_hold_act": jp.zeros(env.action_size),
-            "was_standing_command": jp.zeros(()),
-            "last_foot_centers": env._foot_centers_world(standing_data),
-            "contact_duty": jp.zeros(2),
-            "feet_air_time": jp.zeros(2),
-            "last_contact": jp.zeros(2, dtype=bool),
-            "gait_phase": jp.zeros(()),
-            "steps_until_next_cmd": jp.array(1),
-            "rng": jax.random.PRNGKey(0),
-        }
-
-        standing_rewards = env._get_reward(
-            standing_data,
-            jp.zeros(env.action_size),
-            info,
-            jp.zeros(2, dtype=bool),
-            jp.zeros(2),
-        )
-        collapsed_rewards = env._get_reward(
-            collapsed_data,
-            jp.zeros(env.action_size),
-            info,
-            jp.zeros(2, dtype=bool),
-            jp.zeros(2),
-        )
-
-        for key in (
-            "moving_orientation",
-            "moving_torso_height",
-            "moving_non_foot_clearance",
-        ):
-            self.assertGreater(
-                float(collapsed_rewards[key]), float(standing_rewards[key])
-            )
-
-    def test_trex_joystick_moving_support_gate_requires_foot_contact(self):
-        env = trex_joystick.TrexJoystick()
-
-        no_contact_gate = jp.clip(0.0 / 0.75, 0.0, 1.0)
-        one_foot_gate = jp.clip(1.0 / 0.75, 0.0, 1.0)
-
-        self.assertLess(float(no_contact_gate), 0.1)
-        self.assertGreater(float(one_foot_gate), 0.9)
-
-    def test_trex_joystick_first_step_progress_rewards_slow_forward_motion(self):
-        env = trex_joystick.TrexJoystick()
-        command = jp.array([0.5, 0.0])
-
-        stopped = env._reward_first_step_forward_progress(command, jp.zeros(3))
-        slow_forward = env._reward_first_step_forward_progress(
-            command, jp.array([0.25, 0.0, 0.0])
-        )
-        target_forward = env._reward_first_step_forward_progress(
-            command, jp.array([0.5, 0.0, 0.0])
-        )
-
-        self.assertLess(float(stopped), 0.1)
-        self.assertGreater(float(slow_forward), 0.4)
-        self.assertGreater(float(target_forward), 0.9)
-        self.assertIn("first_step_forward_progress", env._config.reward_config.scales)
-
-    def test_trex_joystick_forward_speed_error_penalizes_overspeed(self):
-        env = trex_joystick.TrexJoystick()
-        command = jp.array([0.25, 0.0])
-
-        target = env._cost_forward_speed_error(command, jp.array([0.25, 0.0, 0.0]))
-        overspeed = env._cost_forward_speed_error(command, jp.array([0.75, 0.0, 0.0]))
-        stopped = env._cost_forward_speed_error(command, jp.zeros(3))
-
-        self.assertLess(float(target), 0.01)
-        self.assertGreater(float(overspeed), 0.2)
-        self.assertGreater(float(stopped), 0.05)
-        self.assertIn("moving_forward_vel_error", env._config.reward_config.scales)
-
-    def test_trex_joystick_contact_duty_error_penalizes_locked_contacts(self):
-        env = trex_joystick.TrexJoystick()
-        no_contact_data = mjx_env.make_data(
-            env.mj_model,
-            qpos=env._standing_qpos.at[2].set(4.0),
-            qvel=jp.zeros(env.mjx_model.nv),
-            ctrl=env._default_ctrl,
-            impl=env.mjx_model.impl.value,
-            naconmax=env._config.naconmax,
-            njmax=env._config.njmax,
-        )
-        no_contact_data = mjx.forward(env.mjx_model, no_contact_data)
-        info_balanced = {"contact_duty": jp.array([0.5, 0.5])}
-        info_left_locked = {"contact_duty": jp.array([1.0, 0.0])}
-        info_double_locked = {"contact_duty": jp.array([1.0, 1.0])}
-
-        balanced = env._cost_contact_duty_error(no_contact_data, info_balanced)
-        left_locked = env._cost_contact_duty_error(no_contact_data, info_left_locked)
-        double_locked = env._cost_contact_duty_error(
-            no_contact_data, info_double_locked
-        )
-
-        self.assertLess(float(balanced), 0.1)
-        self.assertGreater(float(left_locked), 0.8)
-        self.assertGreater(float(double_locked), 0.2)
-        self.assertIn("contact_duty_error", env._config.reward_config.scales)
-
-    def test_trex_joystick_double_foot_contact_cost_prefers_single_support(self):
-        env = trex_joystick.TrexJoystick()
-        no_double_support = jp.array(1.0) * jp.array(0.0)
-        double_support = jp.array(1.0) * jp.array(1.0)
-
-        self.assertLess(float(no_double_support), 0.1)
-        self.assertGreater(float(double_support), 0.9)
-        self.assertIn("phase_contact", env._config.reward_config.scales)
-        self.assertIn("phase_foot_clearance", env._config.reward_config.scales)
-
-    def test_trex_joystick_leg_action_alternation_prefers_opposite_pairs(self):
-        env = trex_joystick.TrexJoystick()
-        alternating = np.asarray(env._stand_pose_action).copy()
-        in_phase = alternating.copy()
-
-        alternating[2:8] += np.array([0.4, -0.4, -0.4, 0.4, 0.4, -0.4])
-        in_phase[2:8] += np.array([0.4, 0.4, -0.4, -0.4, 0.4, 0.4])
-
-        self.assertGreater(
-            float(env._reward_leg_action_alternation(jp.array(alternating))),
-            0.8,
-        )
-        self.assertLess(
-            float(env._reward_leg_action_alternation(jp.array(in_phase))),
-            0.2,
-        )
-
-    def test_trex_joystick_gait_prior_tracking_prefers_phase_prior(self):
-        env = trex_joystick.TrexJoystick()
-        info = {"command": jp.array([0.2, 0.0]), "gait_phase": jp.pi / 2.0}
-        target = jp.clip(env._stand_pose_action + env._gait_prior_action(info), -1, 1)
-        canceled = env._stand_pose_action
-
-        self.assertGreater(
-            float(env._reward_gait_prior_tracking(target, info)),
-            0.9,
-        )
-        self.assertLess(
-            float(env._reward_gait_prior_tracking(canceled, info)),
-            0.8,
-        )
-        self.assertIn("gait_prior_tracking", env._config.reward_config.scales)
-
-    def test_trex_joystick_march_mode_uses_fixed_march_command(self):
-        config = trex_joystick.default_config()
-        config.curriculum_task = "march"
-        config.march_command_forward = 0.1
-        config.reset_standing_prob = 1.0
-        env = trex_joystick.TrexJoystick(config)
-
-        state = env.reset(jax.random.PRNGKey(0))
-        np.testing.assert_allclose(
-            np.asarray(jax.device_get(state.info["command"])),
-            np.array([0.1, 0.0]),
-            atol=1e-6,
-        )
-
-        state = env.step(state, jp.zeros(env.action_size))
-        np.testing.assert_allclose(
-            np.asarray(jax.device_get(state.info["command"])),
-            np.array([0.1, 0.0]),
-            atol=1e-6,
         )
 
     def test_trex_joystick_walk_mode_samples_low_speed_commands(self):
@@ -1045,164 +535,6 @@ class TestMjxGym(unittest.TestCase):
         self.assertGreaterEqual(command[0], config.walk_command_forward_min)
         self.assertLessEqual(command[0], config.walk_command_forward_max)
         self.assertLessEqual(abs(command[1]), config.walk_command_turn_max)
-
-    def test_trex_joystick_gait_frequency_is_moderate_at_full_speed(self):
-        config = trex_joystick.default_config()
-        config.reset_standing_prob = 1.0
-        env = trex_joystick.TrexJoystick(config)
-        state = env.reset(jax.random.PRNGKey(0))
-        state.info["command"] = jp.array([10.0, 0.0])
-        state.info["gait_phase"] = jp.array(0.0)
-
-        next_phase = float(env._updated_gait_phase(state.info, jp.array(0.0)))
-        frequency = next_phase / (2.0 * np.pi * env.dt)
-
-        self.assertGreaterEqual(frequency, 1.25 - 1e-6)
-        self.assertLessEqual(frequency, 1.5 + 1e-6)
-
-    def test_trex_joystick_fixed_gait_phase_holds_requested_phase(self):
-        config = trex_joystick.default_config()
-        config.curriculum_task = "march"
-        config.fixed_gait_phase = 1.5 * np.pi
-        config.reset_standing_prob = 1.0
-        env = trex_joystick.TrexJoystick(config)
-
-        state = env.reset(jax.random.PRNGKey(0))
-        self.assertAlmostEqual(
-            float(jax.device_get(state.info["gait_phase"])),
-            config.fixed_gait_phase,
-            places=6,
-        )
-
-        state = env.step(state, jp.zeros(env.action_size))
-        self.assertAlmostEqual(
-            float(jax.device_get(state.info["gait_phase"])),
-            config.fixed_gait_phase,
-            places=6,
-        )
-
-    def test_trex_joystick_march_reward_is_in_place_gait_task(self):
-        config = trex_joystick.default_config()
-        config.curriculum_task = "march"
-        config.reset_standing_prob = 1.0
-        env = trex_joystick.TrexJoystick(config)
-        state = env.reset(jax.random.PRNGKey(0))
-
-        rewards = env._get_reward(
-            state.data,
-            jp.zeros(env.action_size),
-            state.info,
-            jp.zeros(2, dtype=bool),
-            jp.zeros(2),
-        )
-
-        self.assertIn("phase_swing_clearance", rewards)
-        self.assertIn("phase_stance_contact", rewards)
-        self.assertIn("moving_forward_vel_error", rewards)
-        self.assertNotIn("tracking_forward_vel", rewards)
-
-    def test_trex_joystick_moving_action_deviation_prefers_stand_pose(self):
-        env = trex_joystick.TrexJoystick()
-        stand_action = env._stand_pose_action
-        deviated_action = stand_action.at[:8].add(0.5)
-
-        self.assertLess(
-            float(env._cost_moving_action_deviation(stand_action)),
-            0.01,
-        )
-        self.assertGreater(
-            float(env._cost_moving_action_deviation(deviated_action)),
-            0.2,
-        )
-        self.assertIn("moving_action_deviation", env._config.reward_config.scales)
-
-    def test_trex_joystick_gait_prior_alternates_leg_pairs_when_running(self):
-        env = trex_joystick.TrexJoystick()
-        prior = np.asarray(
-            env._gait_prior_action(
-                {"command": jp.array([10.0, 0.0]), "gait_phase": jp.pi / 2.0}
-            )
-        )
-
-        self.assertGreater(prior[2], 0.1)
-        self.assertLess(prior[3], -0.1)
-        self.assertLess(prior[4], -0.1)
-        self.assertGreater(prior[5], 0.1)
-        self.assertAlmostEqual(prior[8], 0.0)
-        self.assertAlmostEqual(prior[9], 0.0)
-
-    def test_trex_joystick_march_gait_prior_does_not_require_running_command(self):
-        config = trex_joystick.default_config()
-        config.curriculum_task = "march"
-        config.gait_prior_scale = 0.2
-        env = trex_joystick.TrexJoystick(config)
-        prior = np.asarray(
-            env._gait_prior_action(
-                {"command": jp.array([0.05, 0.0]), "gait_phase": 5.5}
-            )
-        )
-
-        self.assertGreater(np.max(np.abs(prior[:8])), 0.05)
-
-    def test_trex_joystick_walk_gait_prior_does_not_require_running_speed(self):
-        config = trex_joystick.default_config()
-        config.curriculum_task = "walk"
-        config.gait_prior_scale = 0.2
-        env = trex_joystick.TrexJoystick(config)
-        prior = np.asarray(
-            env._gait_prior_action(
-                {"command": jp.array([0.05, 0.0]), "gait_phase": jp.pi / 2.0}
-            )
-        )
-
-        self.assertGreater(np.max(np.abs(prior[:8])), 0.05)
-
-    def test_trex_joystick_tracking_rewards_use_forward_and_turn_axes(self):
-        env = trex_joystick.TrexJoystick()
-        command = jp.array([1.0, 0.5])
-
-        self.assertAlmostEqual(
-            float(env._reward_tracking_forward_vel(command, jp.array([1.0, 0.0, 0.0]))),
-            1.0,
-        )
-        self.assertLess(
-            float(env._reward_tracking_forward_vel(command, jp.array([0.0, 0.0, 0.0]))),
-            0.1,
-        )
-        self.assertGreater(
-            float(env._cost_forward_speed_deficit(command, jp.array([0.0, 0.0, 0.0]))),
-            0.9,
-        )
-        self.assertLess(
-            float(env._cost_forward_speed_deficit(command, jp.array([1.0, 0.0, 0.0]))),
-            0.1,
-        )
-        self.assertAlmostEqual(
-            float(env._cost_base_tilt_ang_vel(jp.array([1.0, 10.0, 2.0]))),
-            5.0,
-        )
-        self.assertAlmostEqual(float(env._cost_running_height_excess(2.55)), 0.0)
-        self.assertGreater(float(env._cost_running_height_excess(3.00)), 0.1)
-        self.assertGreater(float(env._reward_running_height_gate(2.55)), 0.9)
-        self.assertLess(float(env._reward_running_height_gate(3.50)), 0.01)
-        self.assertAlmostEqual(
-            float(env._reward_tracking_turn_vel(command, jp.array([0.0, 0.5, 0.0]))),
-            1.0,
-        )
-        self.assertLess(
-            float(env._reward_tracking_turn_vel(command, jp.array([0.0, -0.5, 0.0]))),
-            0.1,
-        )
-        self.assertGreater(
-            float(
-                env._reward_commanded_stand_still(jp.zeros(2), jp.zeros(3), jp.zeros(3))
-            ),
-            0.9,
-        )
-        self.assertEqual(
-            float(env._reward_commanded_stand_still(command, jp.zeros(3), jp.zeros(3))),
-            0.0,
-        )
 
     def test_register_environments_adds_trex_tasks(self):
         train.register_environments()

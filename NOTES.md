@@ -215,3 +215,50 @@ May 14 follow-up:
 - Fixed the march curriculum gait prior so it is not disabled by the low
   in-place march command. Previously `_gait_prior_action` was gated by running
   speed, so fixed-support runs with tiny commands had no scripted lift prior.
+
+## Joystick Reset Toward G1/Berkeley Pattern
+
+Reason for reset:
+
+- The custom walking/marching curricula repeatedly found two local optima:
+  either a stable stand-still/double-support shuffle, or a lateral fall once
+  the rewards pushed hard enough for foot lift.
+- Adding stronger gait priors, phase-specific swing rewards, and constrained
+  residual actions helped diagnostics but did not produce robust alternating
+  gait learning.
+- The G1 and Berkeley joystick tasks are much simpler: actions are residuals
+  around the default pose, gait phase is an observation/reward target, and the
+  reward uses direct velocity, orientation, height, feet phase, air-time, slip,
+  pose, and control costs.
+
+What changed locally:
+
+- `TrexJoystick.step` now maps the policy action directly to
+  `stand_pose_action + action * action_residual_scale`, clipped to `[-1, 1]`.
+- Removed the active standing/moving action branch, stand-pose override, and
+  action-space gait-prior injection from the control path.
+- Replaced the active reward scale set with humanoid-style terms:
+  `tracking_lin_vel`, `tracking_ang_vel`, `orientation`, `base_height`,
+  `non_foot_clearance`, `lin_vel_z`, `ang_vel_xy`, `feet_phase`,
+  `feet_air_time`, `feet_slip`, `stand_still`, `pose`,
+  `hip_adduction_neutral`, `termination`, `action_rate`, `torques`, and
+  `dof_vel`.
+- Kept the old phase/gait helper methods available for diagnostic scripts, but
+  they are no longer part of the active PPO reward.
+
+Validation:
+
+- `uv run python -m py_compile mjx_gym/trex_joystick.py tools/mjx_gym_test.py`
+  passed.
+- Focused joystick unittest subset passed: reset/step, opt-in fall termination,
+  default-pose residual actions, active reward term set, tracking axes,
+  anti-phase gait targets, walk command sampling, and environment registration.
+- Local JAX one-step smoke passed with joystick observation shapes `(88,)` and
+  `(174,)`, finite reward `0.030260900035500526`, `done=0`, and the simplified
+  17 reward metrics above.
+
+Next check:
+
+- Do not spend remote GPU credits until approved.
+- When compute is available, run a short Warp training smoke from this reset
+  and inspect early rollout frames before launching a longer sweep.
