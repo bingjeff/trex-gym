@@ -272,11 +272,12 @@ class TrexGetup(mjx_env.MjxEnv):
         gravity = self.get_gravity(data)
         torso_height = data.site_xpos[self._imu_site_id][2]
         orientation = self._reward_orientation(gravity)
+        clearance = self._reward_non_foot_clearance(data)
         stillness_gate = orientation * self._reward_height(torso_height)
         return {
             "orientation": orientation,
             "torso_height": orientation * self._reward_height(torso_height),
-            "non_foot_clearance": self._reward_non_foot_clearance(data),
+            "non_foot_clearance": orientation * clearance,
             "foot_support": orientation * self._reward_foot_support(data),
             "foot_balance": orientation * self._reward_foot_balance(data),
             "foot_placement": orientation * self._reward_foot_placement(data),

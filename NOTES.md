@@ -598,3 +598,21 @@ May 14 parallel GPU experiments:
   changing joystick observations or actions: `getup_torso_height`,
   `getup_foot_support`, `getup_foot_balance`, `getup_foot_placement`, and
   `getup_standing_pose`. Focused joystick reward tests passed.
+- L40S side-getup-shaped seed 23 turned on those terms from mixed-reset seed 21:
+  `/workspace/runs/TrexJoystick-20260514-194000-sidegetup-shaped-l40s-warm-20m-seed23`.
+  Reward improved from `-276.094` to `-208.860`, and the side diagnostic
+  improved to `episode_reward_sum=-141.274` with torso height reaching
+  `2.875 m`. It still failed to get upright: orientation reward only reached
+  `0.364`, base displacement was `4.976 m`, and rendered frames showed a
+  rolling/flinging maneuver rather than a controlled stand-up.
+- L40S dedicated `TrexGetup` seed 24:
+  `/workspace/runs/TrexGetup-20260514-195323-getup-l40s-20m-seed24`.
+  Reward improved from `1.276` to `11.594`, but diagnostics showed the same
+  failure mode: orientation reward stayed `0.008-0.092`, torso height only
+  reached `2.068 m`, and base displacement was `6.220 m`.
+- Root cause found: `non_foot_clearance` was paid even when the body was not
+  upright. In the dedicated get-up run this dominated the objective
+  (`reward/non_foot_clearance=443.924`) and rewarded flinging the body/head/tail
+  away from the ground without standing. Fixed both `TrexGetup` and
+  `TrexJoystick` so non-foot clearance is multiplied by the upright orientation
+  reward. Added a focused test proving side-lying clearance no longer pays.

@@ -133,6 +133,47 @@ class TestMjxGym(unittest.TestCase):
         self.assertGreater(standing_reward, 0.9)
         self.assertLess(side_reward, standing_reward)
 
+    def test_getup_clearance_reward_is_orientation_gated(self):
+        env = trex_getup.TrexGetup()
+        model = env.mj_model
+        info = {
+            "last_act": jp.zeros(env.action_size),
+            "last_last_act": jp.zeros(env.action_size),
+        }
+
+        standing = mujoco.MjData(model)
+        standing.qpos[:] = trex_constants.standing_qpos(model)
+        mujoco.mj_forward(model, standing)
+        standing_rewards = env._get_reward(
+            mjx.put_data(
+                model,
+                standing,
+                impl=env.mjx_model.impl.value,
+                naconmax=env._config.naconmax,
+                njmax=env._config.njmax,
+            ),
+            jp.zeros(env.action_size),
+            info,
+        )
+
+        side = mujoco.MjData(model)
+        side.qpos[:] = trex_constants.side_lying_qpos(model)
+        mujoco.mj_forward(model, side)
+        side_rewards = env._get_reward(
+            mjx.put_data(
+                model,
+                side,
+                impl=env.mjx_model.impl.value,
+                naconmax=env._config.naconmax,
+                njmax=env._config.njmax,
+            ),
+            jp.zeros(env.action_size),
+            info,
+        )
+
+        self.assertGreater(float(standing_rewards["non_foot_clearance"]), 0.9)
+        self.assertLess(float(side_rewards["non_foot_clearance"]), 0.1)
+
     def test_foot_support_reward_requires_both_feet_near_floor(self):
         env = trex_getup.TrexGetup()
         model = env.mj_model

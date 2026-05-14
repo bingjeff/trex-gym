@@ -397,7 +397,7 @@ class TrexJoystick(trex_getup.TrexGetup):
             "orientation": jp.square(1.0 - orientation),
             "base_height": jp.square(1.0 - height),
             "low_torso_height": self._cost_low_torso_height(torso_height),
-            "non_foot_clearance": clearance,
+            "non_foot_clearance": orientation * clearance,
             "getup_torso_height": orientation * height,
             "getup_foot_support": orientation * self._reward_foot_support(data),
             "getup_foot_balance": orientation * self._reward_foot_balance(data),
