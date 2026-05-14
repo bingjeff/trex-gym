@@ -534,6 +534,15 @@ class TestMjxGym(unittest.TestCase):
             float(env._cost_low_torso_height(crouched_height)),
             float(env._cost_low_torso_height(env._target_torso_height)),
         )
+        self.assertEqual(
+            0.0,
+            float(
+                env._locomotion_posture_gate(jp.array(1.0), crouched_height)
+                * env._reward_commanded_stand_still(
+                    jp.array([0.0, 0.0]), jp.zeros(3), jp.zeros(3)
+                )
+            ),
+        )
 
     def test_trex_joystick_gait_rewards_are_disabled_for_stand_command(self):
         config = trex_joystick.default_config()

@@ -569,3 +569,15 @@ May 14 parallel GPU experiments:
   quietstand checkpoint, keeps the quiet-stand reward, increases velocity and
   turn tracking weights, lowers gait reward dominance, and increases leg action
   residual range. Purpose: recover command tracking without losing quiet stand.
+- L40S track-rebalance seed 19 completed:
+  `/workspace/runs/TrexJoystick-20260514-182121-trackrebalance-l40s-warm-20m-seed19`.
+  Rewards were `75.454`, `76.067`, `76.453`, `112.164`, `134.588`; compile
+  `28.4 s`, train `320.7 s`. Diagnostics: stand is no longer as quiet as
+  quietstand seed 18 but remains acceptable for a moving-policy checkpoint
+  (`0.513 m` drift, both feet contact, no fall). Forward 0.5 m/s tracks at
+  `0.413 m/s`; forward 0.5 plus turn 0.25 tracks at `0.413 m/s` and
+  `0.251 rad/s`. Forward 0.8 reaches `0.646 m/s`; forward 0.8 plus turn 0.25
+  reaches `0.626 m/s` and `0.204 rad/s`. Render frame looks upright with an
+  alternating gait posture and no visible collapse. Side reset still fails
+  immediately under `terminate_on_fall=true`, so the get-up portion remains
+  unsolved.

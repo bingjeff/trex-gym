@@ -405,7 +405,8 @@ class TrexJoystick(trex_getup.TrexGetup):
             ),
             "feet_slip": self._cost_foot_slip(data, info),
             "stand_still": self._cost_stand_still(info["command"], data.qpos[7:]),
-            "commanded_stand_still": self._reward_commanded_stand_still(
+            "commanded_stand_still": posture_gate
+            * self._reward_commanded_stand_still(
                 info["command"], local_linvel, local_angvel
             ),
             "pose": self._cost_pose(data.qpos),
