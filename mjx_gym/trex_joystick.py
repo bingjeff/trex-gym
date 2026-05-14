@@ -58,6 +58,7 @@ def default_config() -> config_dict.ConfigDict:
     config.running_gate_start = 0.05
     config.running_gate_full = 0.25
     config.foot_contact_force_scale = 20000.0
+    config.foot_contact_height = 0.03
     config.command_config = config_dict.create(
         forward_min=0.0,
         forward_max=10.0,
@@ -896,12 +897,15 @@ class TrexJoystick(trex_getup.TrexGetup):
         return jp.clip((stride - 0.15) / 0.65, 0.0, 1.0)
 
     def _foot_contact_scores(self, data: mjx.Data) -> tuple[jax.Array, jax.Array]:
-        left_force = self._foot_ground_force(data, self._left_foot_geom_ids)
-        right_force = self._foot_ground_force(data, self._right_foot_geom_ids)
+        left_clearance, right_clearance = self._foot_clearance_scores(data)
         return (
-            jp.clip(left_force / self._config.foot_contact_force_scale, 0.0, 1.0),
-            jp.clip(right_force / self._config.foot_contact_force_scale, 0.0, 1.0),
+            self._height_contact_score(left_clearance),
+            self._height_contact_score(right_clearance),
         )
+
+    def _height_contact_score(self, clearance: jax.Array) -> jax.Array:
+        contact_height = jp.maximum(self._config.foot_contact_height, 1e-6)
+        return jp.clip(1.0 - clearance / contact_height, 0.0, 1.0)
 
     def _foot_ground_force(self, data: mjx.Data, foot_geom_ids: jax.Array) -> jax.Array:
         contact_geom = self._contact_geom(data)

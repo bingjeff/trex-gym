@@ -587,6 +587,15 @@ class TestMjxGym(unittest.TestCase):
 
         self.assertAlmostEqual(float(clearance), 0.0)
 
+    def test_trex_joystick_height_contact_score_tracks_clearance(self):
+        config = trex_joystick.default_config()
+        config.foot_contact_height = 0.03
+        env = trex_joystick.TrexJoystick(config)
+
+        self.assertAlmostEqual(float(env._height_contact_score(jp.array(0.0))), 1.0)
+        self.assertGreater(float(env._height_contact_score(jp.array(0.015))), 0.4)
+        self.assertLess(float(env._height_contact_score(jp.array(0.045))), 0.1)
+
     def test_trex_joystick_running_gait_rewards_require_speed_and_one_foot_duty(self):
         env = trex_joystick.TrexJoystick()
         command = jp.array([10.0, 0.0])
