@@ -589,6 +589,38 @@ class TestMjxGym(unittest.TestCase):
         )
         self.assertIn("phase_clearance_error", env._config.reward_config.scales)
 
+    def test_trex_joystick_phase_clearance_max_error_focuses_worst_foot(self):
+        config = trex_joystick.default_config()
+        config.gait_swing_height = 0.045
+        env = trex_joystick.TrexJoystick(config)
+        phase = jp.array(0.0)
+
+        target = jp.array([config.gait_swing_height, 0.0])
+        both_down = jp.zeros(2)
+        half_lift = jp.array([0.5 * config.gait_swing_height, 0.0])
+
+        self.assertLess(
+            float(env._cost_phase_clearance_max_error_from_clearance(target, phase)),
+            0.01,
+        )
+        self.assertGreater(
+            float(env._cost_phase_clearance_max_error_from_clearance(both_down, phase)),
+            0.9,
+        )
+        self.assertGreater(
+            float(
+                env._cost_phase_clearance_max_error_from_clearance(
+                    both_down, phase
+                )
+            ),
+            float(
+                env._cost_phase_clearance_max_error_from_clearance(
+                    half_lift, phase
+                )
+            ),
+        )
+        self.assertIn("phase_clearance_max_error", env._config.reward_config.scales)
+
     def test_trex_joystick_foot_phase_targets_are_opposite(self):
         env = trex_joystick.TrexJoystick()
 

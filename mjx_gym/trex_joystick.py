@@ -98,6 +98,7 @@ def default_config() -> config_dict.ConfigDict:
         phase_foot_clearance=1.0,
         feet_phase_height=1.0,
         phase_clearance_error=-1.0,
+        phase_clearance_max_error=-1.0,
         single_support_balance=1.0,
         feet_air_time=0.5,
         contact_duty_symmetry=1.0,
@@ -455,6 +456,8 @@ class TrexJoystick(trex_getup.TrexGetup):
             * self._reward_feet_phase_height(data, info["gait_phase"], info["command"]),
             "phase_clearance_error": moving_gate
             * self._cost_phase_clearance_error(data, info["gait_phase"]),
+            "phase_clearance_max_error": moving_gate
+            * self._cost_phase_clearance_max_error(data, info["gait_phase"]),
             "single_support_balance": moving_gate
             * self._reward_single_support_balance(data, info["gait_phase"]),
             "feet_air_time": running_gate
@@ -845,6 +848,14 @@ class TrexJoystick(trex_getup.TrexGetup):
             jp.array([left_clearance, right_clearance]), phase
         )
 
+    def _cost_phase_clearance_max_error(
+        self, data: mjx.Data, phase: jax.Array
+    ) -> jax.Array:
+        left_clearance, right_clearance = self._foot_clearance_scores(data)
+        return self._cost_phase_clearance_max_error_from_clearance(
+            jp.array([left_clearance, right_clearance]), phase
+        )
+
     def _reward_feet_phase_height_from_clearance(
         self, clearance: jax.Array, phase: jax.Array, command: jax.Array
     ) -> jax.Array:
@@ -860,10 +871,21 @@ class TrexJoystick(trex_getup.TrexGetup):
     def _cost_phase_clearance_error_from_clearance(
         self, clearance: jax.Array, phase: jax.Array
     ) -> jax.Array:
+        normalized_error = self._phase_clearance_normalized_error(clearance, phase)
+        return jp.mean(jp.square(normalized_error))
+
+    def _cost_phase_clearance_max_error_from_clearance(
+        self, clearance: jax.Array, phase: jax.Array
+    ) -> jax.Array:
+        normalized_error = self._phase_clearance_normalized_error(clearance, phase)
+        return jp.max(jp.square(normalized_error))
+
+    def _phase_clearance_normalized_error(
+        self, clearance: jax.Array, phase: jax.Array
+    ) -> jax.Array:
         target_clearance = self._phase_foot_clearance_targets(phase)
         swing_height = jp.maximum(self._config.gait_swing_height, 1e-6)
-        normalized_error = (clearance - target_clearance) / swing_height
-        return jp.mean(jp.square(normalized_error))
+        return (clearance - target_clearance) / swing_height
 
     def _phase_foot_clearance_targets(self, phase: jax.Array) -> jax.Array:
         phase = self._wrap_gait_phase(phase)
