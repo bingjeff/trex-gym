@@ -798,7 +798,8 @@ class TrexJoystick(trex_getup.TrexGetup):
             jp.sum(contact_target), 1e-6
         )
         clearance_score = jp.exp(
-            -jp.sum(jp.square(clearance - target_clearance)) / 0.01
+            -jp.sum(jp.square(clearance - target_clearance))
+            / self._phase_clearance_error_denominator()
         )
         return stance_contact * clearance_score
 
@@ -816,7 +817,11 @@ class TrexJoystick(trex_getup.TrexGetup):
         target_clearance = self._phase_foot_clearance_targets(phase)
         error = jp.sum(jp.square(clearance - target_clearance))
         moving = jp.linalg.norm(command) > 0.05
-        return moving * jp.exp(-error / 0.01)
+        return moving * jp.exp(-error / self._phase_clearance_error_denominator())
+
+    def _phase_clearance_error_denominator(self) -> jax.Array:
+        swing_height = jp.maximum(self._config.gait_swing_height, 1e-6)
+        return jp.square(swing_height) / 1.44
 
     def _phase_foot_clearance_targets(self, phase: jax.Array) -> jax.Array:
         phase = self._wrap_gait_phase(phase)
