@@ -89,6 +89,9 @@ def analyze(args: argparse.Namespace) -> None:
     mean_contact_duty_symmetry = 0.0
     mean_foot_contact_balance = 0.0
     mean_foot_slip = 0.0
+    mean_stance_support_error = 0.0
+    mean_stance_offset_x = 0.0
+    mean_stance_offset_z = 0.0
     mean_feet_phase_height = 0.0
     mean_left_clearance = 0.0
     mean_right_clearance = 0.0
@@ -162,6 +165,18 @@ def analyze(args: argparse.Namespace) -> None:
         left_offset, right_offset = jax.device_get(
             env._mjx_foot_offsets_in_torso_frame(state.data)
         )
+        contact_target = np.asarray(
+            jax.device_get(env._phase_contact_targets(state.info["gait_phase"]))
+        )
+        stance_weight = contact_target / max(float(np.sum(contact_target)), 1e-6)
+        left_xz = np.array([float(left_offset[0]), float(left_offset[2])])
+        right_xz = np.array([float(right_offset[0]), float(right_offset[2])])
+        stance_xz = stance_weight[0] * left_xz + stance_weight[1] * right_xz
+        support_xz = np.asarray(jax.device_get(env._standing_support_offset_xz))
+        support_error = stance_xz - support_xz
+        mean_stance_support_error += float(np.linalg.norm(support_error))
+        mean_stance_offset_x += float(stance_xz[0])
+        mean_stance_offset_z += float(stance_xz[1])
         left_stride = abs(float(left_offset[0] - env._standing_left_foot_offset[0]))
         right_stride = abs(float(right_offset[0] - env._standing_right_foot_offset[0]))
         stride_extent = 0.5 * (left_stride + right_stride)
@@ -253,6 +268,9 @@ def analyze(args: argparse.Namespace) -> None:
     print(f"max_stride_extent: {max_stride_extent:.3f}")
     print(f"mean_gait_anti_phase: {mean_gait_anti_phase / sample_steps:.3f}")
     print(f"mean_gait_symmetry: {mean_gait_symmetry / sample_steps:.3f}")
+    print(f"mean_stance_support_error: {mean_stance_support_error / sample_steps:.3f}")
+    print(f"mean_stance_offset_x: {mean_stance_offset_x / sample_steps:.3f}")
+    print(f"mean_stance_offset_z: {mean_stance_offset_z / sample_steps:.3f}")
     print(
         f"mean_contact_duty_symmetry: {mean_contact_duty_symmetry / sample_steps:.3f}"
     )

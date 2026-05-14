@@ -1009,6 +1009,37 @@ class TestMjxGym(unittest.TestCase):
             atol=1e-6,
         )
 
+    def test_trex_joystick_walk_mode_samples_low_speed_commands(self):
+        config = trex_joystick.default_config()
+        config.curriculum_task = "walk"
+        config.reset_standing_prob = 1.0
+        config.walk_command_forward_min = 0.2
+        config.walk_command_forward_max = 0.8
+        config.walk_command_turn_max = 0.25
+        config.walk_command_zero_prob = 0.0
+        env = trex_joystick.TrexJoystick(config)
+
+        state = env.reset(jax.random.PRNGKey(4))
+        command = np.asarray(jax.device_get(state.info["command"]))
+
+        self.assertGreaterEqual(command[0], config.walk_command_forward_min)
+        self.assertLessEqual(command[0], config.walk_command_forward_max)
+        self.assertLessEqual(abs(command[1]), config.walk_command_turn_max)
+
+    def test_trex_joystick_gait_frequency_is_moderate_at_full_speed(self):
+        config = trex_joystick.default_config()
+        config.reset_standing_prob = 1.0
+        env = trex_joystick.TrexJoystick(config)
+        state = env.reset(jax.random.PRNGKey(0))
+        state.info["command"] = jp.array([10.0, 0.0])
+        state.info["gait_phase"] = jp.array(0.0)
+
+        next_phase = float(env._updated_gait_phase(state.info, jp.array(0.0)))
+        frequency = next_phase / (2.0 * np.pi * env.dt)
+
+        self.assertGreaterEqual(frequency, 1.25 - 1e-6)
+        self.assertLessEqual(frequency, 1.5 + 1e-6)
+
     def test_trex_joystick_fixed_gait_phase_holds_requested_phase(self):
         config = trex_joystick.default_config()
         config.curriculum_task = "march"
@@ -1088,6 +1119,19 @@ class TestMjxGym(unittest.TestCase):
         prior = np.asarray(
             env._gait_prior_action(
                 {"command": jp.array([0.05, 0.0]), "gait_phase": 5.5}
+            )
+        )
+
+        self.assertGreater(np.max(np.abs(prior[:8])), 0.05)
+
+    def test_trex_joystick_walk_gait_prior_does_not_require_running_speed(self):
+        config = trex_joystick.default_config()
+        config.curriculum_task = "walk"
+        config.gait_prior_scale = 0.2
+        env = trex_joystick.TrexJoystick(config)
+        prior = np.asarray(
+            env._gait_prior_action(
+                {"command": jp.array([0.05, 0.0]), "gait_phase": jp.pi / 2.0}
             )
         )
 

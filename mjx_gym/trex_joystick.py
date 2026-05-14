@@ -20,6 +20,10 @@ def default_config() -> config_dict.ConfigDict:
     config.reset_command_interval_mean = 3.0
     config.curriculum_task = "joystick"
     config.march_command_forward = 0.1
+    config.walk_command_forward_min = 0.15
+    config.walk_command_forward_max = 1.0
+    config.walk_command_turn_max = 0.3
+    config.walk_command_zero_prob = 0.0
     config.contact_duty_alpha = 0.02
     config.stand_action_smoothing = 0.5
     config.terminate_on_fall = False
@@ -53,9 +57,9 @@ def default_config() -> config_dict.ConfigDict:
         1.0,
     ]
     config.gait_prior_scale = 0.35
-    config.gait_frequency_min = 1.0
-    config.gait_frequency_per_mps = 0.15
-    config.gait_frequency_max = 2.5
+    config.gait_frequency_min = 1.25
+    config.gait_frequency_per_mps = 0.025
+    config.gait_frequency_max = 1.5
     config.gait_swing_height = 0.12
     config.fixed_gait_phase = -1.0
     config.random_initial_gait_phase = True
@@ -229,7 +233,7 @@ class TrexJoystick(trex_getup.TrexGetup):
         )
         data = mjx.forward(self.mjx_model, data)
 
-        command = self._sample_command(command_rng)
+        command = self._sample_curriculum_command(command_rng)
         if self._is_march_task():
             command = self._march_command()
         random_phase = jax.random.uniform(
@@ -336,7 +340,7 @@ class TrexJoystick(trex_getup.TrexGetup):
         should_resample = state.info["steps_until_next_cmd"] <= 0
         state.info["command"] = jp.where(
             should_resample,
-            self._sample_command(command_rng),
+            self._sample_curriculum_command(command_rng),
             state.info["command"],
         )
         state.info["steps_until_next_cmd"] = jp.where(
@@ -628,6 +632,9 @@ class TrexJoystick(trex_getup.TrexGetup):
     def _is_march_task(self) -> bool:
         return self._config.curriculum_task == "march"
 
+    def _is_walk_task(self) -> bool:
+        return self._config.curriculum_task == "walk"
+
     def _march_command(self) -> jax.Array:
         return jp.array([self._config.march_command_forward, 0.0])
 
@@ -636,6 +643,32 @@ class TrexJoystick(trex_getup.TrexGetup):
 
     def _fixed_gait_phase(self) -> jax.Array:
         return jp.array(self._config.fixed_gait_phase)
+
+    def _sample_curriculum_command(self, rng: jax.Array) -> jax.Array:
+        if self._is_walk_task():
+            return self._sample_walk_command(rng)
+        return self._sample_command(rng)
+
+    def _sample_walk_command(self, rng: jax.Array) -> jax.Array:
+        forward_rng, turn_rng, zero_rng = jax.random.split(rng, 3)
+        forward = jax.random.uniform(
+            forward_rng,
+            (),
+            minval=self._config.walk_command_forward_min,
+            maxval=self._config.walk_command_forward_max,
+        )
+        turn = jax.random.uniform(
+            turn_rng,
+            (),
+            minval=-self._config.walk_command_turn_max,
+            maxval=self._config.walk_command_turn_max,
+        )
+        command = jp.array([forward, turn])
+        return jp.where(
+            jax.random.bernoulli(zero_rng, self._config.walk_command_zero_prob),
+            self._command_zero,
+            command,
+        )
 
     def _sample_command(self, rng: jax.Array) -> jax.Array:
         (
@@ -704,7 +737,9 @@ class TrexJoystick(trex_getup.TrexGetup):
         gait = gait.at[7].set(0.75 * left)
         moving_gate = 1.0 - self._standing_command_gate(info["command"])
         speed_gate = jp.where(
-            self._is_march_task(), 1.0, self._running_speed_gate(info["command"])
+            self._is_march_task() | self._is_walk_task(),
+            1.0,
+            self._running_speed_gate(info["command"]),
         )
         return moving_gate * speed_gate * self._config.gait_prior_scale * gait
 
