@@ -56,6 +56,18 @@ def default_config() -> config_dict.ConfigDict:
         1.0,
         1.0,
     ]
+    config.walk_action_residual_scale = [
+        0.10,
+        0.10,
+        0.10,
+        0.10,
+        0.10,
+        0.10,
+        0.10,
+        0.10,
+        0.35,
+        0.35,
+    ]
     config.gait_prior_scale = 0.35
     config.gait_frequency_min = 1.25
     config.gait_frequency_per_mps = 0.025
@@ -156,6 +168,9 @@ class TrexJoystick(trex_getup.TrexGetup):
         self._stand_pose_action = jp.array(self._config.stand_pose_action)
         self._running_action_residual_scale = jp.array(
             self._config.running_action_residual_scale
+        )
+        self._walk_action_residual_scale = jp.array(
+            self._config.walk_action_residual_scale
         )
         self._floor_geom_id = self._mj_model.geom("floor").id
         self._standing_support_offset_xz = 0.5 * jp.array(
@@ -285,9 +300,14 @@ class TrexJoystick(trex_getup.TrexGetup):
         applied_stand_action = jp.where(
             stand_pose_gate, self._stand_pose_action, stand_hold_act
         )
+        residual_scale = jp.where(
+            self._is_walk_task(),
+            self._walk_action_residual_scale,
+            self._running_action_residual_scale,
+        )
         running_action = jp.clip(
             self._stand_pose_action
-            + clipped_action * self._running_action_residual_scale
+            + clipped_action * residual_scale
             + self._gait_prior_action(state.info),
             -1.0,
             1.0,
@@ -425,6 +445,9 @@ class TrexJoystick(trex_getup.TrexGetup):
         speed_tracking_gate = standing_gate + (
             moving_gate * moving_support_gate * running_height_gate
         )
+        action_deviation_gate = moving_gate * jp.where(
+            self._is_walk_task(), 1.0, 1.0 - locomotion_gate
+        )
         return {
             "orientation": orientation,
             "torso_height": orientation * height,
@@ -518,8 +541,7 @@ class TrexJoystick(trex_getup.TrexGetup):
             * jp.square(1.0 - clearance),
             "moving_lateral_vel": moving_gate * jp.square(local_linvel[2]),
             "moving_vertical_vel": moving_gate * jp.square(local_linvel[1]),
-            "moving_action_deviation": moving_gate
-            * (1.0 - locomotion_gate)
+            "moving_action_deviation": action_deviation_gate
             * self._cost_moving_action_deviation(action),
             "contact_duty_error": moving_gate
             * self._cost_contact_duty_error(data, info),

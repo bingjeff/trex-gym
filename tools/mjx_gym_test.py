@@ -459,6 +459,26 @@ class TestMjxGym(unittest.TestCase):
             )
         )
 
+    def test_trex_joystick_walk_actions_use_smaller_residuals(self):
+        config = trex_joystick.default_config()
+        config.curriculum_task = "walk"
+        config.reset_standing_prob = 1.0
+        config.gait_prior_scale = 0.0
+        env = trex_joystick.TrexJoystick(config)
+        state = env.reset(jax.random.PRNGKey(0))
+        state.info["command"] = jp.array([0.5, 0.0])
+
+        next_state = env.step(state, jp.ones(env.action_size))
+        expected = np.asarray(config.stand_pose_action) + np.asarray(
+            config.walk_action_residual_scale
+        )
+
+        np.testing.assert_allclose(
+            np.asarray(next_state.info["last_act"]),
+            np.clip(expected, -1.0, 1.0),
+            atol=1e-6,
+        )
+
     def test_trex_joystick_randomizes_initial_moving_gait_phase(self):
         config = trex_joystick.default_config()
         config.reset_standing_prob = 1.0
