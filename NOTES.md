@@ -323,3 +323,16 @@ May 14 parallel GPU experiments:
   `walk_command_zero_prob=0.1`. Purpose: test a more G1/Berkeley-like
   standing-start low-speed joystick task against the mixed getup/joystick
   baseline.
+- A5000 low-speed standing-start seed 0 completed:
+  `/workspace/runs/TrexJoystick-20260514-155438-humanoid-reset-a5000-walk-standing-5m`.
+  Rewards were `-1.587`, `4.689`, `5.625`, `9.805`, `13.689`; compile
+  `40.7 s`, train `187.1 s`. This is the clearest positive learning trend from
+  the reset so far.
+- Started A5000 low-speed standing-start seed 1 in tmux
+  `train-a5000-walk-standing-seed1`, log
+  `/workspace/train-a5000-walk-standing-seed1.log`, to check reproducibility.
+- L40S baseline comparison started at
+  `/workspace/runs/TrexJoystick-20260514-155707-humanoid-reset-l40s-5m-nacon32768`.
+  Initial launch failed because `/root/trex_env.sh` referenced unset
+  `LD_LIBRARY_PATH` under `set -u`; fixed it to use `${LD_LIBRARY_PATH:-}` and
+  restarted successfully.
