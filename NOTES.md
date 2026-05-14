@@ -344,3 +344,20 @@ May 14 parallel GPU experiments:
   `train-l40s-walk-standing-seed2`, log
   `/workspace/train-l40s-walk-standing-seed2.log`, to add a second
   reproducibility check for the promising standing-start walk setup.
+- A5000 low-speed standing-start seed 1 completed:
+  `/workspace/runs/TrexJoystick-20260514-155953-humanoid-reset-a5000-walk-standing-5m-seed1`.
+  Rewards were `-1.589`, `4.809`, `5.849`, `8.495`, `14.652`; compile
+  `39.2 s`, train `184.9 s`. This independently reproduces the positive trend.
+- Started A5000 low-speed standing-start seed 3 in tmux
+  `train-a5000-walk-standing-seed3`, log
+  `/workspace/train-a5000-walk-standing-seed3.log`, to keep the A5000 loaded
+  while L40S throughput is tuned.
+- L40S low-speed standing-start seed 2 completed:
+  `/workspace/runs/TrexJoystick-20260514-160306-humanoid-reset-l40s-walk-standing-5m-seed2`.
+  Rewards were `-1.161`, `6.036`, `6.667`, `8.649`, `10.943`; compile
+  `28.2 s`, train `118.4 s`. This is the third positive standing-start result.
+- Started a more aggressive L40S load test in tmux
+  `train-l40s-walk-standing-n4096-seed4`: 20M steps, `num_envs=4096`,
+  `batch_size=1024`, `num_eval_envs=32`, and contact budget
+  `naconmax=131072,njmax=4096`. Purpose: determine whether the L40S should run
+  larger batches/env counts rather than the A5000-style 1024-env setup.
