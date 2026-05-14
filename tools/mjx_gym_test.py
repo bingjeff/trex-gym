@@ -625,6 +625,34 @@ class TestMjxGym(unittest.TestCase):
         self.assertGreater(float(phase_half[1]), 0.0)
         self.assertLess(float(phase_half[1]), 1.0)
 
+    def test_trex_joystick_single_support_balance_prefers_stance_under_torso(self):
+        env = trex_joystick.TrexJoystick()
+        support_xz = env._standing_support_offset_xz
+        left_under_torso = jp.array([support_xz[0], 0.0, support_xz[1]])
+        right_under_torso = jp.array([support_xz[0], 0.0, support_xz[1]])
+        left_far = left_under_torso.at[2].add(1.0)
+
+        balanced = env._reward_single_support_balance_from_offsets(
+            left_under_torso,
+            right_under_torso,
+            jp.array([1.0, 0.0]),
+        )
+        unbalanced = env._reward_single_support_balance_from_offsets(
+            left_far,
+            right_under_torso,
+            jp.array([1.0, 0.0]),
+        )
+        double_support_phase = env._reward_single_support_balance_from_offsets(
+            left_under_torso,
+            right_under_torso,
+            jp.array([0.5, 0.5]),
+        )
+
+        self.assertGreater(float(balanced), 0.9)
+        self.assertLess(float(unbalanced), 0.1)
+        self.assertAlmostEqual(float(double_support_phase), 0.0)
+        self.assertIn("single_support_balance", env._config.reward_config.scales)
+
     def test_trex_joystick_foot_clearance_uses_lowest_foot_capsule(self):
         env = trex_joystick.TrexJoystick()
 

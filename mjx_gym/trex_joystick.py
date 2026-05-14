@@ -98,6 +98,7 @@ def default_config() -> config_dict.ConfigDict:
         phase_foot_clearance=1.0,
         feet_phase_height=1.0,
         phase_clearance_error=-1.0,
+        single_support_balance=1.0,
         feet_air_time=0.5,
         contact_duty_symmetry=1.0,
         foot_contact_balance=0.5,
@@ -143,6 +144,12 @@ class TrexJoystick(trex_getup.TrexGetup):
             self._config.running_action_residual_scale
         )
         self._floor_geom_id = self._mj_model.geom("floor").id
+        self._standing_support_offset_xz = 0.5 * jp.array(
+            [
+                self._standing_left_foot_offset[0] + self._standing_right_foot_offset[0],
+                self._standing_left_foot_offset[2] + self._standing_right_foot_offset[2],
+            ]
+        )
 
     def reset(self, rng: jax.Array) -> mjx_env.State:
         (
@@ -448,6 +455,8 @@ class TrexJoystick(trex_getup.TrexGetup):
             * self._reward_feet_phase_height(data, info["gait_phase"], info["command"]),
             "phase_clearance_error": moving_gate
             * self._cost_phase_clearance_error(data, info["gait_phase"]),
+            "single_support_balance": moving_gate
+            * self._reward_single_support_balance(data, info["gait_phase"]),
             "feet_air_time": running_gate
             * self._reward_feet_air_time(feet_air_time, first_contact, info["command"]),
             "contact_duty_symmetry": running_gate
@@ -871,6 +880,29 @@ class TrexJoystick(trex_getup.TrexGetup):
 
     def _wrap_gait_phase(self, phase: jax.Array) -> jax.Array:
         return jp.fmod(phase + jp.pi, 2.0 * jp.pi) - jp.pi
+
+    def _reward_single_support_balance(
+        self, data: mjx.Data, phase: jax.Array
+    ) -> jax.Array:
+        left_offset, right_offset = self._mjx_foot_offsets_in_torso_frame(data)
+        return self._reward_single_support_balance_from_offsets(
+            left_offset, right_offset, self._phase_contact_targets(phase)
+        )
+
+    def _reward_single_support_balance_from_offsets(
+        self,
+        left_offset: jax.Array,
+        right_offset: jax.Array,
+        contact_target: jax.Array,
+    ) -> jax.Array:
+        target_sum = jp.maximum(jp.sum(contact_target), 1e-6)
+        stance_weight = contact_target / target_sum
+        left_xz = jp.array([left_offset[0], left_offset[2]])
+        right_xz = jp.array([right_offset[0], right_offset[2]])
+        stance_xz = stance_weight[0] * left_xz + stance_weight[1] * right_xz
+        error = stance_xz - self._standing_support_offset_xz
+        single_support_gate = jp.abs(stance_weight[0] - stance_weight[1])
+        return single_support_gate * jp.exp(-8.0 * jp.sum(jp.square(error)))
 
     def _reward_foot_contact_balance(self, data: mjx.Data) -> jax.Array:
         left_contact, right_contact = self._foot_contact_scores(data)
