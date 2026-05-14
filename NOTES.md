@@ -498,3 +498,37 @@ May 14 parallel GPU experiments:
   envs for a fast 20M requested-step probe, lower gait frequency, stronger
   `feet_phase`/`feet_air_time`, and stronger base height/orientation/pose/slip
   weights.
+- A5000 lower-frequency gait-shaping seed 14 completed:
+  `/workspace/runs/TrexJoystick-20260514-165706-humanoid-reset-a5000-walk-standing-20m-gaitlow-seed14`.
+  Rewards were `0.990`, `41.665`, `51.315`, `59.616`, `66.898`; compile
+  `34.3 s`, train `383.8 s`. This is by far the highest scalar reward so far,
+  but it is not yet validated visually and may partly reflect the larger
+  positive gait reward weights.
+- Started A5000 diagnostic render/rollout analysis in tmux
+  `render-a5000-gaitlow-seed14` for checkpoint
+  `/workspace/runs/TrexJoystick-20260514-165706-humanoid-reset-a5000-walk-standing-20m-gaitlow-seed14/checkpoints/000021299200`.
+  It writes analysis to `videos/analyze_forward05.txt` and a forward 0.5 m/s
+  video plus frames under that run's `videos/` directory.
+- L40S stricter gait/posture shaping seed 15 completed:
+  `/workspace/runs/TrexJoystick-20260514-170112-humanoid-reset-l40s-walk-standing-20m-gaitstrict-seed15`.
+  Rewards were `-0.696`, `14.180`, `45.577`, `82.131`, `71.389`; compile
+  `29.8 s`, train `317.7 s`. The peak checkpoint is currently
+  `checkpoints/000019660800`.
+- Started L40S diagnostic render/rollout analysis in tmux
+  `render-l40s-gaitstrict-seed15` for checkpoint
+  `/workspace/runs/TrexJoystick-20260514-170112-humanoid-reset-l40s-walk-standing-20m-gaitstrict-seed15/checkpoints/000019660800`.
+  It writes analysis to `videos/analyze_forward05.txt` and a forward 0.5 m/s
+  video plus frames under that run's `videos/` directory.
+- A5000 gaitlow forward 0.5 m/s diagnostic on checkpoint `000021299200`:
+  no termination; mean forward velocity `0.484 m/s`; mean lateral velocity
+  `-0.236 m/s`; mean turn `-0.007 rad/s`; torso height range `2.434-2.764`;
+  orientation reward range `0.712-0.997`; left/right contact duty
+  `0.615/0.590`; phase bins show alternating contact/clearance, but the visual
+  frame is still low and crouched with the body pitched forward.
+- L40S gaitstrict forward 0.5 m/s diagnostic on checkpoint `000019660800`:
+  no termination; mean forward velocity `0.516 m/s`; mean lateral velocity
+  `-0.018 m/s`; mean turn `0.003 rad/s`; torso height range `2.289-2.402`;
+  orientation reward range `0.939-0.997`; left/right contact duty
+  `0.598/0.565`; phase bins show alternating contact/clearance. This is the
+  best numeric checkpoint so far, but the frame is still a very low crouched
+  gait rather than the final physical posture we want.
