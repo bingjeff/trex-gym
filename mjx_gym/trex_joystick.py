@@ -118,6 +118,7 @@ def default_config() -> config_dict.ConfigDict:
         feet_air_time=1.0,
         feet_slip=-0.25,
         stand_still=-1.0,
+        commanded_stand_still=2.0,
         pose=-0.25,
         hip_adduction_neutral=-0.1,
         termination=-100.0,
@@ -404,6 +405,9 @@ class TrexJoystick(trex_getup.TrexGetup):
             ),
             "feet_slip": self._cost_foot_slip(data, info),
             "stand_still": self._cost_stand_still(info["command"], data.qpos[7:]),
+            "commanded_stand_still": self._reward_commanded_stand_still(
+                info["command"], local_linvel, local_angvel
+            ),
             "pose": self._cost_pose(data.qpos),
             "hip_adduction_neutral": self._cost_hip_adduction_neutral(data),
             "termination": done,

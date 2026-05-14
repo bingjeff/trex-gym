@@ -466,6 +466,7 @@ class TestMjxGym(unittest.TestCase):
             "feet_air_time",
             "feet_slip",
             "stand_still",
+            "commanded_stand_still",
             "pose",
             "hip_adduction_neutral",
             "termination",
@@ -555,6 +556,34 @@ class TestMjxGym(unittest.TestCase):
 
         self.assertEqual(0.0, float(rewards["feet_phase"]))
         self.assertEqual(0.0, float(rewards["feet_air_time"]))
+
+    def test_trex_joystick_commanded_stand_still_rewards_low_base_velocity(self):
+        env = trex_joystick.TrexJoystick()
+
+        self.assertAlmostEqual(
+            float(
+                env._reward_commanded_stand_still(
+                    jp.array([0.0, 0.0]), jp.zeros(3), jp.zeros(3)
+                )
+            ),
+            1.0,
+        )
+        self.assertLess(
+            float(
+                env._reward_commanded_stand_still(
+                    jp.array([0.0, 0.0]), jp.array([1.0, 0.0, 0.0]), jp.zeros(3)
+                )
+            ),
+            0.001,
+        )
+        self.assertEqual(
+            0.0,
+            float(
+                env._reward_commanded_stand_still(
+                    jp.array([0.5, 0.0]), jp.zeros(3), jp.zeros(3)
+                )
+            ),
+        )
 
     def test_trex_joystick_gait_phase_targets_are_antiphase(self):
         env = trex_joystick.TrexJoystick()
