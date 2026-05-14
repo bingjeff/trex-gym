@@ -654,3 +654,14 @@ May 14 parallel GPU experiments:
   stronger tracking/gait terms. It failed: final checkpoint terminated on a
   standing stop (`first_done_step=324`), with orientation reward only
   `0.001-0.018` and torso height `0.407-1.103`. Do not use seed 28.
+- L40S compat balanced seed 29:
+  `/workspace/runs/TrexJoystick-20260514-211706-compat-balanced-l40s-20m-seed29`.
+  This tried a more conservative locomotion fine-tune from seed 27. It also
+  regressed: standing-stop diagnostic had large drift (`3.898 m`), height range
+  `0.394-2.845`, and orientation range `0.000-1.000`, indicating intermittent
+  collapse. Do not use seed 29.
+- Rendered seed 27 side-stop, standing-stop, and forward-0.5 videos/frames:
+  `/workspace/runs/TrexJoystick-20260514-204301-compat-warm-l40s-20m-seed27/videos/`.
+  Visual inspection matches the metrics: seed 27 is the best current branch, but
+  it is still a crouched, mostly static posture with weak leg motion and does
+  not satisfy the final gait/locomotion goal.
