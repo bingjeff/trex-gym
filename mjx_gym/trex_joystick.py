@@ -55,6 +55,8 @@ def default_config() -> config_dict.ConfigDict:
     config.gait_frequency_per_mps = 0.15
     config.gait_frequency_max = 2.5
     config.gait_swing_height = 0.12
+    config.running_gate_start = 0.05
+    config.running_gate_full = 0.25
     config.foot_contact_force_scale = 20000.0
     config.command_config = config_dict.create(
         forward_min=0.0,
@@ -370,9 +372,6 @@ class TrexJoystick(trex_getup.TrexGetup):
         )
         local_linvel = self.get_local_linvel(data)
         local_angvel = self.get_local_angvel(data)
-        achieved_running_gate = running_gate * self._achieved_running_speed_gate(
-            info["command"], local_linvel
-        )
         moving_support_gate = self._moving_foot_support_gate(data)
         speed_tracking_gate = standing_gate + (
             moving_gate * moving_support_gate * running_height_gate
@@ -414,14 +413,14 @@ class TrexJoystick(trex_getup.TrexGetup):
             "tracking_turn_vel": locomotion_gate
             * speed_tracking_gate
             * self._reward_tracking_turn_vel(info["command"], local_angvel),
-            "running_stride": achieved_running_gate * self._reward_running_stride(data),
-            "running_foot_clearance": achieved_running_gate
+            "running_stride": running_gate * self._reward_running_stride(data),
+            "running_foot_clearance": running_gate
             * self._reward_running_foot_clearance(data),
             "leg_action_alternation": running_gate
             * self._reward_leg_action_alternation(action),
-            "gait_anti_phase": achieved_running_gate
+            "gait_anti_phase": running_gate
             * self._reward_gait_anti_phase(data),
-            "gait_symmetry": achieved_running_gate * self._reward_gait_symmetry(data),
+            "gait_symmetry": running_gate * self._reward_gait_symmetry(data),
             "phase_contact": running_gate * self._reward_phase_contact(data, info),
             "phase_contact_error": running_gate
             * self._cost_phase_contact_error(data, info),
@@ -431,9 +430,9 @@ class TrexJoystick(trex_getup.TrexGetup):
             * self._reward_feet_phase_height(data, info["gait_phase"], info["command"]),
             "feet_air_time": running_gate
             * self._reward_feet_air_time(feet_air_time, first_contact, info["command"]),
-            "contact_duty_symmetry": achieved_running_gate
+            "contact_duty_symmetry": running_gate
             * self._reward_contact_duty_symmetry(data, info),
-            "foot_contact_balance": achieved_running_gate
+            "foot_contact_balance": running_gate
             * self._reward_foot_contact_balance(data),
             "double_foot_contact": moving_gate
             * self._running_speed_gate(info["command"])
@@ -671,7 +670,11 @@ class TrexJoystick(trex_getup.TrexGetup):
         return fallen.astype(jp.float32)
 
     def _running_speed_gate(self, command: jax.Array) -> jax.Array:
-        return jp.clip((jp.abs(command[0]) - 0.5) / 1.5, 0.0, 1.0)
+        speed = jp.linalg.norm(command)
+        width = jp.maximum(
+            self._config.running_gate_full - self._config.running_gate_start, 1e-6
+        )
+        return jp.clip((speed - self._config.running_gate_start) / width, 0.0, 1.0)
 
     def _achieved_running_speed_gate(
         self, command: jax.Array, local_linvel: jax.Array
