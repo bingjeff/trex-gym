@@ -414,3 +414,13 @@ May 14 parallel GPU experiments:
   `batch_size=1024`, `naconmax=131072,njmax=4096`. Purpose: see whether the
   standing-start curriculum continues improving with a longer run at the best
   observed L40S throughput setting.
+- A5000 turn-range variant completed:
+  `/workspace/runs/TrexJoystick-20260514-162022-humanoid-reset-a5000-walk-standing-20m-turn05-seed8`.
+  Rewards were `-9.088`, `19.678`, `18.636`, `21.904`, `23.344`; compile
+  `42.6 s`, train `380.7 s`. Despite the worse initial eval from broader turn
+  commands, it learned to similar final reward as the 0.25 rad/s turn setup.
+- Started A5000 speed-range variant in tmux
+  `train-a5000-walk-standing-speed12-seed10`, log
+  `/workspace/train-a5000-walk-standing-speed12-seed10.log`. It keeps the
+  standing-start setup but raises `walk_command_forward_max` from `0.8` to
+  `1.2 m/s`.
