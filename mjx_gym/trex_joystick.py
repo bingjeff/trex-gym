@@ -688,10 +688,10 @@ class TrexJoystick(trex_getup.TrexGetup):
         return jp.clip(stride_extent / 0.8, 0.0, 1.0)
 
     def _reward_running_foot_clearance(self, data: mjx.Data) -> jax.Array:
-        left_clearance = jp.max(
+        left_clearance = jp.min(
             jp.clip(self._geom_bottom(data, self._left_foot_geom_ids), 0.0, 0.5)
         )
-        right_clearance = jp.max(
+        right_clearance = jp.min(
             jp.clip(self._geom_bottom(data, self._right_foot_geom_ids), 0.0, 0.5)
         )
         clearance = 0.5 * (left_clearance + right_clearance)
@@ -922,10 +922,10 @@ class TrexJoystick(trex_getup.TrexGetup):
         return jp.sum(force, axis=1)
 
     def _foot_clearance_scores(self, data: mjx.Data) -> tuple[jax.Array, jax.Array]:
-        left_clearance = jp.max(
+        left_clearance = jp.min(
             jp.clip(self._geom_bottom(data, self._left_foot_geom_ids), 0.0, 0.3)
         )
-        right_clearance = jp.max(
+        right_clearance = jp.min(
             jp.clip(self._geom_bottom(data, self._right_foot_geom_ids), 0.0, 0.3)
         )
         return left_clearance, right_clearance

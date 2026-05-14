@@ -516,6 +516,14 @@ class TestMjxGym(unittest.TestCase):
         )
         self.assertIn("feet_phase_height", env._config.reward_config.scales)
 
+    def test_trex_joystick_foot_clearance_uses_lowest_foot_capsule(self):
+        env = trex_joystick.TrexJoystick()
+
+        bottoms = jp.array([-0.02, 0.12, 0.18])
+        clearance = jp.min(jp.clip(bottoms, 0.0, 0.3))
+
+        self.assertAlmostEqual(float(clearance), 0.0)
+
     def test_trex_joystick_running_gait_rewards_require_speed_and_one_foot_duty(self):
         env = trex_joystick.TrexJoystick()
         command = jp.array([10.0, 0.0])
