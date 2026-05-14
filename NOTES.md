@@ -208,3 +208,7 @@ May 14 follow-up:
 - Added `fixed_gait_phase` so we can train left- or right-single-support
   subtasks by holding the requested swing phase constant. This is the next
   attempt to break the left-foot-planted local optimum.
+- Added sharper swing-foot terms for the fixed-phase curriculum:
+  `phase_swing_lift` is linear and exactly zero when the requested swing foot
+  stays on the ground, while `phase_swing_contact` directly penalizes contact on
+  the requested swing foot.

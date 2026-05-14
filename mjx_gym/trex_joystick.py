@@ -101,7 +101,9 @@ def default_config() -> config_dict.ConfigDict:
         phase_contact_error=-2.0,
         phase_foot_clearance=1.0,
         phase_swing_clearance=1.0,
+        phase_swing_lift=1.0,
         phase_swing_release=1.0,
+        phase_swing_contact=-1.0,
         phase_stance_contact=1.0,
         feet_phase_height=1.0,
         phase_clearance_error=-1.0,
@@ -475,8 +477,12 @@ class TrexJoystick(trex_getup.TrexGetup):
             * self._reward_phase_foot_clearance(data, info),
             "phase_swing_clearance": moving_gate
             * self._reward_phase_swing_clearance(data, info["gait_phase"]),
+            "phase_swing_lift": moving_gate
+            * self._reward_phase_swing_lift(data, info["gait_phase"]),
             "phase_swing_release": moving_gate
             * self._reward_phase_swing_release(data, info["gait_phase"]),
+            "phase_swing_contact": moving_gate
+            * self._cost_phase_swing_contact(data, info["gait_phase"]),
             "phase_stance_contact": moving_gate
             * self._reward_phase_stance_contact(data, info["gait_phase"]),
             "feet_phase_height": moving_gate
@@ -564,7 +570,13 @@ class TrexJoystick(trex_getup.TrexGetup):
             "phase_swing_clearance": self._reward_phase_swing_clearance(
                 data, info["gait_phase"]
             ),
+            "phase_swing_lift": self._reward_phase_swing_lift(
+                data, info["gait_phase"]
+            ),
             "phase_swing_release": self._reward_phase_swing_release(
+                data, info["gait_phase"]
+            ),
+            "phase_swing_contact": self._cost_phase_swing_contact(
                 data, info["gait_phase"]
             ),
             "phase_stance_contact": self._reward_phase_stance_contact(
@@ -972,11 +984,27 @@ class TrexJoystick(trex_getup.TrexGetup):
             jp.array([left_clearance, right_clearance]), phase
         )
 
+    def _reward_phase_swing_lift(
+        self, data: mjx.Data, phase: jax.Array
+    ) -> jax.Array:
+        left_clearance, right_clearance = self._foot_clearance_scores(data)
+        return self._reward_phase_swing_lift_from_clearance(
+            jp.array([left_clearance, right_clearance]), phase
+        )
+
     def _reward_phase_swing_release(
         self, data: mjx.Data, phase: jax.Array
     ) -> jax.Array:
         left_contact, right_contact = self._foot_contact_scores(data)
         return self._reward_phase_swing_release_from_contact(
+            jp.array([left_contact, right_contact]), phase
+        )
+
+    def _cost_phase_swing_contact(
+        self, data: mjx.Data, phase: jax.Array
+    ) -> jax.Array:
+        left_contact, right_contact = self._foot_contact_scores(data)
+        return self._cost_phase_swing_contact_from_contact(
             jp.array([left_contact, right_contact]), phase
         )
 
@@ -1025,6 +1053,14 @@ class TrexJoystick(trex_getup.TrexGetup):
             jp.sum(swing_weight), 1e-6
         )
 
+    def _reward_phase_swing_lift_from_clearance(
+        self, clearance: jax.Array, phase: jax.Array
+    ) -> jax.Array:
+        target_clearance = self._phase_foot_clearance_targets(phase)
+        swing_weight = self._phase_swing_weights(phase)
+        lift = jp.clip(clearance / jp.maximum(target_clearance, 1e-6), 0.0, 1.0)
+        return jp.sum(swing_weight * lift) / jp.maximum(jp.sum(swing_weight), 1e-6)
+
     def _reward_phase_swing_release_from_contact(
         self, contact: jax.Array, phase: jax.Array
     ) -> jax.Array:
@@ -1032,6 +1068,12 @@ class TrexJoystick(trex_getup.TrexGetup):
         return jp.sum(swing_weight * (1.0 - contact)) / jp.maximum(
             jp.sum(swing_weight), 1e-6
         )
+
+    def _cost_phase_swing_contact_from_contact(
+        self, contact: jax.Array, phase: jax.Array
+    ) -> jax.Array:
+        swing_weight = self._phase_swing_weights(phase)
+        return jp.sum(swing_weight * contact) / jp.maximum(jp.sum(swing_weight), 1e-6)
 
     def _reward_phase_stance_contact_from_contact(
         self, contact: jax.Array, phase: jax.Array

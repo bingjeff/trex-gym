@@ -692,8 +692,34 @@ class TestMjxGym(unittest.TestCase):
             float(env._reward_phase_swing_release_from_contact(both_down_contact, phase)),
             0.1,
         )
+        self.assertGreater(
+            float(
+                env._reward_phase_swing_lift_from_clearance(
+                    target_clearance, phase
+                )
+            ),
+            0.9,
+        )
+        self.assertLess(
+            float(
+                env._reward_phase_swing_lift_from_clearance(
+                    both_down_clearance, phase
+                )
+            ),
+            0.1,
+        )
+        self.assertLess(
+            float(env._cost_phase_swing_contact_from_contact(target_contact, phase)),
+            0.1,
+        )
+        self.assertGreater(
+            float(env._cost_phase_swing_contact_from_contact(both_down_contact, phase)),
+            0.9,
+        )
         self.assertIn("phase_swing_clearance", env._config.reward_config.scales)
+        self.assertIn("phase_swing_lift", env._config.reward_config.scales)
         self.assertIn("phase_swing_release", env._config.reward_config.scales)
+        self.assertIn("phase_swing_contact", env._config.reward_config.scales)
 
     def test_trex_joystick_phase_stance_contact_prefers_planted_stance_foot(self):
         env = trex_joystick.TrexJoystick()
