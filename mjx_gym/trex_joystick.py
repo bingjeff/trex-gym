@@ -84,6 +84,7 @@ def default_config() -> config_dict.ConfigDict:
         first_step_contact_duty_symmetry=2.0,
         forward_progress=12.0,
         forward_speed_deficit=-20.0,
+        moving_forward_vel_error=-1.0,
         tracking_turn_vel=4.0,
         running_stride=0.25,
         running_foot_clearance=0.25,
@@ -410,6 +411,8 @@ class TrexJoystick(trex_getup.TrexGetup):
             "forward_speed_deficit": moving_gate
             * self._running_speed_gate(info["command"])
             * self._cost_forward_speed_deficit(info["command"], local_linvel),
+            "moving_forward_vel_error": moving_gate
+            * self._cost_forward_speed_error(info["command"], local_linvel),
             "tracking_turn_vel": locomotion_gate
             * speed_tracking_gate
             * self._reward_tracking_turn_vel(info["command"], local_angvel),
@@ -601,6 +604,16 @@ class TrexJoystick(trex_getup.TrexGetup):
         deficit = jp.maximum(commanded_forward - local_linvel[0], 0.0)
         normalized = deficit / jp.maximum(commanded_forward, 1.0)
         return moving_forward * jp.square(normalized)
+
+    def _cost_forward_speed_error(
+        self, command: jax.Array, local_linvel: jax.Array
+    ) -> jax.Array:
+        commanded_forward = jp.maximum(command[0], 0.0)
+        moving_forward = commanded_forward > 0.05
+        normalized_error = (local_linvel[0] - commanded_forward) / jp.maximum(
+            commanded_forward, 1.0
+        )
+        return moving_forward * jp.square(normalized_error)
 
     def _reward_tracking_turn_vel(
         self, command: jax.Array, local_angvel: jax.Array

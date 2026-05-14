@@ -674,6 +674,19 @@ class TestMjxGym(unittest.TestCase):
         self.assertGreater(float(target_forward), 0.9)
         self.assertIn("first_step_forward_progress", env._config.reward_config.scales)
 
+    def test_trex_joystick_forward_speed_error_penalizes_overspeed(self):
+        env = trex_joystick.TrexJoystick()
+        command = jp.array([0.25, 0.0])
+
+        target = env._cost_forward_speed_error(command, jp.array([0.25, 0.0, 0.0]))
+        overspeed = env._cost_forward_speed_error(command, jp.array([0.75, 0.0, 0.0]))
+        stopped = env._cost_forward_speed_error(command, jp.zeros(3))
+
+        self.assertLess(float(target), 0.01)
+        self.assertGreater(float(overspeed), 0.2)
+        self.assertGreater(float(stopped), 0.05)
+        self.assertIn("moving_forward_vel_error", env._config.reward_config.scales)
+
     def test_trex_joystick_contact_duty_error_penalizes_locked_contacts(self):
         env = trex_joystick.TrexJoystick()
         no_contact_data = mjx_env.make_data(
