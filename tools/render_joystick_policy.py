@@ -25,6 +25,10 @@ from tools.analyze_policy_rollout import _load_policy
 
 def _apply_nested_config(config, values: dict) -> None:
     for key, value in values.items():
+        if "." in key:
+            head, tail = key.split(".", 1)
+            _apply_nested_config(config[head], {tail: value})
+            continue
         if isinstance(value, dict) and key in config:
             _apply_nested_config(config[key], value)
         else:
