@@ -135,3 +135,52 @@ Immediate implication:
 - Keep fall termination enabled during locomotion training.
 - Once standing-start locomotion works, connect it back to getup as a follow-on
   phase.
+
+## T-Rex Joystick Locomotion Debugging
+
+Latest committed environment fixes:
+
+- Phase-height reward tolerance now scales with `gait_swing_height`; the old
+  fixed denominator made zero clearance look acceptable for low swing heights.
+- Foot contact rewards now use foot clearance instead of summed constraint
+  force. Warp was reporting high force-contact duty even when clearance showed a
+  foot was airborne.
+- Added an explicit normalized `phase_clearance_error` cost so dragging the
+  commanded swing foot gives a direct penalty.
+- Moving-command resets can randomize the initial gait phase to avoid always
+  starting on the same requested swing side.
+- Added `tools/analyze_open_loop_gait.py` to test scripted gait actions without
+  PPO.
+
+Remote run findings:
+
+- Best pre-fix stable policy:
+  `/workspace/runs/TrexJoystick-20260514-071303-gaitprior-grounded-5m-n512-lr1e4-ent4e3/checkpoints/000005734400`
+  survived 10 s at about 0.2 m/s with low lateral drift, but was a double-support
+  shuffle.
+- Stronger sagittal gait prior and hip-free runs lifted a foot but caused
+  lateral fall; they did not produce a usable gait.
+- `Kp=400` gave better open-loop foot response than `Kp=200`; `Kp=800` was too
+  unstable.
+- Best Kp=400 continuation so far:
+  `/workspace/runs/TrexJoystick-20260514-092451-kp400-clearance-20m-cont-n512-lr1e4-ent4e3/checkpoints/000013926400`
+  survived 10 s at about 0.17 m/s with low lateral drift, but still kept the left
+  foot planted nearly all the time.
+- Later Kp=400 checkpoints and random-phase/slow-phase continuations improved
+  some reward terms but did not solve left/right alternation.
+
+Current failure mode:
+
+- The model can stand and make slow forward progress.
+- It has not learned an alternating bipedal gait.
+- Policies repeatedly converge to left-foot-planted/right-foot-swing behavior or
+  double-support shuffling.
+- Open-loop tests show the actuators can lift either foot, but simple scripted
+  single-support motion causes large lateral velocity and falls.
+
+Recommended next step:
+
+- Stop broad PPO sweeps until adding a balance objective or curriculum that
+  explicitly teaches stable single support.
+- Candidate directions are stance-foot/COM support rewards, staged one-foot
+  balance resets, or a separate slow marching task before forward locomotion.
