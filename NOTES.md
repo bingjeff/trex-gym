@@ -262,3 +262,38 @@ Next check:
 - Do not spend remote GPU credits until approved.
 - When compute is available, run a short Warp training smoke from this reset
   and inspect early rollout frames before launching a longer sweep.
+
+## RunPod L40S Setup And Reset Smoke
+
+May 14 L40S setup:
+
+- New L40S pod: `root@103.196.86.48 -p 37586`.
+- Repo code was cloned from GitHub at commit `22f7540` instead of copied by
+  hand.
+- Installing `.venv` under `/workspace/trex-gym` failed with `Stale file
+  handle` from the network filesystem. The working layout is to keep the
+  executable checkout and `.venv` under `/root/trex-gym`, while reserving
+  `/workspace/runs` for training outputs.
+- The latest JAX environment pulls CUDA 12.9/13 Python wheels. The L40S host
+  driver reported CUDA 12.8, so JAX failed to initialize cuDNN until
+  `cuda-compat-13-2` was installed and
+  `LD_LIBRARY_PATH=/usr/local/cuda-13.2/compat:$LD_LIBRARY_PATH` was set.
+- `/root/trex_env.sh` on the L40S now sets `PATH`, `MUJOCO_GL=egl`, and the
+  CUDA 13.2 compat library path.
+- Validation passed after sourcing `/root/trex_env.sh`: JAX sees
+  `CudaDevice(id=0)`, simple JAX array operations run, and a Warp-backed
+  `TrexJoystick` reset/step returns obs shapes `(88,)` and `(174,)` with finite
+  reward.
+
+May 14 A5000 reset smoke:
+
+- A5000 pod: `root@69.30.85.239 -p 22081`.
+- The pod repo was switched from `git@github.com` to HTTPS and fast-forwarded
+  to `origin/mjx` at commit `22f7540`.
+- Started a 5M-step Warp `TrexJoystick` smoke in tmux session
+  `train-a5000-reset-smoke`.
+- Run directory:
+  `/workspace/runs/TrexJoystick-20260514-154030-humanoid-reset-a5000-5m`.
+- Log file: `/workspace/train-a5000-reset-smoke.log`.
+- Purpose: test whether the G1/Berkeley-style joystick reset has reward terms
+  that move in the right direction before spending L40S time on broader sweeps.

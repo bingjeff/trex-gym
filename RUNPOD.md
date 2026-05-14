@@ -40,6 +40,51 @@ Large transient directories observed on the pod:
 Do not bake run outputs, checkpoints, videos, TensorBoard logs, or uv caches into
 a clean reusable image unless intentionally creating a prewarmed image.
 
+## Current Pod Shortcuts
+
+This repo includes a small SSH helper so we do not mix up the active pods:
+
+```bash
+scripts/runpod_ssh.sh runpod_l40s
+scripts/runpod_ssh.sh runpod_a5000
+```
+
+The current target names map to:
+
+- `runpod_l40s`: `root@103.196.86.48 -p 37586`
+- `runpod_a5000`: `root@69.30.85.239 -p 22081`
+
+## L40S Notes
+
+On the May 14 L40S pod, installing the project under `/workspace/trex-gym`
+failed during `uv sync` with a network-filesystem `Stale file handle` while
+writing `.venv`. Use this layout instead:
+
+- executable checkout and `.venv`: `/root/trex-gym`
+- long-lived runs/checkpoints/videos: `/workspace/runs`
+
+The L40S driver reported CUDA 12.8, while the resolved JAX stack pulled newer
+CUDA Python wheels. Install the compatibility package and source the env helper
+before running JAX/MJX/Warp:
+
+```bash
+apt-get install -y --no-install-recommends cuda-compat-13-2
+cat >/root/trex_env.sh <<'EOF'
+export LD_LIBRARY_PATH=/usr/local/cuda-13.2/compat:$LD_LIBRARY_PATH
+export MUJOCO_GL=egl
+export PATH=/root/.local/bin:$PATH
+EOF
+source /root/trex_env.sh
+```
+
+Validation command:
+
+```bash
+cd /root/trex-gym
+source /root/trex_env.sh
+uv run python -c "import jax, jax.numpy as jp; print(jax.devices()); print(jp.asarray([3.0]) + 1.0)"
+```
+
 ## Verified Python Stack
 
 The working pod environment reported:
