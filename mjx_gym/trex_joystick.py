@@ -35,14 +35,14 @@ def default_config() -> config_dict.ConfigDict:
     config.stand_pose_height_fraction = 0.90
     config.stand_pose_clearance_threshold = 0.90
     config.running_action_residual_scale = [
-        0.5,
-        0.5,
-        0.5,
-        0.5,
-        0.5,
-        0.5,
-        0.5,
-        0.5,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
+        0.25,
         1.0,
         1.0,
     ]
