@@ -445,3 +445,56 @@ May 14 parallel GPU experiments:
   Render tmux: `render-a5000-seed5-best`, log
   `/workspace/render-a5000-seed5-best.log`. It will produce a standing
   forward/turn rollout plus a side-reset recovery probe.
+- L40S 2048-env 50M seed 11 completed:
+  `/workspace/runs/TrexJoystick-20260514-163734-humanoid-reset-l40s-walk-standing-50m-n2048-seed11`.
+  Rewards were `-0.649`, `9.561`, `19.044`, `19.112`, `20.373`, `22.342`,
+  `18.215`, `20.319`; compile `29.1 s`, train `468.4 s` for 51.6M effective
+  steps. This is better reward quality than the L40S 4096-env seed 9 run but
+  slower (~110k effective steps/s from train time alone because the effective
+  step count rounded differently; wall-clock including eval/JIT remains close
+  enough that 4096 is still preferred for raw throughput).
+- Rendered the best A5000 standing-start seed 5 checkpoint. The side-reset
+  probe frame is just lying on the ground, which is expected because this policy
+  was trained from standing starts only. The standing forward/turn frames show
+  reward improvement but not a clean gait: the body is low/crouched and one
+  frame appears partly collapsed while still moving. This should be treated as
+  useful locomotion signal, not a solved walking policy.
+- First A5000 mixed-reset warm-start attempt failed before training because
+  `--load_checkpoint_path` was pointed at one numbered checkpoint directory.
+  Brax's training loader expects the parent `checkpoints` directory and sorts
+  its numeric children, so the direct checkpoint path caused
+  `ValueError: invalid literal for int() with base 10: 'd'`.
+- Restarted A5000 mixed-reset warm-start in tmux
+  `train-a5000-walk-mixed-warm-seed13`, log
+  `/workspace/train-a5000-walk-mixed-warm-seed13.log`, using the parent
+  checkpoint directory and `reset_standing_prob=0.5`.
+- Restarted L40S on the best raw-throughput setting in tmux
+  `train-l40s-walk-standing-50m-n4096-seed13`, log
+  `/workspace/train-l40s-walk-standing-50m-n4096-seed13.log`, to keep the L40S
+  fully loaded while the A5000 tests mixed-reset warm-starting.
+- A5000 mixed-reset warm-start seed 13 completed:
+  `/workspace/runs/TrexJoystick-20260514-164919-humanoid-reset-a5000-walk-mixed-warm-20m-seed13`.
+  Rewards were `12.620`, `12.887`, `11.516`, `9.486`, `16.065`; compile
+  `38.9 s`, train `344.4 s`. This did not clearly extend the standing-start
+  policy into a good mixed side/standing recovery policy.
+- Started A5000 lower-frequency gait-shaping run in tmux
+  `train-a5000-walk-standing-gaitlow-seed14`, log
+  `/workspace/train-a5000-walk-standing-gaitlow-seed14.log`. It keeps the
+  standing-start walking setup but sets `gait_frequency_min=0.6`,
+  `gait_frequency_max=1.0`, `gait_frequency_per_mps=0.1`, and raises
+  `reward_config.scales.feet_phase` to `3.0` plus
+  `reward_config.scales.feet_air_time` to `2.0`. Purpose: test whether slower
+  phase dynamics and stronger alternating foot clearance produce a more
+  interpretable gait.
+- L40S 4096-env 50M seed 13 completed:
+  `/workspace/runs/TrexJoystick-20260514-164917-humanoid-reset-l40s-walk-standing-50m-n4096-seed13`.
+  Rewards were `-1.254`, `8.304`, `9.178`, `14.646`, `10.454`, `10.212`,
+  `12.467`, `14.260`; compile `28.7 s`, train `620.1 s`. This repeats the
+  pattern that 4096 envs is excellent for throughput but not currently giving
+  the best policy quality.
+- Started L40S stricter gait/posture shaping run in tmux
+  `train-l40s-walk-standing-gaitstrict-seed15`, log
+  `/workspace/train-l40s-walk-standing-gaitstrict-seed15.log`. It uses 4096
+  envs for a fast 20M requested-step probe, lower gait frequency, stronger
+  `feet_phase`/`feet_air_time`, and stronger base height/orientation/pose/slip
+  weights.
