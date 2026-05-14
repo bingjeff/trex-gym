@@ -336,3 +336,11 @@ May 14 parallel GPU experiments:
   Initial launch failed because `/root/trex_env.sh` referenced unset
   `LD_LIBRARY_PATH` under `set -u`; fixed it to use `${LD_LIBRARY_PATH:-}` and
   restarted successfully.
+- L40S baseline completed with rewards `-68.974`, `-25.624`, `-0.096`,
+  `-20.885`, `-8.580`; compile `29.0 s`, train `118.7 s`. This reproduces the
+  mixed-reset baseline shape and shows the L40S is materially faster than the
+  A5000 for this setup.
+- Started L40S low-speed standing-start seed 2 in tmux
+  `train-l40s-walk-standing-seed2`, log
+  `/workspace/train-l40s-walk-standing-seed2.log`, to add a second
+  reproducibility check for the promising standing-start walk setup.
