@@ -508,6 +508,7 @@ class TestMjxGym(unittest.TestCase):
             "getup_standing_pose",
             "getup_base_lin_vel",
             "getup_base_ang_vel",
+            "getup_non_foot_clearance_deficit",
             "lin_vel_z",
             "ang_vel_xy",
             "feet_phase",
