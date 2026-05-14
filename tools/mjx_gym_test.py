@@ -400,6 +400,14 @@ class TestMjxGym(unittest.TestCase):
         env = trex_joystick.TrexJoystick(config)
         side_state = env.reset(jax.random.PRNGKey(0))
         self.assertEqual(1.0, float(env._fall_done(side_state.data)))
+        side_rewards = env._get_reward(
+            side_state.data,
+            jp.zeros(env.action_size),
+            side_state.info,
+            jp.zeros(2, dtype=bool),
+            jp.zeros(2),
+        )
+        self.assertEqual(1.0, float(side_rewards["fall"]))
 
         config = trex_joystick.default_config()
         config.terminate_on_fall = True
@@ -407,6 +415,14 @@ class TestMjxGym(unittest.TestCase):
         env = trex_joystick.TrexJoystick(config)
         standing_state = env.reset(jax.random.PRNGKey(0))
         self.assertEqual(0.0, float(env._fall_done(standing_state.data)))
+        standing_rewards = env._get_reward(
+            standing_state.data,
+            jp.zeros(env.action_size),
+            standing_state.info,
+            jp.zeros(2, dtype=bool),
+            jp.zeros(2),
+        )
+        self.assertEqual(0.0, float(standing_rewards["fall"]))
 
     def test_trex_joystick_zero_command_uses_stable_stand_pose_when_upright(self):
         config = trex_joystick.default_config()

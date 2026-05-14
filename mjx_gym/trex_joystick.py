@@ -97,6 +97,7 @@ def default_config() -> config_dict.ConfigDict:
         running_height_excess=-8.0,
         foot_slip=-0.2,
         hip_adduction_neutral=-0.5,
+        fall=-1000.0,
         stand_still=4.0,
         standing_base_lin_vel=-10.0,
         standing_base_ang_vel=-5.0,
@@ -426,6 +427,7 @@ class TrexJoystick(trex_getup.TrexGetup):
             "foot_slip": running_gate * self._cost_foot_slip(data, info),
             "hip_adduction_neutral": moving_gate
             * self._cost_hip_adduction_neutral(data),
+            "fall": self._fall_done(data),
             "stand_still": standing_gate
             * locomotion_gate
             * self._reward_commanded_stand_still(
