@@ -106,6 +106,13 @@ def analyze(args: argparse.Namespace) -> None:
     first_xy: np.ndarray | None = None
     last_xy: np.ndarray | None = None
     previous_foot_centers: np.ndarray | None = None
+    phase_bin_counts = np.zeros(4)
+    phase_bin_left_clearance = np.zeros(4)
+    phase_bin_right_clearance = np.zeros(4)
+    phase_bin_left_target = np.zeros(4)
+    phase_bin_right_target = np.zeros(4)
+    phase_bin_left_contact = np.zeros(4)
+    phase_bin_right_contact = np.zeros(4)
 
     for step_index in range(args.steps):
         state.info["command"] = command
@@ -198,6 +205,15 @@ def analyze(args: argparse.Namespace) -> None:
         left_contact, right_contact = jax.device_get(
             env._foot_contact_scores(state.data)
         )
+        phase = float(jax.device_get(state.info["gait_phase"]))
+        phase_bin = int(np.floor((phase % (2.0 * np.pi)) / (0.5 * np.pi))) % 4
+        phase_bin_counts[phase_bin] += 1.0
+        phase_bin_left_clearance[phase_bin] += float(left_clearance)
+        phase_bin_right_clearance[phase_bin] += float(right_clearance)
+        phase_bin_left_target[phase_bin] += float(left_target)
+        phase_bin_right_target[phase_bin] += float(right_target)
+        phase_bin_left_contact[phase_bin] += float(left_contact > 0.5)
+        phase_bin_right_contact[phase_bin] += float(right_contact > 0.5)
         left_contact_duty += float(left_contact > 0.5)
         right_contact_duty += float(right_contact > 0.5)
 
@@ -259,6 +275,21 @@ def analyze(args: argparse.Namespace) -> None:
     )
     print(f"left_contact_duty: {left_contact_duty / sample_steps:.3f}")
     print(f"right_contact_duty: {right_contact_duty / sample_steps:.3f}")
+    print("phase_bins:")
+    for index, count in enumerate(phase_bin_counts):
+        if count <= 0:
+            print(f"  bin_{index}: count=0")
+            continue
+        print(
+            "  "
+            f"bin_{index}: count={int(count)} "
+            f"left_clearance={phase_bin_left_clearance[index] / count:.3f} "
+            f"right_clearance={phase_bin_right_clearance[index] / count:.3f} "
+            f"left_target={phase_bin_left_target[index] / count:.3f} "
+            f"right_target={phase_bin_right_target[index] / count:.3f} "
+            f"left_contact={phase_bin_left_contact[index] / count:.3f} "
+            f"right_contact={phase_bin_right_contact[index] / count:.3f}"
+        )
     if first_xy is not None and last_xy is not None:
         print(f"base_xy_displacement: {np.linalg.norm(last_xy - first_xy):.3f}")
     print(f"torso_height_range: {min_torso_height:.3f} {max_torso_height:.3f}")
