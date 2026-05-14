@@ -89,3 +89,49 @@ The safer next step is to reproduce the old task first, then introduce true
 side-getup as a separate follow-on task once the standing/drop objective is
 well understood.
 
+## MuJoCo Playground Humanoid Joystick Comparison
+
+Reviewed the installed MuJoCo Playground joystick tasks for Apollo, G1, and
+Berkeley Humanoid:
+
+- `.venv/lib/python3.12/site-packages/mujoco_playground/_src/locomotion/apollo/joystick.py`
+- `.venv/lib/python3.12/site-packages/mujoco_playground/_src/locomotion/g1/joystick.py`
+- `.venv/lib/python3.12/site-packages/mujoco_playground/_src/locomotion/berkeley_humanoid/joystick.py`
+
+The successful humanoid joystick tasks are simpler than the current T-Rex
+joystick task:
+
+- Reset starts from a nominal standing keyframe, with small xy/yaw/joint/qvel
+  randomization.
+- Actions are direct residuals around the default pose:
+  `motor_targets = default_pose + action * action_scale`.
+- Gait phase is an observation and a reward target, not an action prior.
+- Feet are initialized with opposite phases `[0, pi]`.
+- Foot phase reward tracks a desired swing-foot height from
+  `mujoco_playground._src.gait.get_rz`.
+- Feet air-time, swing peak, foot slip, and foot-floor contacts are tracked
+  directly.
+- Fall termination is always active for joystick locomotion.
+- Velocity tracking, orientation/base-height costs, pose costs, and foot rewards
+  are mostly direct reward terms rather than being hidden behind an
+  already-running gate.
+
+This differs from the current T-Rex joystick task in important ways:
+
+- T-Rex currently mixes getup, standing, and locomotion behavior in one
+  environment.
+- The running task has a separate standing/moving action branch.
+- Several gait rewards are gated by already-upright or already-running state,
+  which removes useful shaping when the policy first needs to learn a step.
+- Earlier T-Rex runs used an action-space gait prior; the humanoid examples use
+  phase as a policy input and reward target instead.
+
+Immediate implication:
+
+- Treat the first locomotion curriculum as a standing-start joystick task, not a
+  combined getup task.
+- Prefer humanoid-style phase-height and air-time rewards over action-space gait
+  priors.
+- Keep fall termination enabled during locomotion training.
+- Once standing-start locomotion works, connect it back to getup as a follow-on
+  phase.

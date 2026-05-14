@@ -472,6 +472,50 @@ class TestMjxGym(unittest.TestCase):
         self.assertLess(small_stride, 0.1)
         self.assertGreater(large_stride, 0.9)
 
+    def test_trex_joystick_feet_phase_height_prefers_alternating_clearance(self):
+        env = trex_joystick.TrexJoystick()
+        moving_command = jp.array([0.5, 0.0])
+        standing_command = jp.zeros(2)
+        phase = jp.array(0.0)
+
+        target = jp.array([env._config.gait_swing_height, 0.0])
+        both_down = jp.zeros(2)
+        both_up = jp.ones(2) * env._config.gait_swing_height
+
+        self.assertGreater(
+            float(
+                env._reward_feet_phase_height_from_clearance(
+                    target, phase, moving_command
+                )
+            ),
+            0.9,
+        )
+        self.assertLess(
+            float(
+                env._reward_feet_phase_height_from_clearance(
+                    both_down, phase, moving_command
+                )
+            ),
+            0.3,
+        )
+        self.assertLess(
+            float(
+                env._reward_feet_phase_height_from_clearance(
+                    both_up, phase, moving_command
+                )
+            ),
+            0.3,
+        )
+        self.assertAlmostEqual(
+            float(
+                env._reward_feet_phase_height_from_clearance(
+                    target, phase, standing_command
+                )
+            ),
+            0.0,
+        )
+        self.assertIn("feet_phase_height", env._config.reward_config.scales)
+
     def test_trex_joystick_running_gait_rewards_require_speed_and_one_foot_duty(self):
         env = trex_joystick.TrexJoystick()
         command = jp.array([10.0, 0.0])

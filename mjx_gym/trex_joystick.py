@@ -7,6 +7,7 @@ import jax.numpy as jp
 from ml_collections import config_dict
 from mujoco import mjx
 
+from mujoco_playground._src import gait
 from mujoco_playground._src import mjx_env
 from mjx_gym import trex_constants as consts
 from mjx_gym import trex_getup
@@ -53,6 +54,7 @@ def default_config() -> config_dict.ConfigDict:
     config.gait_frequency_min = 1.0
     config.gait_frequency_per_mps = 0.15
     config.gait_frequency_max = 2.5
+    config.gait_swing_height = 0.12
     config.foot_contact_force_scale = 20000.0
     config.command_config = config_dict.create(
         forward_min=0.0,
@@ -89,6 +91,7 @@ def default_config() -> config_dict.ConfigDict:
         phase_contact=1.0,
         phase_contact_error=-2.0,
         phase_foot_clearance=1.0,
+        feet_phase_height=1.0,
         feet_air_time=0.5,
         contact_duty_symmetry=1.0,
         foot_contact_balance=0.5,
@@ -424,6 +427,8 @@ class TrexJoystick(trex_getup.TrexGetup):
             * self._cost_phase_contact_error(data, info),
             "phase_foot_clearance": running_gate
             * self._reward_phase_foot_clearance(data, info),
+            "feet_phase_height": moving_gate
+            * self._reward_feet_phase_height(data, info["gait_phase"], info["command"]),
             "feet_air_time": running_gate
             * self._reward_feet_air_time(feet_air_time, first_contact, info["command"]),
             "contact_duty_symmetry": achieved_running_gate
@@ -778,6 +783,31 @@ class TrexJoystick(trex_getup.TrexGetup):
         stance_contact = right_stance * right_contact + left_stance * left_contact
         swing_clearance = right_stance * left_clearance + left_stance * right_clearance
         return stance_contact * jp.clip(swing_clearance / 0.12, 0.0, 1.0)
+
+    def _reward_feet_phase_height(
+        self, data: mjx.Data, phase: jax.Array, command: jax.Array
+    ) -> jax.Array:
+        left_clearance, right_clearance = self._foot_clearance_scores(data)
+        return self._reward_feet_phase_height_from_clearance(
+            jp.array([left_clearance, right_clearance]), phase, command
+        )
+
+    def _reward_feet_phase_height_from_clearance(
+        self, clearance: jax.Array, phase: jax.Array, command: jax.Array
+    ) -> jax.Array:
+        phase = jp.fmod(phase + jp.pi, 2.0 * jp.pi) - jp.pi
+        foot_phase = jp.array(
+            [
+                phase,
+                jp.fmod(phase + 2.0 * jp.pi, 2.0 * jp.pi) - jp.pi,
+            ]
+        )
+        target_clearance = gait.get_rz(
+            foot_phase, swing_height=self._config.gait_swing_height
+        )
+        error = jp.sum(jp.square(clearance - target_clearance))
+        moving = jp.linalg.norm(command) > 0.05
+        return moving * jp.exp(-error / 0.01)
 
     def _reward_foot_contact_balance(self, data: mjx.Data) -> jax.Array:
         left_contact, right_contact = self._foot_contact_scores(data)
