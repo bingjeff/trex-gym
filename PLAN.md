@@ -218,6 +218,72 @@ Phase 3 results:
   - joints: 32
   - qpos: 38
   - qvel: 37
+
+## Phase 4: Joystick Locomotion
+
+Status: in progress; not yet successful.
+
+Goal:
+
+- Keep the getup/stand behavior.
+- Add joystick-style forward and turn commands.
+- Run with physical ground contact rather than simulator-skating.
+- Produce an alternating bipedal gait before expanding to faster running and
+  turning.
+
+Completed implementation work:
+
+- Added `TrexJoystick` with forward/turn commands, gait phase in the policy
+  observation, standing-command handling, and low-speed curriculum overrides.
+- Increased ground contact friction and switched contact defaults to `condim=4`.
+- Changed joystick foot contact scoring from capsule height proximity to
+  actual floor-contact constraint force.
+- Raised foot-contact force normalization so incidental contact is not treated
+  as full support.
+- Added rewards/costs for phase-timed swing clearance, actual feet air time,
+  phase-contact error, and one-sided hip-adduction use.
+- Rendered diagnostic frames for every promising checkpoint before judging it.
+
+Best current checkpoint:
+
+- Remote path:
+  `/workspace/runs/TrexJoystick-20260513-221241-gate-low-10m-lr1e4-ent1e2/checkpoints/000011059200`
+- It can track roughly 2 m/s in some fixed-command rollouts, but the rendered
+  motion is a hopping/bracing behavior, not an acceptable alternating bipedal
+  gait.
+
+Important negative results:
+
+- Stronger double-support, swing-clearance, phase-contact, and feet-air-time
+  reward weights consistently push the policy into slow bracing rather than a
+  cleaner gait.
+- A dense phase-contact error cost reduces the incentive to load the wrong foot
+  but also collapses forward speed.
+- Penalizing the observed left hip-adduction lean reduces one exploit but does
+  not produce a gait.
+- Open-loop tests of the built-in sinusoidal gait prior show that the prior is
+  not dynamically viable by itself: nonzero prior amplitudes collapse the model,
+  while stable sinusoidal hand-search candidates barely move forward.
+
+Current conclusion:
+
+- The locomotion failure is no longer just an insufficient reward-weight sweep.
+  The current gait prior and reward representation do not provide a stable
+  stepping template for PPO to refine.
+- The next phase should change the gait representation or action
+  parameterization before more long PPO runs. Candidate directions:
+  - learn residuals around a validated low-level stepping controller,
+  - expose a smaller phase/amplitude action space for leg cycling,
+  - add a reference trajectory term only after a dynamically stable open-loop
+    stepping template is found,
+  - or simplify the model/contact geometry further for a first bipedal walking
+    curriculum.
+
+Phase workflow reminder:
+
+- Every locomotion change must be followed by focused tests, a short remote
+  training/diagnostic run, rendered frames or video for visual inspection, a
+  `PLAN.md` update, and a commit.
   - actuators: 10
   - geoms: 46, including the floor
   - sensors: 5
