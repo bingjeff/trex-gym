@@ -768,24 +768,26 @@ class TrexJoystick(trex_getup.TrexGetup):
     def _cost_phase_contact_error(
         self, data: mjx.Data, info: dict[str, Any]
     ) -> jax.Array:
-        left_contact, right_contact = self._foot_contact_scores(data)
-        phase = info["gait_phase"]
-        right_target = (jp.sin(phase) > 0.0).astype(jp.float32)
-        left_target = 1.0 - right_target
-        return jp.square(left_contact - left_target) + jp.square(
-            right_contact - right_target
-        )
+        contact = jp.array(self._foot_contact_scores(data))
+        target = self._phase_contact_targets(info["gait_phase"])
+        return jp.sum(jp.square(contact - target))
 
     def _reward_phase_foot_clearance(
         self, data: mjx.Data, info: dict[str, Any]
     ) -> jax.Array:
         left_contact, right_contact = self._foot_contact_scores(data)
         left_clearance, right_clearance = self._foot_clearance_scores(data)
-        right_stance = (jp.sin(info["gait_phase"]) > 0.0).astype(jp.float32)
-        left_stance = 1.0 - right_stance
-        stance_contact = right_stance * right_contact + left_stance * left_contact
-        swing_clearance = right_stance * left_clearance + left_stance * right_clearance
-        return stance_contact * jp.clip(swing_clearance / 0.12, 0.0, 1.0)
+        clearance = jp.array([left_clearance, right_clearance])
+        contact = jp.array([left_contact, right_contact])
+        target_clearance = self._phase_foot_clearance_targets(info["gait_phase"])
+        contact_target = self._phase_contact_targets(info["gait_phase"])
+        stance_contact = jp.sum(contact * contact_target) / jp.maximum(
+            jp.sum(contact_target), 1e-6
+        )
+        clearance_score = jp.exp(
+            -jp.sum(jp.square(clearance - target_clearance)) / 0.01
+        )
+        return stance_contact * clearance_score
 
     def _reward_feet_phase_height(
         self, data: mjx.Data, phase: jax.Array, command: jax.Array
@@ -807,6 +809,14 @@ class TrexJoystick(trex_getup.TrexGetup):
         phase = self._wrap_gait_phase(phase)
         foot_phase = jp.array([phase, self._wrap_gait_phase(phase + jp.pi)])
         return gait.get_rz(foot_phase, swing_height=self._config.gait_swing_height)
+
+    def _phase_contact_targets(self, phase: jax.Array) -> jax.Array:
+        swing_fraction = jp.clip(
+            self._phase_foot_clearance_targets(phase) / self._config.gait_swing_height,
+            0.0,
+            1.0,
+        )
+        return 1.0 - swing_fraction
 
     def _wrap_gait_phase(self, phase: jax.Array) -> jax.Array:
         return jp.fmod(phase + jp.pi, 2.0 * jp.pi) - jp.pi

@@ -536,6 +536,22 @@ class TestMjxGym(unittest.TestCase):
         self.assertLess(float(phase_half[1]), env._config.gait_swing_height)
         self.assertGreater(float(phase_half[1]), 0.0)
 
+    def test_trex_joystick_phase_contact_targets_match_clearance_targets(self):
+        env = trex_joystick.TrexJoystick()
+
+        phase_zero = env._phase_contact_targets(jp.array(0.0))
+        phase_pi = env._phase_contact_targets(jp.pi)
+        phase_half = env._phase_contact_targets(jp.pi / 2.0)
+
+        self.assertLess(float(phase_zero[0]), 0.1)
+        self.assertGreater(float(phase_zero[1]), 0.9)
+        self.assertGreater(float(phase_pi[0]), 0.9)
+        self.assertLess(float(phase_pi[1]), 0.1)
+        self.assertGreater(float(phase_half[0]), 0.0)
+        self.assertLess(float(phase_half[0]), 1.0)
+        self.assertGreater(float(phase_half[1]), 0.0)
+        self.assertLess(float(phase_half[1]), 1.0)
+
     def test_trex_joystick_foot_clearance_uses_lowest_foot_capsule(self):
         env = trex_joystick.TrexJoystick()
 
