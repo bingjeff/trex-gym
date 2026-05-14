@@ -629,3 +629,28 @@ May 14 parallel GPU experiments:
   statistics and first-layer kernels with neutral values for newly appended
   observation features. Local check-load passed on the upgraded
   `TrexJoystick-20260513-044426-joystick-warm-10m` checkpoint.
+- Direct-action compatibility is required for these older joystick checkpoints:
+  current `TrexJoystick.step` interprets policy output as residual around
+  `stand_pose_action`, while the old checkpoints produced direct action
+  targets. With `stand_pose_action=[0]*10` and `action_residual_scale=[1]*10`,
+  the upgraded joystick-warm checkpoint still gets upright from side reset, but
+  it drifts and tracks poorly.
+- L40S compat warm-start seed 27:
+  `/workspace/runs/TrexJoystick-20260514-204301-compat-warm-l40s-20m-seed27`.
+  This fine-tuned the upgraded joystick-warm checkpoint with direct-action
+  compatibility. Final standing stop is useful: no termination, forward
+  velocity `-0.005 m/s`, turn `0.023 rad/s`, base displacement `0.221 m`,
+  height `2.574-2.637`, and orientation `0.977-0.999`. Side reset also gets
+  upright, but drifts too far (`5.324 m`) and orientation is only
+  `0.883-0.936`. Locomotion remains too weak: forward `0.5 m/s` command reaches
+  only `0.137 m/s`.
+- The upgraded speed-only checkpoint still runs fast under direct-action
+  compatibility (`11.711 m/s` for a `10 m/s` command) but fails stand/low-speed
+  behavior and uses mostly one foot, so it is not a good base for the current
+  objective.
+- L40S compat locomotion seed 28:
+  `/workspace/runs/TrexJoystick-20260514-210346-compat-locomotion-l40s-20m-seed28`.
+  This tried to restore locomotion from seed 27 with standing-only resets and
+  stronger tracking/gait terms. It failed: final checkpoint terminated on a
+  standing stop (`first_done_step=324`), with orientation reward only
+  `0.001-0.018` and torso height `0.407-1.103`. Do not use seed 28.
