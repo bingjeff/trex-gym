@@ -392,3 +392,14 @@ May 14 parallel GPU experiments:
   `train-l40s-walk-standing-n6144-seed7`: 20M requested steps,
   `num_envs=6144`, `batch_size=1536`, `naconmax=196608,njmax=6144`. Purpose:
   see whether 6144 envs avoids OOM while improving over the 4096-env throughput.
+- A5000 20M low-speed standing-start seed 5 completed:
+  `/workspace/runs/TrexJoystick-20260514-161028-humanoid-reset-a5000-walk-standing-20m-seed5`.
+  Rewards were `-1.303`, `21.460`, `21.943`, `21.853`, `25.319`; compile
+  `37.0 s`, train `385.1 s`. This is the strongest reward trend so far and
+  suggests the standing-start curriculum benefits from longer than 5M steps.
+- Started A5000 20M turn-range variant in tmux
+  `train-a5000-walk-standing-turn05-seed8`, log
+  `/workspace/train-a5000-walk-standing-turn05-seed8.log`. It keeps the same
+  standing-start low-speed setup but increases `walk_command_turn_max` from
+  `0.25` to `0.5 rad/s` to start testing whether the policy can learn a broader
+  joystick turn distribution.
