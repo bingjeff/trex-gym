@@ -96,6 +96,7 @@ def default_config() -> config_dict.ConfigDict:
         phase_contact_error=-2.0,
         phase_foot_clearance=1.0,
         feet_phase_height=1.0,
+        phase_clearance_error=-1.0,
         feet_air_time=0.5,
         contact_duty_symmetry=1.0,
         foot_contact_balance=0.5,
@@ -432,6 +433,8 @@ class TrexJoystick(trex_getup.TrexGetup):
             * self._reward_phase_foot_clearance(data, info),
             "feet_phase_height": moving_gate
             * self._reward_feet_phase_height(data, info["gait_phase"], info["command"]),
+            "phase_clearance_error": moving_gate
+            * self._cost_phase_clearance_error(data, info["gait_phase"]),
             "feet_air_time": running_gate
             * self._reward_feet_air_time(feet_air_time, first_contact, info["command"]),
             "contact_duty_symmetry": running_gate
@@ -812,6 +815,14 @@ class TrexJoystick(trex_getup.TrexGetup):
             jp.array([left_clearance, right_clearance]), phase, command
         )
 
+    def _cost_phase_clearance_error(
+        self, data: mjx.Data, phase: jax.Array
+    ) -> jax.Array:
+        left_clearance, right_clearance = self._foot_clearance_scores(data)
+        return self._cost_phase_clearance_error_from_clearance(
+            jp.array([left_clearance, right_clearance]), phase
+        )
+
     def _reward_feet_phase_height_from_clearance(
         self, clearance: jax.Array, phase: jax.Array, command: jax.Array
     ) -> jax.Array:
@@ -823,6 +834,14 @@ class TrexJoystick(trex_getup.TrexGetup):
     def _phase_clearance_error_denominator(self) -> jax.Array:
         swing_height = jp.maximum(self._config.gait_swing_height, 1e-6)
         return jp.square(swing_height) / 1.44
+
+    def _cost_phase_clearance_error_from_clearance(
+        self, clearance: jax.Array, phase: jax.Array
+    ) -> jax.Array:
+        target_clearance = self._phase_foot_clearance_targets(phase)
+        swing_height = jp.maximum(self._config.gait_swing_height, 1e-6)
+        normalized_error = (clearance - target_clearance) / swing_height
+        return jp.mean(jp.square(normalized_error))
 
     def _phase_foot_clearance_targets(self, phase: jax.Array) -> jax.Array:
         phase = self._wrap_gait_phase(phase)
