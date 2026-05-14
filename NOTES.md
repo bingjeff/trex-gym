@@ -384,3 +384,11 @@ May 14 parallel GPU experiments:
   `num_envs=8192`, `batch_size=2048`, `naconmax=262144,njmax=8192`. Purpose:
   see whether the L40S throughput continues improving with larger batched
   rollouts or whether 4096 envs is the practical knee.
+- L40S 8192-env load test failed after the initial eval with
+  `RESOURCE_EXHAUSTED` while allocating 3.25 GiB, despite the larger contact
+  budget. That suggests 8192 envs is beyond the practical memory limit for this
+  current network/config.
+- Restarted L40S at an intermediate load in tmux
+  `train-l40s-walk-standing-n6144-seed7`: 20M requested steps,
+  `num_envs=6144`, `batch_size=1536`, `naconmax=196608,njmax=6144`. Purpose:
+  see whether 6144 envs avoids OOM while improving over the 4096-env throughput.
