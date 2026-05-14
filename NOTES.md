@@ -532,3 +532,40 @@ May 14 parallel GPU experiments:
   `0.598/0.565`; phase bins show alternating contact/clearance. This is the
   best numeric checkpoint so far, but the frame is still a very low crouched
   gait rather than the final physical posture we want.
+- Added posture gating for joystick locomotion rewards in commit `d6f3662`.
+  The gate only pays velocity tracking and gait rewards when the torso is near
+  target height and upright, plus adds a `low_torso_height` cost. Local tests
+  passed (`33 tests OK`).
+- L40S anti-crouch warm-start seed 16 from gaitstrict checkpoint:
+  `/workspace/runs/TrexJoystick-20260514-172425-anticrouch-l40s-warm-20m-seed16`.
+  Rewards were `4.787`, `4.751`, `15.501`, `53.065`, `79.661`; compile
+  `28.1 s`, train `318.4 s`. Forward 0.5 m/s diagnostic improved posture
+  (`torso_height_range=2.576-2.706`, orientation `0.995-1.000`) but slowed to
+  `0.257 m/s` mean forward velocity.
+- The anti-crouch checkpoint exposed a zero-command bug: with command `[0, 0]`,
+  the policy still received large positive `feet_phase` reward and drifted
+  `5.884 m` while "standing". Commit `a7792e9` disables gait/air-time rewards
+  for stand commands.
+- L40S standfix warm-start seed 17:
+  `/workspace/runs/TrexJoystick-20260514-174320-standfix-l40s-warm-20m-seed17`.
+  Rewards were `33.930`, `4.300`, `8.938`, `25.422`, `43.124`; compile
+  `29.2 s`, train `317.3 s`. Stand drift improved to `3.153 m`, but was still
+  not quiet; forward 0.5 m/s remained slow at `0.265 m/s`.
+- Added `commanded_stand_still` reward in commit `49ac054`: zero-command base
+  linear/angular velocity is rewarded directly, and the reward is zero for
+  moving commands.
+- L40S quietstand warm-start seed 18:
+  `/workspace/runs/TrexJoystick-20260514-180117-quietstand-l40s-warm-20m-seed18`.
+  Rewards were `41.523`, `12.764`, `46.437`, `55.726`, `66.965`; compile
+  `29.7 s`, train `320.4 s`. Stand diagnostic is now good: no termination,
+  mean forward/lateral/vertical velocities `-0.001/0.004/-0.000`, mean turn
+  `0.004`, both feet contact duty `1.000/1.000`, and drift `0.047 m`.
+  Forward and turning are still underpowered: forward 0.5 m/s gives
+  `0.242 m/s`; forward 0.5 plus turn 0.25 gives `0.259 m/s` forward and
+  `-0.043 rad/s` turn.
+- Started L40S track-rebalance warm-start seed 19 in tmux
+  `train-l40s-trackrebalance-warm-seed19`, log
+  `/workspace/train-l40s-trackrebalance-warm-seed19.log`. It starts from the
+  quietstand checkpoint, keeps the quiet-stand reward, increases velocity and
+  turn tracking weights, lowers gait reward dominance, and increases leg action
+  residual range. Purpose: recover command tracking without losing quiet stand.
