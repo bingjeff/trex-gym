@@ -435,3 +435,13 @@ May 14 parallel GPU experiments:
   `/workspace/train-l40s-walk-standing-50m-n2048-seed11.log`. Purpose: test
   whether a smaller L40S batch improves optimization quality while still being
   faster than A5000.
+- A5000 speed-range variant completed:
+  `/workspace/runs/TrexJoystick-20260514-162849-humanoid-reset-a5000-walk-standing-20m-speed12-seed10`.
+  Rewards were `-11.189`, `12.236`, `19.146`, `21.164`, `19.484`; compile
+  `33.9 s`, train `374.2 s`. Raising `walk_command_forward_max` to `1.2 m/s`
+  is learnable but not better than the current `0.8 m/s` max.
+- Started rendering the best current 20M checkpoint from A5000 seed 5:
+  `/workspace/runs/TrexJoystick-20260514-161028-humanoid-reset-a5000-walk-standing-20m-seed5/checkpoints/000021299200`.
+  Render tmux: `render-a5000-seed5-best`, log
+  `/workspace/render-a5000-seed5-best.log`. It will produce a standing
+  forward/turn rollout plus a side-reset recovery probe.
