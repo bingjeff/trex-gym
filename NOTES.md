@@ -665,3 +665,32 @@ May 14 parallel GPU experiments:
   Visual inspection matches the metrics: seed 27 is the best current branch, but
   it is still a crouched, mostly static posture with weak leg motion and does
   not satisfy the final gait/locomotion goal.
+- L40S compat balanced low-LR seed 30:
+  `/workspace/runs/TrexJoystick-20260514-213601-compat-balanced-lowlr-l40s-20m-seed30`.
+  This repeated the conservative direct-action fine-tune from seed 27 with
+  lower learning rate (`5e-5`) and entropy (`0.005`). Scalar reward regressed
+  from `15.056` to `-382.468` by the final checkpoint, with intermediate values
+  `-283.672`, `-440.876`, and `-243.812`. Do not use seed 30.
+- L40S residual side-getup fixed-clearance seed 31:
+  `/workspace/runs/TrexJoystick-20260514-214426-residual-sidegetup-fixed-l40s-20m-seed31`.
+  This returned to the current residual-action semantics and warm-started from
+  the standing-start locomotion checkpoint
+  `/workspace/runs/TrexJoystick-20260514-182121-trackrebalance-l40s-warm-20m-seed19/checkpoints`.
+  It used side-only reset, zero command, `terminate_on_fall=false`, corrected
+  non-foot clearance, and explicit get-up terms. Rewards improved from
+  `-576.366` to `-323.112`, but the final side diagnostic was not upright:
+  episode reward `-181.824`, torso height `0.508-1.829`, orientation
+  `0.007-0.129`, and base displacement `2.508 m`.
+- L40S residual side-getup scale-1 seed 32:
+  `/workspace/runs/TrexJoystick-20260514-215420-residual-sidegetup-scale1-l40s-20m-seed32`.
+  This continued seed 31 with full residual action scale (`[1]*10`). Scalar
+  rewards were `-516.380`, `-313.647`, `-239.015`, `-378.772`, and `-256.498`.
+  The `000013107200` checkpoint was the best scalar checkpoint and reached much
+  higher recovery metrics than seed 31: episode reward `-77.759`, torso height
+  `0.512-2.999`, orientation `0.009-0.928`, base displacement `2.265 m`, and
+  left/right contact duty `0.440/0.120`. The final `000026214400` checkpoint had
+  episode reward `-50.718`, torso height `0.466-2.573`, orientation
+  `0.002-0.959`, base displacement `3.732 m`, and left/right contact duty
+  `0.595/0.448`. Seed 32 is the best corrected get-up branch so far, but it is
+  not yet a successful checkpoint because it only reaches upright
+  intermittently and still has too much drift/instability.
