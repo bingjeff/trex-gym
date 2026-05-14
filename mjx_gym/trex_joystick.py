@@ -75,6 +75,9 @@ def default_config() -> config_dict.ConfigDict:
         foot_placement=1.0,
         standing_pose=1.0,
         tracking_forward_vel=6.0,
+        first_step_forward_progress=20.0,
+        first_step_contact_balance=2.0,
+        first_step_contact_duty_symmetry=2.0,
         forward_progress=12.0,
         forward_speed_deficit=-20.0,
         tracking_turn_vel=4.0,
@@ -98,6 +101,7 @@ def default_config() -> config_dict.ConfigDict:
         moving_non_foot_clearance=-20.0,
         moving_lateral_vel=-1.0,
         moving_vertical_vel=-2.0,
+        contact_duty_error=-8.0,
         no_foot_contact=-12.0,
         running_height_excess=-8.0,
         foot_slip=-0.2,
@@ -388,6 +392,15 @@ class TrexJoystick(trex_getup.TrexGetup):
             "tracking_forward_vel": locomotion_gate
             * speed_tracking_gate
             * self._reward_tracking_forward_vel(info["command"], local_linvel),
+            "first_step_forward_progress": moving_gate
+            * locomotion_gate
+            * self._reward_first_step_forward_progress(info["command"], local_linvel),
+            "first_step_contact_balance": moving_gate
+            * locomotion_gate
+            * self._reward_foot_contact_balance(data),
+            "first_step_contact_duty_symmetry": moving_gate
+            * locomotion_gate
+            * self._reward_contact_duty_symmetry(data, info),
             "forward_progress": locomotion_gate
             * speed_tracking_gate
             * self._reward_forward_progress(info["command"], local_linvel),
@@ -438,6 +451,8 @@ class TrexJoystick(trex_getup.TrexGetup):
             "moving_vertical_vel": moving_gate
             * self._running_speed_gate(info["command"])
             * jp.square(local_linvel[1]),
+            "contact_duty_error": moving_gate
+            * self._cost_contact_duty_error(data, info),
             "no_foot_contact": moving_gate
             * self._running_speed_gate(info["command"])
             * self._cost_no_foot_contact(data),
@@ -567,6 +582,15 @@ class TrexJoystick(trex_getup.TrexGetup):
         commanded_forward = jp.maximum(command[0], 0.0)
         moving_forward = commanded_forward > 0.05
         speed_fraction = local_linvel[0] / jp.maximum(commanded_forward, 1.0)
+        return moving_forward * jp.clip(speed_fraction, 0.0, 1.0)
+
+    def _reward_first_step_forward_progress(
+        self, command: jax.Array, local_linvel: jax.Array
+    ) -> jax.Array:
+        commanded_forward = jp.maximum(command[0], 0.0)
+        moving_forward = commanded_forward > 0.05
+        target = jp.clip(commanded_forward, 0.25, 0.75)
+        speed_fraction = local_linvel[0] / target
         return moving_forward * jp.clip(speed_fraction, 0.0, 1.0)
 
     def _cost_forward_speed_deficit(
@@ -790,6 +814,15 @@ class TrexJoystick(trex_getup.TrexGetup):
         contacts = jp.array(self._foot_contact_scores(data))
         alpha = self._config.contact_duty_alpha
         return (1.0 - alpha) * info["contact_duty"] + alpha * contacts
+
+    def _cost_contact_duty_error(
+        self, data: mjx.Data, info: dict[str, Any]
+    ) -> jax.Array:
+        duty = self._updated_contact_duty(data, info)
+        total = jp.sum(duty)
+        asymmetry = jp.square(duty[0] - duty[1])
+        support_error = jp.square(total - 1.0)
+        return asymmetry + 0.25 * support_error
 
     def _anti_phase_score(
         self, left: jax.Array, right: jax.Array, epsilon: float = 0.02

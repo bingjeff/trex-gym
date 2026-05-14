@@ -565,6 +565,50 @@ class TestMjxGym(unittest.TestCase):
         self.assertLess(float(no_contact_gate), 0.1)
         self.assertGreater(float(one_foot_gate), 0.9)
 
+    def test_trex_joystick_first_step_progress_rewards_slow_forward_motion(self):
+        env = trex_joystick.TrexJoystick()
+        command = jp.array([0.5, 0.0])
+
+        stopped = env._reward_first_step_forward_progress(command, jp.zeros(3))
+        slow_forward = env._reward_first_step_forward_progress(
+            command, jp.array([0.25, 0.0, 0.0])
+        )
+        target_forward = env._reward_first_step_forward_progress(
+            command, jp.array([0.5, 0.0, 0.0])
+        )
+
+        self.assertLess(float(stopped), 0.1)
+        self.assertGreater(float(slow_forward), 0.4)
+        self.assertGreater(float(target_forward), 0.9)
+        self.assertIn("first_step_forward_progress", env._config.reward_config.scales)
+
+    def test_trex_joystick_contact_duty_error_penalizes_locked_contacts(self):
+        env = trex_joystick.TrexJoystick()
+        no_contact_data = mjx_env.make_data(
+            env.mj_model,
+            qpos=env._standing_qpos.at[2].set(4.0),
+            qvel=jp.zeros(env.mjx_model.nv),
+            ctrl=env._default_ctrl,
+            impl=env.mjx_model.impl.value,
+            naconmax=env._config.naconmax,
+            njmax=env._config.njmax,
+        )
+        no_contact_data = mjx.forward(env.mjx_model, no_contact_data)
+        info_balanced = {"contact_duty": jp.array([0.5, 0.5])}
+        info_left_locked = {"contact_duty": jp.array([1.0, 0.0])}
+        info_double_locked = {"contact_duty": jp.array([1.0, 1.0])}
+
+        balanced = env._cost_contact_duty_error(no_contact_data, info_balanced)
+        left_locked = env._cost_contact_duty_error(no_contact_data, info_left_locked)
+        double_locked = env._cost_contact_duty_error(
+            no_contact_data, info_double_locked
+        )
+
+        self.assertLess(float(balanced), 0.1)
+        self.assertGreater(float(left_locked), 0.8)
+        self.assertGreater(float(double_locked), 0.2)
+        self.assertIn("contact_duty_error", env._config.reward_config.scales)
+
     def test_trex_joystick_double_foot_contact_cost_prefers_single_support(self):
         env = trex_joystick.TrexJoystick()
         no_double_support = jp.array(1.0) * jp.array(0.0)
