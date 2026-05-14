@@ -290,10 +290,13 @@ May 14 A5000 reset smoke:
 - A5000 pod: `root@69.30.85.239 -p 22081`.
 - The pod repo was switched from `git@github.com` to HTTPS and fast-forwarded
   to `origin/mjx` at commit `22f7540`.
-- Started a 5M-step Warp `TrexJoystick` smoke in tmux session
-  `train-a5000-reset-smoke`.
+- The first 5M-step Warp `TrexJoystick` smoke was stopped during startup
+  because Warp repeatedly reported broadphase overflow and requested
+  `naconmax` around 16.6k, just above the default 16,384 budget.
+- Restarted the smoke in tmux session `train-a5000-reset-smoke` with
+  `--playground_config_overrides='{"naconmax":32768,"njmax":1024}'`.
 - Run directory:
-  `/workspace/runs/TrexJoystick-20260514-154030-humanoid-reset-a5000-5m`.
+  `/workspace/runs/TrexJoystick-20260514-154640-humanoid-reset-a5000-5m-nacon32768`.
 - Log file: `/workspace/train-a5000-reset-smoke.log`.
 - Purpose: test whether the G1/Berkeley-style joystick reset has reward terms
   that move in the right direction before spending L40S time on broader sweeps.
