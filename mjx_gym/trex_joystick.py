@@ -117,6 +117,8 @@ def default_config() -> config_dict.ConfigDict:
         getup_foot_balance=0.0,
         getup_foot_placement=0.0,
         getup_standing_pose=0.0,
+        getup_base_lin_vel=0.0,
+        getup_base_ang_vel=0.0,
         lin_vel_z=-0.5,
         ang_vel_xy=-0.15,
         feet_phase=1.0,
@@ -404,6 +406,12 @@ class TrexJoystick(trex_getup.TrexGetup):
             "getup_foot_placement": orientation
             * self._reward_foot_placement(data),
             "getup_standing_pose": orientation * self._reward_standing_pose(data.qpos),
+            "getup_base_lin_vel": orientation
+            * height
+            * jp.sum(jp.square(local_linvel)),
+            "getup_base_ang_vel": orientation
+            * height
+            * jp.sum(jp.square(local_angvel)),
             "lin_vel_z": jp.square(local_linvel[1]),
             "ang_vel_xy": self._cost_base_tilt_ang_vel(local_angvel),
             "feet_phase": moving_gate
