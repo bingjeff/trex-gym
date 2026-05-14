@@ -205,3 +205,6 @@ May 14 follow-up:
   alternating swing-foot release/clearance, stance contact, and single-support
   balance. The intent is to train controlled single support before returning to
   forward velocity tracking.
+- Added `fixed_gait_phase` so we can train left- or right-single-support
+  subtasks by holding the requested swing phase constant. This is the next
+  attempt to break the left-foot-planted local optimum.

@@ -983,6 +983,27 @@ class TestMjxGym(unittest.TestCase):
             atol=1e-6,
         )
 
+    def test_trex_joystick_fixed_gait_phase_holds_requested_phase(self):
+        config = trex_joystick.default_config()
+        config.curriculum_task = "march"
+        config.fixed_gait_phase = 1.5 * np.pi
+        config.reset_standing_prob = 1.0
+        env = trex_joystick.TrexJoystick(config)
+
+        state = env.reset(jax.random.PRNGKey(0))
+        self.assertAlmostEqual(
+            float(jax.device_get(state.info["gait_phase"])),
+            config.fixed_gait_phase,
+            places=6,
+        )
+
+        state = env.step(state, jp.zeros(env.action_size))
+        self.assertAlmostEqual(
+            float(jax.device_get(state.info["gait_phase"])),
+            config.fixed_gait_phase,
+            places=6,
+        )
+
     def test_trex_joystick_march_reward_is_in_place_gait_task(self):
         config = trex_joystick.default_config()
         config.curriculum_task = "march"

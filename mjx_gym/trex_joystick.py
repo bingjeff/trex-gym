@@ -57,6 +57,7 @@ def default_config() -> config_dict.ConfigDict:
     config.gait_frequency_per_mps = 0.15
     config.gait_frequency_max = 2.5
     config.gait_swing_height = 0.12
+    config.fixed_gait_phase = -1.0
     config.random_initial_gait_phase = True
     config.running_gate_start = 0.05
     config.running_gate_full = 0.25
@@ -238,6 +239,8 @@ class TrexJoystick(trex_getup.TrexGetup):
             random_phase,
             0.0,
         )
+        if self._has_fixed_gait_phase():
+            initial_gait_phase = self._fixed_gait_phase()
 
         info = {
             "rng": rng,
@@ -616,6 +619,12 @@ class TrexJoystick(trex_getup.TrexGetup):
     def _march_command(self) -> jax.Array:
         return jp.array([self._config.march_command_forward, 0.0])
 
+    def _has_fixed_gait_phase(self) -> bool:
+        return self._config.fixed_gait_phase >= 0.0
+
+    def _fixed_gait_phase(self) -> jax.Array:
+        return jp.array(self._config.fixed_gait_phase)
+
     def _sample_command(self, rng: jax.Array) -> jax.Array:
         (
             forward_rng,
@@ -688,6 +697,8 @@ class TrexJoystick(trex_getup.TrexGetup):
     def _updated_gait_phase(
         self, info: dict[str, Any], standing_gate: jax.Array
     ) -> jax.Array:
+        if self._has_fixed_gait_phase():
+            return self._fixed_gait_phase()
         frequency = jp.clip(
             self._config.gait_frequency_min
             + self._config.gait_frequency_per_mps * jp.maximum(info["command"][0], 0.0),
