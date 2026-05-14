@@ -372,3 +372,15 @@ May 14 parallel GPU experiments:
   `train-a5000-walk-standing-20m-seed5`, log
   `/workspace/train-a5000-walk-standing-20m-seed5.log`, to compare a longer
   known-good 1024-env run against the larger L40S run.
+- L40S 4096-env seed 4 completed:
+  `/workspace/runs/TrexJoystick-20260514-160711-humanoid-reset-l40s-walk-standing-20m-n4096-seed4`.
+  Rewards were `-1.194`, `9.401`, `7.660`, `11.934`, `13.184`; compile
+  `30.0 s`, train `317.3 s`. Because the runner rounded to 26.2M effective
+  steps, this is about 82.6k steps/s, better than the 1024-env L40S runs
+  (~55k steps/s) and far better than A5000 1024-env runs (~35k steps/s), but
+  still not a 3x A5000 speedup.
+- Started L40S 8192-env load test in tmux
+  `train-l40s-walk-standing-n8192-seed6`: 10M requested steps,
+  `num_envs=8192`, `batch_size=2048`, `naconmax=262144,njmax=8192`. Purpose:
+  see whether the L40S throughput continues improving with larger batched
+  rollouts or whether 4096 envs is the practical knee.
