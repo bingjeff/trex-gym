@@ -703,7 +703,9 @@ class TrexJoystick(trex_getup.TrexGetup):
         gait = gait.at[6].set(0.75 * right)
         gait = gait.at[7].set(0.75 * left)
         moving_gate = 1.0 - self._standing_command_gate(info["command"])
-        speed_gate = self._running_speed_gate(info["command"])
+        speed_gate = jp.where(
+            self._is_march_task(), 1.0, self._running_speed_gate(info["command"])
+        )
         return moving_gate * speed_gate * self._config.gait_prior_scale * gait
 
     def _updated_gait_phase(

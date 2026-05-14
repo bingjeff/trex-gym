@@ -212,3 +212,6 @@ May 14 follow-up:
   `phase_swing_lift` is linear and exactly zero when the requested swing foot
   stays on the ground, while `phase_swing_contact` directly penalizes contact on
   the requested swing foot.
+- Fixed the march curriculum gait prior so it is not disabled by the low
+  in-place march command. Previously `_gait_prior_action` was gated by running
+  speed, so fixed-support runs with tiny commands had no scripted lift prior.

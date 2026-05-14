@@ -1080,6 +1080,19 @@ class TestMjxGym(unittest.TestCase):
         self.assertAlmostEqual(prior[8], 0.0)
         self.assertAlmostEqual(prior[9], 0.0)
 
+    def test_trex_joystick_march_gait_prior_does_not_require_running_command(self):
+        config = trex_joystick.default_config()
+        config.curriculum_task = "march"
+        config.gait_prior_scale = 0.2
+        env = trex_joystick.TrexJoystick(config)
+        prior = np.asarray(
+            env._gait_prior_action(
+                {"command": jp.array([0.05, 0.0]), "gait_phase": 5.5}
+            )
+        )
+
+        self.assertGreater(np.max(np.abs(prior[:8])), 0.05)
+
     def test_trex_joystick_tracking_rewards_use_forward_and_turn_axes(self):
         env = trex_joystick.TrexJoystick()
         command = jp.array([1.0, 0.5])
