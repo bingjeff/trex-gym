@@ -194,3 +194,8 @@ May 14 follow-up:
   and stance-foot contact. These are intentionally simpler than the combined
   gait rewards so rollout diagnostics can distinguish "requested swing foot is
   still planted" from "stance foot is not supporting".
+- Added phase-binned output to the open-loop gait analyzer. The remote Warp
+  sweep showed that the phase-offset-0 action pattern lifts the left foot, while
+  offsets around `pi/2` or `pi` reproduce the right-foot-only swing mode.
+- Added an explicit gait-prior tracking reward so PPO cannot satisfy stability
+  by canceling the alternating action prior back toward the stand pose.

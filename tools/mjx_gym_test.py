@@ -946,6 +946,22 @@ class TestMjxGym(unittest.TestCase):
             0.2,
         )
 
+    def test_trex_joystick_gait_prior_tracking_prefers_phase_prior(self):
+        env = trex_joystick.TrexJoystick()
+        info = {"command": jp.array([0.2, 0.0]), "gait_phase": jp.pi / 2.0}
+        target = jp.clip(env._stand_pose_action + env._gait_prior_action(info), -1, 1)
+        canceled = env._stand_pose_action
+
+        self.assertGreater(
+            float(env._reward_gait_prior_tracking(target, info)),
+            0.9,
+        )
+        self.assertLess(
+            float(env._reward_gait_prior_tracking(canceled, info)),
+            0.8,
+        )
+        self.assertIn("gait_prior_tracking", env._config.reward_config.scales)
+
     def test_trex_joystick_moving_action_deviation_prefers_stand_pose(self):
         env = trex_joystick.TrexJoystick()
         stand_action = env._stand_pose_action

@@ -90,6 +90,7 @@ def default_config() -> config_dict.ConfigDict:
         tracking_turn_vel=4.0,
         running_stride=0.25,
         running_foot_clearance=0.25,
+        gait_prior_tracking=1.0,
         leg_action_alternation=2.0,
         gait_anti_phase=2.0,
         gait_symmetry=1.0,
@@ -445,6 +446,8 @@ class TrexJoystick(trex_getup.TrexGetup):
             "running_stride": running_gate * self._reward_running_stride(data),
             "running_foot_clearance": running_gate
             * self._reward_running_foot_clearance(data),
+            "gait_prior_tracking": moving_gate
+            * self._reward_gait_prior_tracking(action, info),
             "leg_action_alternation": running_gate
             * self._reward_leg_action_alternation(action),
             "gait_anti_phase": running_gate
@@ -750,6 +753,17 @@ class TrexJoystick(trex_getup.TrexGetup):
         )
         clearance = 0.5 * (left_clearance + right_clearance)
         return jp.clip(clearance / 0.25, 0.0, 1.0)
+
+    def _reward_gait_prior_tracking(
+        self, action: jax.Array, info: dict[str, Any]
+    ) -> jax.Array:
+        target = jp.clip(
+            self._stand_pose_action + self._gait_prior_action(info),
+            -1.0,
+            1.0,
+        )
+        leg_error = jp.mean(jp.square(action[:8] - target[:8]))
+        return jp.exp(-leg_error / 0.04)
 
     def _reward_leg_action_alternation(self, action: jax.Array) -> jax.Array:
         gait_action = action - self._stand_pose_action

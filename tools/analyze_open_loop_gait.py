@@ -64,6 +64,18 @@ def analyze(args: argparse.Namespace) -> None:
     lateral = []
     orientation = []
     phase_scores = []
+    phase_bins = [
+        {
+            "count": 0,
+            "left_clearance": [],
+            "right_clearance": [],
+            "left_target": [],
+            "right_target": [],
+            "left_contact": [],
+            "right_contact": [],
+        }
+        for _ in range(4)
+    ]
     first_done_step = None
 
     for step_index in range(args.steps):
@@ -94,6 +106,18 @@ def analyze(args: argparse.Namespace) -> None:
                 jp.array([lc, rc]), state.info["gait_phase"], command
             )
         )
+        target = np.asarray(
+            jax.device_get(env._phase_foot_clearance_targets(state.info["gait_phase"]))
+        )
+        phase_value = float(jax.device_get(state.info["gait_phase"]))
+        bin_index = int(((phase_value % (2.0 * np.pi)) / (2.0 * np.pi)) * 4.0) % 4
+        phase_bins[bin_index]["count"] += 1
+        phase_bins[bin_index]["left_clearance"].append(float(lc))
+        phase_bins[bin_index]["right_clearance"].append(float(rc))
+        phase_bins[bin_index]["left_target"].append(float(target[0]))
+        phase_bins[bin_index]["right_target"].append(float(target[1]))
+        phase_bins[bin_index]["left_contact"].append(float(lcon > 0.5))
+        phase_bins[bin_index]["right_contact"].append(float(rcon > 0.5))
         left_clearance.append(float(lc))
         right_clearance.append(float(rc))
         left_contact.append(float(lcon > 0.5))
@@ -130,6 +154,18 @@ def analyze(args: argparse.Namespace) -> None:
     print(f"left_contact_duty: {_mean(left_contact):.3f}")
     print(f"right_contact_duty: {_mean(right_contact):.3f}")
     print(f"mean_feet_phase_height: {_mean(phase_scores):.3f}")
+    print("phase_bins:")
+    for index, values in enumerate(phase_bins):
+        print(
+            "  "
+            f"bin_{index}: count={values['count']} "
+            f"left_clearance={_mean(values['left_clearance']):.3f} "
+            f"right_clearance={_mean(values['right_clearance']):.3f} "
+            f"left_target={_mean(values['left_target']):.3f} "
+            f"right_target={_mean(values['right_target']):.3f} "
+            f"left_contact={_mean(values['left_contact']):.3f} "
+            f"right_contact={_mean(values['right_contact']):.3f}"
+        )
     if orientation:
         print(f"orientation_reward_range: {min(orientation):.3f} {max(orientation):.3f}")
 
