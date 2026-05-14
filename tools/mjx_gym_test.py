@@ -458,6 +458,7 @@ class TestMjxGym(unittest.TestCase):
             "tracking_ang_vel",
             "orientation",
             "base_height",
+            "low_torso_height",
             "non_foot_clearance",
             "lin_vel_z",
             "ang_vel_xy",
@@ -502,6 +503,35 @@ class TestMjxGym(unittest.TestCase):
         self.assertAlmostEqual(
             float(env._cost_base_tilt_ang_vel(jp.array([1.0, 10.0, 2.0]))),
             5.0,
+        )
+
+    def test_trex_joystick_locomotion_rewards_are_posture_gated(self):
+        config = trex_joystick.default_config()
+        config.reset_standing_prob = 1.0
+        env = trex_joystick.TrexJoystick(config)
+        state = env.reset(jax.random.PRNGKey(0))
+        rewards = env._get_reward(
+            state.data,
+            jp.zeros(env.action_size),
+            {
+                **state.info,
+                "command": jp.array([0.5, 0.0]),
+                "gait_phase": jp.array(0.0),
+            },
+            jp.zeros(2, dtype=bool),
+            jp.zeros(2),
+        )
+
+        crouched_height = env._target_torso_height * 0.90
+        self.assertAlmostEqual(
+            float(env._locomotion_posture_gate(jp.array(1.0), crouched_height)),
+            0.0,
+        )
+        self.assertGreater(float(rewards["tracking_lin_vel"]), 0.0)
+        self.assertGreater(float(rewards["feet_phase"]), 0.0)
+        self.assertGreater(
+            float(env._cost_low_torso_height(crouched_height)),
+            float(env._cost_low_torso_height(env._target_torso_height)),
         )
 
     def test_trex_joystick_gait_phase_targets_are_antiphase(self):

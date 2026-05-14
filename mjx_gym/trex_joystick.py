@@ -89,6 +89,8 @@ def default_config() -> config_dict.ConfigDict:
     config.random_initial_gait_phase = True
     config.running_gate_start = 0.05
     config.running_gate_full = 0.25
+    config.locomotion_height_gate_fraction = 0.97
+    config.locomotion_orientation_gate_threshold = 0.90
     config.foot_contact_force_scale = 20000.0
     config.foot_contact_height = 0.03
     config.command_config = config_dict.create(
@@ -108,6 +110,7 @@ def default_config() -> config_dict.ConfigDict:
         tracking_ang_vel=0.5,
         orientation=-2.0,
         base_height=-0.5,
+        low_torso_height=-5.0,
         non_foot_clearance=1.0,
         lin_vel_z=-0.5,
         ang_vel_xy=-0.15,
@@ -373,23 +376,27 @@ class TrexJoystick(trex_getup.TrexGetup):
         orientation = self._reward_orientation(gravity)
         height = self._reward_height(torso_height)
         clearance = self._reward_non_foot_clearance(data)
+        posture_gate = self._locomotion_posture_gate(orientation, torso_height)
         local_linvel = self.get_local_linvel(data)
         local_angvel = self.get_local_angvel(data)
         done = self._fall_done(data)
         return {
-            "tracking_lin_vel": self._reward_tracking_lin_vel(
+            "tracking_lin_vel": posture_gate * self._reward_tracking_lin_vel(
                 info["command"], local_linvel
             ),
-            "tracking_ang_vel": self._reward_tracking_ang_vel(
+            "tracking_ang_vel": posture_gate * self._reward_tracking_ang_vel(
                 info["command"], local_angvel
             ),
             "orientation": jp.square(1.0 - orientation),
             "base_height": jp.square(1.0 - height),
+            "low_torso_height": self._cost_low_torso_height(torso_height),
             "non_foot_clearance": clearance,
             "lin_vel_z": jp.square(local_linvel[1]),
             "ang_vel_xy": self._cost_base_tilt_ang_vel(local_angvel),
-            "feet_phase": self._reward_feet_phase(data, info["gait_phase"]),
-            "feet_air_time": self._reward_feet_air_time(
+            "feet_phase": posture_gate
+            * self._reward_feet_phase(data, info["gait_phase"]),
+            "feet_air_time": posture_gate
+            * self._reward_feet_air_time(
                 feet_air_time, first_contact, info["command"]
             ),
             "feet_slip": self._cost_foot_slip(data, info),
@@ -488,6 +495,25 @@ class TrexJoystick(trex_getup.TrexGetup):
 
     def _march_command(self) -> jax.Array:
         return jp.array([self._config.march_command_forward, 0.0])
+
+    def _locomotion_posture_gate(
+        self, orientation: jax.Array, torso_height: jax.Array
+    ) -> jax.Array:
+        height_start = (
+            self._target_torso_height * self._config.locomotion_height_gate_fraction
+        )
+        height_width = jp.maximum(self._target_torso_height - height_start, 1e-6)
+        height_gate = jp.clip((torso_height - height_start) / height_width, 0.0, 1.0)
+        orientation_start = self._config.locomotion_orientation_gate_threshold
+        orientation_width = jp.maximum(1.0 - orientation_start, 1e-6)
+        orientation_gate = jp.clip(
+            (orientation - orientation_start) / orientation_width, 0.0, 1.0
+        )
+        return height_gate * orientation_gate
+
+    def _cost_low_torso_height(self, torso_height: jax.Array) -> jax.Array:
+        deficit = jp.maximum(self._target_torso_height - torso_height, 0.0)
+        return jp.square(deficit)
 
     def _has_fixed_gait_phase(self) -> bool:
         return self._config.fixed_gait_phase >= 0.0
