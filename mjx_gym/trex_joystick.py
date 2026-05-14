@@ -34,6 +34,18 @@ def default_config() -> config_dict.ConfigDict:
     config.stand_pose_orientation_threshold = 0.95
     config.stand_pose_height_fraction = 0.90
     config.stand_pose_clearance_threshold = 0.90
+    config.running_action_residual_scale = [
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        1.0,
+        1.0,
+    ]
     config.gait_prior_scale = 0.35
     config.gait_frequency_min = 1.0
     config.gait_frequency_per_mps = 0.15
@@ -104,6 +116,9 @@ class TrexJoystick(trex_getup.TrexGetup):
         super().__init__(config, config_overrides)
         self._command_zero = jp.zeros(2)
         self._stand_pose_action = jp.array(self._config.stand_pose_action)
+        self._running_action_residual_scale = jp.array(
+            self._config.running_action_residual_scale
+        )
         self._floor_geom_id = self._mj_model.geom("floor").id
 
     def reset(self, rng: jax.Array) -> mjx_env.State:
@@ -211,7 +226,11 @@ class TrexJoystick(trex_getup.TrexGetup):
             stand_pose_gate, self._stand_pose_action, stand_hold_act
         )
         running_action = jp.clip(
-            clipped_action + self._gait_prior_action(state.info), -1.0, 1.0
+            self._stand_pose_action
+            + clipped_action * self._running_action_residual_scale
+            + self._gait_prior_action(state.info),
+            -1.0,
+            1.0,
         )
         applied_action = jp.where(standing_gate, applied_stand_action, running_action)
         target_scale = jp.where(
