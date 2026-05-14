@@ -81,6 +81,7 @@ def default_config() -> config_dict.ConfigDict:
         no_foot_contact=-12.0,
         running_height_excess=-8.0,
         foot_slip=-0.2,
+        hip_adduction_neutral=-0.5,
         stand_still=4.0,
         standing_base_lin_vel=-10.0,
         standing_base_ang_vel=-5.0,
@@ -401,6 +402,8 @@ class TrexJoystick(trex_getup.TrexGetup):
             * self._running_speed_gate(info["command"])
             * self._cost_running_height_excess(torso_height),
             "foot_slip": running_gate * self._cost_foot_slip(data, info),
+            "hip_adduction_neutral": moving_gate
+            * self._cost_hip_adduction_neutral(data),
             "stand_still": standing_gate
             * locomotion_gate
             * self._reward_commanded_stand_still(
@@ -821,6 +824,10 @@ class TrexJoystick(trex_getup.TrexGetup):
         left_contact, right_contact = self._foot_contact_scores(data)
         contact = jp.stack([left_contact, right_contact])
         return jp.sum(contact * horizontal_speed_sq) / (jp.sum(contact) + 1.0e-6)
+
+    def _cost_hip_adduction_neutral(self, data: mjx.Data) -> jax.Array:
+        hip_adduction = data.qpos[self._leg_qpos_ids[:2]]
+        return jp.sum(jp.square(hip_adduction))
 
     def _cost_foot_vel(self, data: mjx.Data, info: dict[str, Any]) -> jax.Array:
         foot_delta = self._foot_centers_world(data) - info["last_foot_centers"]
