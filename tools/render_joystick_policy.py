@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 import sys
 
@@ -20,6 +21,37 @@ if str(PROJECT_ROOT) not in sys.path:
 from mjx_gym import trex_constants
 from mjx_gym import trex_joystick
 from tools.analyze_policy_rollout import _load_policy
+
+
+def _apply_nested_config(config, values: dict) -> None:
+    for key, value in values.items():
+        if isinstance(value, dict) and key in config:
+            _apply_nested_config(config[key], value)
+        else:
+            config[key] = value
+
+
+def _checkpoint_config_path(checkpoint: Path) -> Path:
+    if checkpoint.is_dir() and checkpoint.name == "checkpoints":
+        return checkpoint / "config.json"
+    if checkpoint.parent.name == "checkpoints":
+        return checkpoint.parent / "config.json"
+    return checkpoint / "config.json"
+
+
+def _load_env_config(args: argparse.Namespace):
+    config = trex_joystick.default_config()
+    config_path = _checkpoint_config_path(args.checkpoint)
+    if args.use_checkpoint_config and config_path.exists():
+        _apply_nested_config(config, json.loads(config_path.read_text()))
+    if args.config_overrides:
+        _apply_nested_config(config, json.loads(args.config_overrides))
+    config.impl = args.impl
+    if args.reset_pose == "standing":
+        config.reset_standing_prob = 1.0
+    elif args.reset_pose == "side":
+        config.reset_standing_prob = 0.0
+    return config
 
 
 def _copy_to_mujoco(data, mj_data: mujoco.MjData) -> None:
@@ -44,14 +76,7 @@ def _camera_for_frame(
 
 
 def render(args: argparse.Namespace) -> None:
-    config = trex_joystick.default_config()
-    config.impl = args.impl
-    if args.reset_pose == "standing":
-        config.reset_standing_prob = 1.0
-    elif args.reset_pose == "side":
-        config.reset_standing_prob = 0.0
-
-    env = trex_joystick.TrexJoystick(config)
+    env = trex_joystick.TrexJoystick(_load_env_config(args))
     policy = jax.jit(_load_policy(args.checkpoint))
     step = jax.jit(env.step)
 
@@ -192,6 +217,17 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--reset-pose", choices=("mixed", "standing", "side"), default="standing"
+    )
+    parser.add_argument(
+        "--no-checkpoint-config",
+        action="store_false",
+        dest="use_checkpoint_config",
+        help="Ignore checkpoints/config.json and use the default joystick config.",
+    )
+    parser.add_argument(
+        "--config-overrides",
+        default="",
+        help="Optional JSON object of env config overrides for this rollout.",
     )
     parser.add_argument("--width", type=int, default=960)
     parser.add_argument("--height", type=int, default=540)
