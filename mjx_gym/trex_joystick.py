@@ -55,6 +55,7 @@ def default_config() -> config_dict.ConfigDict:
     config.gait_frequency_per_mps = 0.15
     config.gait_frequency_max = 2.5
     config.gait_swing_height = 0.12
+    config.random_initial_gait_phase = True
     config.running_gate_start = 0.05
     config.running_gate_full = 0.25
     config.foot_contact_force_scale = 20000.0
@@ -154,7 +155,8 @@ class TrexJoystick(trex_getup.TrexGetup):
             height_rng,
             command_rng,
             interval_rng,
-        ) = jax.random.split(rng, 9)
+            phase_rng,
+        ) = jax.random.split(rng, 10)
         yaw = jax.random.uniform(
             yaw_rng,
             (),
@@ -210,9 +212,20 @@ class TrexJoystick(trex_getup.TrexGetup):
         )
         data = mjx.forward(self.mjx_model, data)
 
+        command = self._sample_command(command_rng)
+        random_phase = jax.random.uniform(
+            phase_rng, (), minval=0.0, maxval=2.0 * jp.pi
+        )
+        initial_gait_phase = jp.where(
+            self._config.random_initial_gait_phase
+            & (self._standing_command_gate(command) < 0.5),
+            random_phase,
+            0.0,
+        )
+
         info = {
             "rng": rng,
-            "command": self._sample_command(command_rng),
+            "command": command,
             "steps_until_next_cmd": self._sample_command_interval(interval_rng),
             "last_act": jp.zeros(self.action_size),
             "last_last_act": jp.zeros(self.action_size),
@@ -222,7 +235,7 @@ class TrexJoystick(trex_getup.TrexGetup):
             "contact_duty": jp.zeros(2),
             "feet_air_time": jp.zeros(2),
             "last_contact": jp.zeros(2, dtype=bool),
-            "gait_phase": jp.zeros(()),
+            "gait_phase": initial_gait_phase,
         }
         metrics = {}
         for key in self._config.reward_config.scales.keys():

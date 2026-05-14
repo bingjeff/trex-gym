@@ -459,6 +459,33 @@ class TestMjxGym(unittest.TestCase):
             )
         )
 
+    def test_trex_joystick_randomizes_initial_moving_gait_phase(self):
+        config = trex_joystick.default_config()
+        config.reset_standing_prob = 1.0
+        config.command_config.forward_min = 0.2
+        config.command_config.forward_max = 0.2
+        config.command_config.high_speed_prob = 0.0
+        config.command_config.turn_max = 0.0
+        config.command_config.zero_prob = 0.0
+        env = trex_joystick.TrexJoystick(config)
+
+        state = env.reset(jax.random.PRNGKey(7))
+        phase = float(state.info["gait_phase"])
+
+        self.assertGreaterEqual(phase, 0.0)
+        self.assertLess(phase, 2.0 * np.pi)
+        self.assertGreater(phase, 1.0e-6)
+
+    def test_trex_joystick_standing_command_starts_at_zero_gait_phase(self):
+        config = trex_joystick.default_config()
+        config.reset_standing_prob = 1.0
+        config.command_config.zero_prob = 1.0
+        env = trex_joystick.TrexJoystick(config)
+
+        state = env.reset(jax.random.PRNGKey(7))
+
+        self.assertAlmostEqual(float(state.info["gait_phase"]), 0.0)
+
     def test_trex_joystick_gait_phase_scores_prefer_alternating_steps(self):
         env = trex_joystick.TrexJoystick()
 
