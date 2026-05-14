@@ -300,3 +300,26 @@ May 14 A5000 reset smoke:
 - Log file: `/workspace/train-a5000-reset-smoke.log`.
 - Purpose: test whether the G1/Berkeley-style joystick reset has reward terms
   that move in the right direction before spending L40S time on broader sweeps.
+
+May 14 parallel GPU experiments:
+
+- A5000 baseline reset smoke completed quickly:
+  `/workspace/runs/TrexJoystick-20260514-154640-humanoid-reset-a5000-5m-nacon32768`.
+  It used default mixed side/standing resets and default joystick command
+  sampling with `naconmax=32768,njmax=1024`.
+- A5000 baseline rewards: `-67.603`, `-27.341`, `-2.638`, `-20.948`,
+  `-22.637`. Runtime reported compile `36.5 s`, train `179.9 s`. This is
+  encouraging enough to inspect videos/diagnostics, but the later evals fell
+  back from the best reward.
+- Started L40S baseline comparison in tmux `train-l40s-reset-baseline`:
+  `/workspace/run_l40s_reset_baseline.sh`, log
+  `/workspace/train-l40s-reset-baseline.log`, same training/config overrides as
+  the A5000 baseline. Purpose: compare throughput/reproducibility on the L40S.
+- Started A5000 low-speed standing-start variant in tmux
+  `train-a5000-walk-standing`: `/workspace/run_a5000_walk_standing.sh`, log
+  `/workspace/train-a5000-walk-standing.log`. Overrides add
+  `curriculum_task="walk"`, `reset_standing_prob=1.0`, `terminate_on_fall=true`,
+  walk command range `0.15-0.8 m/s`, turn range `+/-0.25 rad/s`, and
+  `walk_command_zero_prob=0.1`. Purpose: test a more G1/Berkeley-like
+  standing-start low-speed joystick task against the mixed getup/joystick
+  baseline.
