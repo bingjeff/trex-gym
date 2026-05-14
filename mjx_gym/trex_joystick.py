@@ -795,19 +795,18 @@ class TrexJoystick(trex_getup.TrexGetup):
     def _reward_feet_phase_height_from_clearance(
         self, clearance: jax.Array, phase: jax.Array, command: jax.Array
     ) -> jax.Array:
-        phase = jp.fmod(phase + jp.pi, 2.0 * jp.pi) - jp.pi
-        foot_phase = jp.array(
-            [
-                phase,
-                jp.fmod(phase + 2.0 * jp.pi, 2.0 * jp.pi) - jp.pi,
-            ]
-        )
-        target_clearance = gait.get_rz(
-            foot_phase, swing_height=self._config.gait_swing_height
-        )
+        target_clearance = self._phase_foot_clearance_targets(phase)
         error = jp.sum(jp.square(clearance - target_clearance))
         moving = jp.linalg.norm(command) > 0.05
         return moving * jp.exp(-error / 0.01)
+
+    def _phase_foot_clearance_targets(self, phase: jax.Array) -> jax.Array:
+        phase = self._wrap_gait_phase(phase)
+        foot_phase = jp.array([phase, self._wrap_gait_phase(phase + jp.pi)])
+        return gait.get_rz(foot_phase, swing_height=self._config.gait_swing_height)
+
+    def _wrap_gait_phase(self, phase: jax.Array) -> jax.Array:
+        return jp.fmod(phase + jp.pi, 2.0 * jp.pi) - jp.pi
 
     def _reward_foot_contact_balance(self, data: mjx.Data) -> jax.Array:
         left_contact, right_contact = self._foot_contact_scores(data)

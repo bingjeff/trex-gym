@@ -89,6 +89,13 @@ def analyze(args: argparse.Namespace) -> None:
     mean_contact_duty_symmetry = 0.0
     mean_foot_contact_balance = 0.0
     mean_foot_slip = 0.0
+    mean_feet_phase_height = 0.0
+    mean_left_clearance = 0.0
+    mean_right_clearance = 0.0
+    mean_left_target_clearance = 0.0
+    mean_right_target_clearance = 0.0
+    mean_left_clearance_error = 0.0
+    mean_right_clearance_error = 0.0
     left_contact_duty = 0.0
     right_contact_duty = 0.0
     min_torso_height = np.inf
@@ -168,6 +175,26 @@ def analyze(args: argparse.Namespace) -> None:
         mean_foot_slip += float(
             jax.device_get(env._cost_foot_slip(state.data, state.info))
         )
+        left_clearance, right_clearance = jax.device_get(
+            env._foot_clearance_scores(state.data)
+        )
+        left_target, right_target = jax.device_get(
+            env._phase_foot_clearance_targets(state.info["gait_phase"])
+        )
+        phase_score = jax.device_get(
+            env._reward_feet_phase_height_from_clearance(
+                jp.array([left_clearance, right_clearance]),
+                state.info["gait_phase"],
+                state.info["command"],
+            )
+        )
+        mean_feet_phase_height += float(phase_score)
+        mean_left_clearance += float(left_clearance)
+        mean_right_clearance += float(right_clearance)
+        mean_left_target_clearance += float(left_target)
+        mean_right_target_clearance += float(right_target)
+        mean_left_clearance_error += abs(float(left_clearance - left_target))
+        mean_right_clearance_error += abs(float(right_clearance - right_target))
         left_contact, right_contact = jax.device_get(
             env._foot_contact_scores(state.data)
         )
@@ -215,6 +242,21 @@ def analyze(args: argparse.Namespace) -> None:
     )
     print(f"mean_foot_contact_balance: {mean_foot_contact_balance / sample_steps:.3f}")
     print(f"mean_foot_slip: {mean_foot_slip / sample_steps:.3f}")
+    print(f"mean_feet_phase_height: {mean_feet_phase_height / sample_steps:.3f}")
+    print(f"mean_left_clearance: {mean_left_clearance / sample_steps:.3f}")
+    print(f"mean_right_clearance: {mean_right_clearance / sample_steps:.3f}")
+    print(
+        f"mean_left_target_clearance: {mean_left_target_clearance / sample_steps:.3f}"
+    )
+    print(
+        f"mean_right_target_clearance: {mean_right_target_clearance / sample_steps:.3f}"
+    )
+    print(
+        f"mean_left_clearance_error: {mean_left_clearance_error / sample_steps:.3f}"
+    )
+    print(
+        f"mean_right_clearance_error: {mean_right_clearance_error / sample_steps:.3f}"
+    )
     print(f"left_contact_duty: {left_contact_duty / sample_steps:.3f}")
     print(f"right_contact_duty: {right_contact_duty / sample_steps:.3f}")
     if first_xy is not None and last_xy is not None:
