@@ -581,3 +581,20 @@ May 14 parallel GPU experiments:
   alternating gait posture and no visible collapse. Side reset still fails
   immediately under `terminate_on_fall=true`, so the get-up portion remains
   unsolved.
+- L40S mixed/side get-up attempts from the standing-start joystick policy have
+  not yet solved recovery. Mixed-reset seed 20 stayed down and damaged standing
+  behavior; mixed-reset seed 21 showed partial height recovery after gating
+  `commanded_stand_still` by posture but did not become upright.
+- L40S side-only warm-start seed 22:
+  `/workspace/runs/TrexJoystick-20260514-192334-sidegetup-l40s-warm-20m-seed22`.
+  It used only zero commands, `reset_standing_prob=0.0`,
+  `terminate_on_fall=false`, and stronger orientation/height/stand-still costs.
+  Final side diagnostic still failed: episode reward `-421.604`,
+  orientation reward range `0.002-0.069`, torso height range `0.443-2.168`,
+  mean vertical velocity `0.853 m/s`, and base displacement `7.612 m`. The
+  policy learned energetic motion but not a controlled get-up.
+- Added zero-default explicit get-up shaping terms to `TrexJoystick` so the
+  side-getup curriculum can reuse the proven `TrexGetup` style terms without
+  changing joystick observations or actions: `getup_torso_height`,
+  `getup_foot_support`, `getup_foot_balance`, `getup_foot_placement`, and
+  `getup_standing_pose`. Focused joystick reward tests passed.
