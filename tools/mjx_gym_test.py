@@ -534,6 +534,28 @@ class TestMjxGym(unittest.TestCase):
             float(env._cost_low_torso_height(env._target_torso_height)),
         )
 
+    def test_trex_joystick_gait_rewards_are_disabled_for_stand_command(self):
+        config = trex_joystick.default_config()
+        config.reset_standing_prob = 1.0
+        env = trex_joystick.TrexJoystick(config)
+        state = env.reset(jax.random.PRNGKey(0))
+        stand_info = {
+            **state.info,
+            "command": jp.array([0.0, 0.0]),
+            "gait_phase": jp.array(0.0),
+        }
+
+        rewards = env._get_reward(
+            state.data,
+            jp.zeros(env.action_size),
+            stand_info,
+            jp.ones(2, dtype=bool),
+            jp.ones(2) * 0.2,
+        )
+
+        self.assertEqual(0.0, float(rewards["feet_phase"]))
+        self.assertEqual(0.0, float(rewards["feet_air_time"]))
+
     def test_trex_joystick_gait_phase_targets_are_antiphase(self):
         env = trex_joystick.TrexJoystick()
 

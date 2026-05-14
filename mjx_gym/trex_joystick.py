@@ -377,6 +377,7 @@ class TrexJoystick(trex_getup.TrexGetup):
         height = self._reward_height(torso_height)
         clearance = self._reward_non_foot_clearance(data)
         posture_gate = self._locomotion_posture_gate(orientation, torso_height)
+        moving_gate = 1.0 - self._standing_command_gate(info["command"])
         local_linvel = self.get_local_linvel(data)
         local_angvel = self.get_local_angvel(data)
         done = self._fall_done(data)
@@ -393,9 +394,11 @@ class TrexJoystick(trex_getup.TrexGetup):
             "non_foot_clearance": clearance,
             "lin_vel_z": jp.square(local_linvel[1]),
             "ang_vel_xy": self._cost_base_tilt_ang_vel(local_angvel),
-            "feet_phase": posture_gate
+            "feet_phase": moving_gate
+            * posture_gate
             * self._reward_feet_phase(data, info["gait_phase"]),
-            "feet_air_time": posture_gate
+            "feet_air_time": moving_gate
+            * posture_gate
             * self._reward_feet_air_time(
                 feet_air_time, first_contact, info["command"]
             ),
