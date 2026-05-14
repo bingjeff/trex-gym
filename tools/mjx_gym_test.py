@@ -518,7 +518,7 @@ class TestMjxGym(unittest.TestCase):
         )
         collapsed_data = mjx.forward(env.mjx_model, collapsed_data)
         info = {
-            "command": jp.array([2.0, 0.0]),
+            "command": jp.array([0.25, 0.0]),
             "last_act": jp.zeros(env.action_size),
             "last_last_act": jp.zeros(env.action_size),
             "stand_hold_act": jp.zeros(env.action_size),
