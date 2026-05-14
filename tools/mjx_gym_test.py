@@ -657,6 +657,69 @@ class TestMjxGym(unittest.TestCase):
         self.assertGreater(float(phase_half[1]), 0.0)
         self.assertLess(float(phase_half[1]), 1.0)
 
+    def test_trex_joystick_phase_swing_rewards_prefer_released_swing_foot(self):
+        config = trex_joystick.default_config()
+        config.gait_swing_height = 0.045
+        env = trex_joystick.TrexJoystick(config)
+        phase = jp.array(0.0)
+
+        target_clearance = jp.array([config.gait_swing_height, 0.0])
+        both_down_clearance = jp.zeros(2)
+        target_contact = jp.array([0.0, 1.0])
+        both_down_contact = jp.ones(2)
+
+        self.assertGreater(
+            float(
+                env._reward_phase_swing_clearance_from_clearance(
+                    target_clearance, phase
+                )
+            ),
+            0.9,
+        )
+        self.assertLess(
+            float(
+                env._reward_phase_swing_clearance_from_clearance(
+                    both_down_clearance, phase
+                )
+            ),
+            0.1,
+        )
+        self.assertGreater(
+            float(env._reward_phase_swing_release_from_contact(target_contact, phase)),
+            0.9,
+        )
+        self.assertLess(
+            float(env._reward_phase_swing_release_from_contact(both_down_contact, phase)),
+            0.1,
+        )
+        self.assertIn("phase_swing_clearance", env._config.reward_config.scales)
+        self.assertIn("phase_swing_release", env._config.reward_config.scales)
+
+    def test_trex_joystick_phase_stance_contact_prefers_planted_stance_foot(self):
+        env = trex_joystick.TrexJoystick()
+        phase = jp.array(0.0)
+
+        right_stance_contact = jp.array([0.0, 1.0])
+        no_stance_contact = jp.array([1.0, 0.0])
+
+        self.assertGreater(
+            float(
+                env._reward_phase_stance_contact_from_contact(
+                    right_stance_contact, phase
+                )
+            ),
+            0.9,
+        )
+        self.assertLess(
+            float(
+                env._reward_phase_stance_contact_from_contact(
+                    no_stance_contact, phase
+                )
+            ),
+            0.1,
+        )
+        self.assertIn("phase_stance_contact", env._config.reward_config.scales)
+
     def test_trex_joystick_single_support_balance_prefers_stance_under_torso(self):
         env = trex_joystick.TrexJoystick()
         support_xz = env._standing_support_offset_xz

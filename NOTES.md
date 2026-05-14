@@ -184,3 +184,13 @@ Recommended next step:
   explicitly teaches stable single support.
 - Candidate directions are stance-foot/COM support rewards, staged one-foot
   balance resets, or a separate slow marching task before forward locomotion.
+
+May 14 follow-up:
+
+- Confirmed with a remote Warp open-loop probe that the actuator pattern can lift
+  both feet. Large scripted gait amplitudes lifted both feet but fell laterally;
+  smaller stable amplitudes produced the same double-support shuffle as PPO.
+- Added separate phase reward terms for swing-foot clearance, swing-foot release,
+  and stance-foot contact. These are intentionally simpler than the combined
+  gait rewards so rollout diagnostics can distinguish "requested swing foot is
+  still planted" from "stance foot is not supporting".
