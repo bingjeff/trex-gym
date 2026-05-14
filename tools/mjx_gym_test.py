@@ -962,6 +962,47 @@ class TestMjxGym(unittest.TestCase):
         )
         self.assertIn("gait_prior_tracking", env._config.reward_config.scales)
 
+    def test_trex_joystick_march_mode_uses_fixed_march_command(self):
+        config = trex_joystick.default_config()
+        config.curriculum_task = "march"
+        config.march_command_forward = 0.1
+        config.reset_standing_prob = 1.0
+        env = trex_joystick.TrexJoystick(config)
+
+        state = env.reset(jax.random.PRNGKey(0))
+        np.testing.assert_allclose(
+            np.asarray(jax.device_get(state.info["command"])),
+            np.array([0.1, 0.0]),
+            atol=1e-6,
+        )
+
+        state = env.step(state, jp.zeros(env.action_size))
+        np.testing.assert_allclose(
+            np.asarray(jax.device_get(state.info["command"])),
+            np.array([0.1, 0.0]),
+            atol=1e-6,
+        )
+
+    def test_trex_joystick_march_reward_is_in_place_gait_task(self):
+        config = trex_joystick.default_config()
+        config.curriculum_task = "march"
+        config.reset_standing_prob = 1.0
+        env = trex_joystick.TrexJoystick(config)
+        state = env.reset(jax.random.PRNGKey(0))
+
+        rewards = env._get_reward(
+            state.data,
+            jp.zeros(env.action_size),
+            state.info,
+            jp.zeros(2, dtype=bool),
+            jp.zeros(2),
+        )
+
+        self.assertIn("phase_swing_clearance", rewards)
+        self.assertIn("phase_stance_contact", rewards)
+        self.assertIn("moving_forward_vel_error", rewards)
+        self.assertNotIn("tracking_forward_vel", rewards)
+
     def test_trex_joystick_moving_action_deviation_prefers_stand_pose(self):
         env = trex_joystick.TrexJoystick()
         stand_action = env._stand_pose_action

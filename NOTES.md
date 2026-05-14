@@ -199,3 +199,9 @@ May 14 follow-up:
   offsets around `pi/2` or `pi` reproduce the right-foot-only swing mode.
 - Added an explicit gait-prior tracking reward so PPO cannot satisfy stability
   by canceling the alternating action prior back toward the stand pose.
+- Added `curriculum_task="march"` mode to `TrexJoystick`. This keeps the same
+  action and observation shape as joystick locomotion but replaces the reward
+  with an in-place marching objective: low base velocity, upright posture,
+  alternating swing-foot release/clearance, stance contact, and single-support
+  balance. The intent is to train controlled single support before returning to
+  forward velocity tracking.

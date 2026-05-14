@@ -18,6 +18,8 @@ def default_config() -> config_dict.ConfigDict:
     config.episode_length = 1000
     config.reset_standing_prob = 0.5
     config.reset_command_interval_mean = 3.0
+    config.curriculum_task = "joystick"
+    config.march_command_forward = 0.1
     config.contact_duty_alpha = 0.02
     config.stand_action_smoothing = 0.5
     config.terminate_on_fall = False
@@ -225,6 +227,8 @@ class TrexJoystick(trex_getup.TrexGetup):
         data = mjx.forward(self.mjx_model, data)
 
         command = self._sample_command(command_rng)
+        if self._is_march_task():
+            command = self._march_command()
         random_phase = jax.random.uniform(
             phase_rng, (), minval=0.0, maxval=2.0 * jp.pi
         )
@@ -335,6 +339,9 @@ class TrexJoystick(trex_getup.TrexGetup):
             self._sample_command_interval(interval_rng),
             state.info["steps_until_next_cmd"],
         )
+        if self._is_march_task():
+            state.info["command"] = self._march_command()
+            state.info["steps_until_next_cmd"] = self._config.episode_length
         obs = self._get_obs(data, state.info)
         for key, value in rewards.items():
             state.metrics[f"reward/{key}"] = value
@@ -383,6 +390,11 @@ class TrexJoystick(trex_getup.TrexGetup):
         first_contact: jax.Array,
         feet_air_time: jax.Array,
     ) -> dict[str, jax.Array]:
+        if self._is_march_task():
+            return self._get_march_reward(
+                data, action, info, first_contact, feet_air_time
+            )
+
         gravity = self.get_gravity(data)
         torso_height = data.site_xpos[self._imu_site_id][2]
         orientation = self._reward_orientation(gravity)
@@ -525,6 +537,84 @@ class TrexJoystick(trex_getup.TrexGetup):
             "torques": self._cost_torques(data.actuator_force),
             "dof_vel": self._cost_dof_vel(data.qvel[6:]),
         }
+
+    def _get_march_reward(
+        self,
+        data: mjx.Data,
+        action: jax.Array,
+        info: dict[str, Any],
+        first_contact: jax.Array,
+        feet_air_time: jax.Array,
+    ) -> dict[str, jax.Array]:
+        gravity = self.get_gravity(data)
+        torso_height = data.site_xpos[self._imu_site_id][2]
+        orientation = self._reward_orientation(gravity)
+        height = self._reward_height(torso_height)
+        clearance = self._reward_non_foot_clearance(data)
+        posture_gate = orientation * height * clearance
+        local_linvel = self.get_local_linvel(data)
+        local_angvel = self.get_local_angvel(data)
+        return {
+            "orientation": orientation,
+            "torso_height": orientation * height,
+            "non_foot_clearance": clearance,
+            "phase_swing_clearance": self._reward_phase_swing_clearance(
+                data, info["gait_phase"]
+            ),
+            "phase_swing_release": self._reward_phase_swing_release(
+                data, info["gait_phase"]
+            ),
+            "phase_stance_contact": self._reward_phase_stance_contact(
+                data, info["gait_phase"]
+            ),
+            "feet_phase_height": self._reward_feet_phase_height(
+                data, info["gait_phase"], info["command"]
+            ),
+            "phase_clearance_error": self._cost_phase_clearance_error(
+                data, info["gait_phase"]
+            ),
+            "phase_clearance_max_error": self._cost_phase_clearance_max_error(
+                data, info["gait_phase"]
+            ),
+            "single_support_balance": self._reward_single_support_balance(
+                data, info["gait_phase"]
+            ),
+            "feet_air_time": self._reward_feet_air_time(
+                feet_air_time, first_contact, info["command"]
+            ),
+            "phase_contact": self._reward_phase_contact(data, info),
+            "phase_contact_error": self._cost_phase_contact_error(data, info),
+            "phase_foot_clearance": self._reward_phase_foot_clearance(data, info),
+            "contact_duty_symmetry": self._reward_contact_duty_symmetry(data, info),
+            "contact_duty_error": self._cost_contact_duty_error(data, info),
+            "foot_contact_balance": self._reward_foot_contact_balance(data),
+            "double_foot_contact": self._cost_double_foot_contact(data),
+            "gait_prior_tracking": self._reward_gait_prior_tracking(action, info),
+            "leg_action_alternation": self._reward_leg_action_alternation(action),
+            "gait_anti_phase": self._reward_gait_anti_phase(data),
+            "gait_symmetry": self._reward_gait_symmetry(data),
+            "moving_lateral_vel": jp.square(local_linvel[2]),
+            "moving_vertical_vel": jp.square(local_linvel[1]),
+            "moving_forward_vel_error": jp.square(local_linvel[0]),
+            "base_tilt_ang_vel": self._cost_base_tilt_ang_vel(local_angvel),
+            "moving_orientation": jp.square(1.0 - orientation),
+            "moving_torso_height": jp.square(1.0 - height),
+            "moving_non_foot_clearance": jp.square(1.0 - clearance),
+            "no_foot_contact": self._cost_no_foot_contact(data),
+            "running_height_excess": self._cost_running_height_excess(torso_height),
+            "foot_slip": posture_gate * self._cost_foot_slip(data, info),
+            "hip_adduction_neutral": self._cost_hip_adduction_neutral(data),
+            "fall": self._fall_done(data),
+            "action_rate": self._cost_action_rate(action, info),
+            "torques": self._cost_torques(data.actuator_force),
+            "dof_vel": self._cost_dof_vel(data.qvel[6:]),
+        }
+
+    def _is_march_task(self) -> bool:
+        return self._config.curriculum_task == "march"
+
+    def _march_command(self) -> jax.Array:
+        return jp.array([self._config.march_command_forward, 0.0])
 
     def _sample_command(self, rng: jax.Array) -> jax.Array:
         (
