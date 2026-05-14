@@ -429,6 +429,27 @@ class TestMjxGym(unittest.TestCase):
         self.assertGreater(float(next_state.data.time), 0.0)
         self.assertGreaterEqual(float(next_state.reward), env._config.reward_clip_min)
 
+    def test_trex_single_skill_task_configs(self):
+        balance = trex_joystick.TrexBalance()
+        walk = trex_joystick.TrexWalk()
+        joystick = trex_joystick.TrexJoystick(trex_joystick.joystick_config())
+        run = trex_joystick.TrexRun()
+
+        self.assertEqual(1.0, balance._config.reset_standing_prob)
+        self.assertEqual(0.0, balance._config.command_config.forward_max)
+        self.assertGreater(balance._config.push_linvel_max, 0.0)
+        self.assertEqual("walk", walk._config.curriculum_task)
+        self.assertEqual(0.0, walk._config.walk_command_turn_max)
+        self.assertLessEqual(joystick._config.command_config.forward_max, 3.0)
+        self.assertEqual(10.0, run._config.command_config.forward_max)
+
+        for env in (balance, walk, joystick, run):
+            state = env.reset(jax.random.PRNGKey(0))
+            self.assertEqual((88,), state.obs["state"].shape)
+            self.assertEqual((174,), state.obs["privileged_state"].shape)
+            next_state = env.step(state, jp.zeros(env.action_size))
+            self.assertTrue(bool(jp.all(jp.isfinite(next_state.obs["state"]))))
+
     def test_trex_joystick_side_reset_curriculum_can_start_near_standing(self):
         config = trex_joystick.default_config()
         config.reset_standing_prob = 0.0
@@ -702,7 +723,28 @@ class TestMjxGym(unittest.TestCase):
         from mujoco_playground import registry
 
         self.assertIn("TrexGetup", registry.ALL_ENVS)
+        self.assertIn("TrexBalance", registry.ALL_ENVS)
+        self.assertIn("TrexWalk", registry.ALL_ENVS)
         self.assertIn("TrexJoystick", registry.ALL_ENVS)
+        self.assertIn("TrexRun", registry.ALL_ENVS)
+
+    def test_trex_training_configs_use_humanoid_scale_networks(self):
+        for env_name in (
+            "TrexGetup",
+            "TrexBalance",
+            "TrexWalk",
+            "TrexJoystick",
+            "TrexRun",
+        ):
+            config = train.trex_ppo_config(env_name)
+            self.assertEqual((512, 256, 128), config.network_factory.policy_hidden_layer_sizes)
+            self.assertEqual((512, 256, 128), config.network_factory.value_hidden_layer_sizes)
+            self.assertEqual(4096, config.num_envs)
+            self.assertEqual(1024, config.batch_size)
+        self.assertLess(
+            train.trex_ppo_config("TrexGetup").num_timesteps,
+            train.trex_ppo_config("TrexJoystick").num_timesteps,
+        )
 
 
 if __name__ == "__main__":

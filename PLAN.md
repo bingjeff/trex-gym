@@ -1,3 +1,59 @@
+# T-Rex Policy Reset Plan
+
+Status: current as of the reset after the unsuccessful all-in-one joystick
+experiments.
+
+## Current Direction
+
+Train separate single-skill policies before attempting composition:
+
+1. `TrexGetup`: get up from the ground.
+2. `TrexBalance`: stand from the nominal pose and reject perturbations.
+3. `TrexWalk`: walk straight at low speeds with an alternating gait.
+4. `TrexJoystick`: velocity-steered forward/yaw locomotion.
+5. `TrexRun`: high-speed forward running up to 10 m/s.
+
+Only after the get-up, balance, and walk policies are individually reliable
+should they be combined into one reset-mixture policy.
+
+## Implemented Reset Infrastructure
+
+- Added explicit joystick-derived task presets/classes for `TrexBalance`,
+  `TrexWalk`, `TrexJoystick`, and `TrexRun`.
+- Registered all five T-Rex tasks in `mjx_gym.train`.
+- Switched the serious PPO defaults to humanoid-scale networks:
+  `(512, 256, 128)` actor and critic, `4096` envs, `1024` batch size,
+  `32` minibatches, and task-specific timestep budgets.
+- Added optional push perturbations to joystick-derived tasks; they are enabled
+  for balance and moderate joystick training, and disabled by default.
+- Extended joystick rollout/render diagnostics so they can evaluate the
+  balance, walk, joystick, and run task classes.
+
+## Phase Gates
+
+Every phase must produce metrics, rendered samples, a checkpoint note, and a
+commit before moving to the next phase.
+
+- Get-up gate: side-lying reset succeeds over many seeds, final support is on
+  feet only, non-foot body parts clear the ground, and standing is quiet.
+- Balance gate: starts standing, survives repeated pushes, does not spin, and
+  does not use tail/body ground support.
+- Walk gate: tracks 0.5, 1.0, and 1.5 m/s straight-line commands with
+  alternating footfalls and bounded yaw/lateral drift.
+- Joystick gate: tracks forward speed and yaw-rate commands, including zero
+  command standing.
+- Run gate: tracks up to 10 m/s with a visible gait, no skating, no spinning,
+  and no non-foot propulsion.
+
+## Research Defaults
+
+The reset follows the MuJoCo Playground humanoid pattern: standing-start
+locomotion tasks, gait phase observations, privileged critic state, push
+perturbations, action-rate/smoothness costs, foot-contact/gait rewards, and
+larger actor/critic networks. Get-up remains a separate two-stage problem:
+first rediscover a robust get-up, then refine it for stillness and contact
+quality.
+
 # MJX Getup Training Plan
 
 The immediate goal is a first MuJoCo Playground/MJX task where the T-Rex gets

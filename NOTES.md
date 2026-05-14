@@ -755,3 +755,33 @@ May 14 reset summary:
   GPU time, for example a staged reset curriculum, explicit contact-state
   objective for "only feet touching", or splitting get-up and locomotion into
   separate skills before attempting a unified joystick policy.
+
+May 14 policy reset implementation:
+
+- Implemented the first infrastructure step of the reset plan: `TrexGetup`,
+  `TrexBalance`, `TrexWalk`, `TrexJoystick`, and `TrexRun` are now separate
+  trainable environment names rather than one overloaded joystick task.
+- `TrexBalance` starts from standing, samples only zero commands, enables
+  modest randomized push perturbations, and emphasizes quiet standing,
+  non-foot clearance, orientation, and height.
+- `TrexWalk` starts from standing and samples straight-line 0.5-1.5 m/s
+  commands with the gait-phase rewards turned up and yaw commands disabled.
+- `TrexJoystick` is now the moderate velocity-steered task, capped at 3 m/s
+  forward speed with yaw-rate commands and mild push perturbations.
+- `TrexRun` is the separate high-speed task, sampling 3-10 m/s forward commands
+  with only small yaw commands.
+- PPO defaults were reset toward MuJoCo Playground humanoid practice:
+  `(512, 256, 128)` actor/critic networks, 4096 envs, 1024 batch size, 32
+  minibatches, clipping epsilon 0.2, and longer task-specific budgets.
+- Rollout and render diagnostics now accept `--task` for the joystick-derived
+  tasks, so policy checks can be run against the same task class that was
+  trained.
+- Local baseline checkpoint verification was rerun with CPU/JAX and an absolute
+  checkpoint path. The saved `TrexGetup-20260513-033812-still2-warp-10m`
+  checkpoint still reaches upright/feet-supported standing under current code:
+  over steps 500-750 for seed 0, torso height was `2.454-2.749`, orientation
+  reward `0.942-1.000`, foot-floor contact occurred on 244/250 sampled steps,
+  non-foot floor contact was zero, and minimum non-foot clearance was `0.074 m`.
+  It is still not a quiet stand by the stricter new gate: base displacement was
+  `5.407 m`, mean base linear speed `1.273 m/s`, and mean angular speed
+  `0.481 rad/s`.

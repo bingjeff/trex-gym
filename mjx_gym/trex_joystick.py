@@ -93,11 +93,15 @@ def default_config() -> config_dict.ConfigDict:
     config.locomotion_orientation_gate_threshold = 0.90
     config.foot_contact_force_scale = 20000.0
     config.foot_contact_height = 0.03
+    config.push_interval_min = 0.0
+    config.push_interval_max = 0.0
+    config.push_linvel_max = 0.0
+    config.push_angvel_max = 0.0
     config.command_config = config_dict.create(
         forward_min=0.0,
-        forward_max=10.0,
-        high_speed_min=7.0,
-        high_speed_prob=0.50,
+        forward_max=3.0,
+        high_speed_min=2.0,
+        high_speed_prob=0.20,
         turn_max=1.0,
         zero_prob=0.15,
         turn_zero_prob=0.25,
@@ -134,6 +138,101 @@ def default_config() -> config_dict.ConfigDict:
         torques=-1e-7,
         dof_vel=-1e-5,
     )
+    return config
+
+
+def balance_config() -> config_dict.ConfigDict:
+    config = default_config()
+    config.episode_length = 1500
+    config.reset_standing_prob = 1.0
+    config.reset_joint_noise = 0.03
+    config.reset_qvel_noise = 0.05
+    config.reset_command_interval_mean = 1000.0
+    config.push_interval_min = 2.0
+    config.push_interval_max = 5.0
+    config.push_linvel_max = 0.35
+    config.push_angvel_max = 0.25
+    config.command_config.forward_min = 0.0
+    config.command_config.forward_max = 0.0
+    config.command_config.high_speed_min = 0.0
+    config.command_config.high_speed_prob = 0.0
+    config.command_config.turn_max = 0.0
+    config.command_config.zero_prob = 1.0
+    config.command_config.turn_zero_prob = 1.0
+    config.reward_config.scales.tracking_lin_vel = 0.0
+    config.reward_config.scales.tracking_ang_vel = 0.0
+    config.reward_config.scales.orientation = -3.0
+    config.reward_config.scales.base_height = -1.0
+    config.reward_config.scales.low_torso_height = -8.0
+    config.reward_config.scales.non_foot_clearance = 1.5
+    config.reward_config.scales.commanded_stand_still = 4.0
+    config.reward_config.scales.stand_still = -0.5
+    config.reward_config.scales.pose = -0.25
+    config.reward_config.scales.action_rate = -0.02
+    return config
+
+
+def walk_config() -> config_dict.ConfigDict:
+    config = default_config()
+    config.episode_length = 1000
+    config.reset_standing_prob = 1.0
+    config.curriculum_task = "walk"
+    config.walk_command_forward_min = 0.5
+    config.walk_command_forward_max = 1.5
+    config.walk_command_turn_max = 0.0
+    config.walk_command_zero_prob = 0.10
+    config.gait_frequency_min = 0.9
+    config.gait_frequency_per_mps = 0.20
+    config.gait_frequency_max = 1.4
+    config.gait_swing_height = 0.14
+    config.reward_config.scales.tracking_lin_vel = 1.5
+    config.reward_config.scales.tracking_ang_vel = 0.0
+    config.reward_config.scales.feet_phase = 1.5
+    config.reward_config.scales.feet_air_time = 1.5
+    config.reward_config.scales.feet_slip = -0.5
+    config.reward_config.scales.commanded_stand_still = 1.5
+    config.reward_config.scales.action_rate = -0.02
+    return config
+
+
+def joystick_config() -> config_dict.ConfigDict:
+    config = default_config()
+    config.episode_length = 1000
+    config.reset_standing_prob = 1.0
+    config.command_config.forward_min = 0.0
+    config.command_config.forward_max = 3.0
+    config.command_config.high_speed_min = 2.0
+    config.command_config.high_speed_prob = 0.20
+    config.command_config.turn_max = 1.0
+    config.command_config.zero_prob = 0.15
+    config.push_interval_min = 5.0
+    config.push_interval_max = 10.0
+    config.push_linvel_max = 0.20
+    config.push_angvel_max = 0.15
+    return config
+
+
+def run_config() -> config_dict.ConfigDict:
+    config = default_config()
+    config.episode_length = 1000
+    config.reset_standing_prob = 1.0
+    config.command_config.forward_min = 3.0
+    config.command_config.forward_max = 10.0
+    config.command_config.high_speed_min = 7.0
+    config.command_config.high_speed_prob = 0.60
+    config.command_config.turn_max = 0.25
+    config.command_config.zero_prob = 0.0
+    config.gait_frequency_min = 1.0
+    config.gait_frequency_per_mps = 0.08
+    config.gait_frequency_max = 1.8
+    config.gait_swing_height = 0.18
+    config.running_action_residual_scale = [0.35] * 8 + [1.0, 1.0]
+    config.reward_config.scales.tracking_lin_vel = 2.0
+    config.reward_config.scales.feet_phase = 1.5
+    config.reward_config.scales.feet_air_time = 1.5
+    config.reward_config.scales.feet_slip = -0.75
+    config.reward_config.scales.ang_vel_xy = -0.30
+    config.reward_config.scales.action_rate = -0.015
     return config
 
 
@@ -177,7 +276,8 @@ class TrexJoystick(trex_getup.TrexGetup):
             phase_rng,
             roll_rng,
             blend_rng,
-        ) = jax.random.split(rng, 12)
+            push_rng,
+        ) = jax.random.split(rng, 13)
         yaw = jax.random.uniform(
             yaw_rng,
             (),
@@ -274,6 +374,7 @@ class TrexJoystick(trex_getup.TrexGetup):
             "rng": rng,
             "command": command,
             "steps_until_next_cmd": self._sample_command_interval(interval_rng),
+            "steps_until_next_push": self._sample_push_interval(push_rng),
             "last_act": jp.zeros(self.action_size),
             "last_last_act": jp.zeros(self.action_size),
             "stand_hold_act": jp.zeros(self.action_size),
@@ -308,7 +409,8 @@ class TrexJoystick(trex_getup.TrexGetup):
             + applied_action * target_scale * self._config.action_scale
         )
         ctrl = self._default_ctrl.at[self._action_actuator_ids].set(target)
-        data = mjx_env.step(self.mjx_model, state.data, ctrl, self.n_substeps)
+        data = self._maybe_apply_push(state)
+        data = mjx_env.step(self.mjx_model, data, ctrl, self.n_substeps)
         contact = jp.array(self._foot_contact_scores(data)) > 0.2
         contact_filt = contact | state.info["last_contact"]
         feet_air_time = state.info["feet_air_time"] + self.dt
@@ -338,6 +440,8 @@ class TrexJoystick(trex_getup.TrexGetup):
         state.info["feet_air_time"] = feet_air_time * ~contact
         state.info["last_contact"] = contact
         state.info["gait_phase"] = self._updated_gait_phase(state.info, standing_gate)
+        if self._push_enabled():
+            state.info["steps_until_next_push"] -= 1
         state.info["steps_until_next_cmd"] -= 1
         state.info["rng"], command_rng, interval_rng = jax.random.split(
             state.info["rng"], 3
@@ -655,6 +759,57 @@ class TrexJoystick(trex_getup.TrexGetup):
             jax.random.exponential(rng) * self._config.reset_command_interval_mean
         )
         return jp.maximum(1, jp.round(interval / self.dt)).astype(jp.int32)
+
+    def _push_enabled(self) -> bool:
+        return (
+            self._config.push_interval_max > 0.0
+            and (
+                self._config.push_linvel_max > 0.0
+                or self._config.push_angvel_max > 0.0
+            )
+        )
+
+    def _sample_push_interval(self, rng: jax.Array) -> jax.Array:
+        if not self._push_enabled():
+            return jp.array(2**30, dtype=jp.int32)
+        interval = jax.random.uniform(
+            rng,
+            (),
+            minval=self._config.push_interval_min,
+            maxval=self._config.push_interval_max,
+        )
+        return jp.maximum(1, jp.round(interval / self.dt)).astype(jp.int32)
+
+    def _maybe_apply_push(self, state: mjx_env.State) -> mjx.Data:
+        if not self._push_enabled():
+            return state.data
+        state.info["rng"], push_rng, interval_rng = jax.random.split(
+            state.info["rng"], 3
+        )
+        should_push = state.info["steps_until_next_push"] <= 0
+        angle_rng, mag_rng, yaw_rng = jax.random.split(push_rng, 3)
+        angle = jax.random.uniform(angle_rng, (), minval=-jp.pi, maxval=jp.pi)
+        lin_mag = jax.random.uniform(
+            mag_rng, (), minval=0.0, maxval=self._config.push_linvel_max
+        )
+        yaw_mag = jax.random.uniform(
+            yaw_rng,
+            (),
+            minval=-self._config.push_angvel_max,
+            maxval=self._config.push_angvel_max,
+        )
+        delta_lin = lin_mag * jp.array([jp.cos(angle), jp.sin(angle), 0.0])
+        delta_ang = jp.array([0.0, 0.0, yaw_mag])
+        gate = should_push.astype(jp.float32)
+        qvel = state.data.qvel
+        qvel = qvel.at[:3].add(gate * delta_lin)
+        qvel = qvel.at[3:6].add(gate * delta_ang)
+        state.info["steps_until_next_push"] = jp.where(
+            should_push,
+            self._sample_push_interval(interval_rng),
+            state.info["steps_until_next_push"],
+        )
+        return state.data.replace(qvel=qvel)
 
     def _gait_prior_action(self, info: dict[str, Any]) -> jax.Array:
         phase = info["gait_phase"]
@@ -1312,3 +1467,36 @@ class TrexJoystick(trex_getup.TrexGetup):
     def get_local_angvel(self, data: mjx.Data) -> jax.Array:
         torso_xmat = data.site_xmat[self._imu_site_id].reshape((3, 3))
         return torso_xmat.T @ self.get_global_angvel(data)
+
+
+class TrexBalance(TrexJoystick):
+    """Stand from the nominal pose and reject push perturbations."""
+
+    def __init__(
+        self,
+        config: config_dict.ConfigDict = balance_config(),
+        config_overrides: Optional[Dict[str, Union[str, int, list[Any]]]] = None,
+    ):
+        super().__init__(config, config_overrides)
+
+
+class TrexWalk(TrexJoystick):
+    """Track straight-line walking commands from standing starts."""
+
+    def __init__(
+        self,
+        config: config_dict.ConfigDict = walk_config(),
+        config_overrides: Optional[Dict[str, Union[str, int, list[Any]]]] = None,
+    ):
+        super().__init__(config, config_overrides)
+
+
+class TrexRun(TrexJoystick):
+    """Track high forward speeds while preserving a visible gait."""
+
+    def __init__(
+        self,
+        config: config_dict.ConfigDict = run_config(),
+        config_overrides: Optional[Dict[str, Union[str, int, list[Any]]]] = None,
+    ):
+        super().__init__(config, config_overrides)

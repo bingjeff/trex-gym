@@ -43,6 +43,7 @@ def _is_foot_geom(name: str) -> bool:
 
 
 def _load_policy(checkpoint_path: Path):
+    checkpoint_path = checkpoint_path.resolve()
     config_path = checkpoint_path / "ppo_network_config.json"
     loaded = json.loads(config_path.read_text())
     kwargs = loaded["network_factory_kwargs"]

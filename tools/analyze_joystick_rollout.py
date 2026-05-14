@@ -19,6 +19,13 @@ if str(PROJECT_ROOT) not in sys.path:
 from mjx_gym import trex_joystick
 from tools.analyze_policy_rollout import _load_policy
 
+_TASKS = {
+    "TrexBalance": (trex_joystick.TrexBalance, trex_joystick.balance_config),
+    "TrexWalk": (trex_joystick.TrexWalk, trex_joystick.walk_config),
+    "TrexJoystick": (trex_joystick.TrexJoystick, trex_joystick.joystick_config),
+    "TrexRun": (trex_joystick.TrexRun, trex_joystick.run_config),
+}
+
 
 def _apply_nested_config(config, values: dict) -> None:
     for key, value in values.items():
@@ -41,7 +48,7 @@ def _checkpoint_config_path(checkpoint: Path) -> Path:
 
 
 def _load_env_config(args: argparse.Namespace):
-    config = trex_joystick.default_config()
+    config = _TASKS[args.task][1]()
     config_path = _checkpoint_config_path(args.checkpoint)
     if args.use_checkpoint_config and config_path.exists():
         _apply_nested_config(config, json.loads(config_path.read_text()))
@@ -60,7 +67,7 @@ def analyze(args: argparse.Namespace) -> None:
         raise ValueError("--skip-steps must be smaller than --steps")
 
     config = _load_env_config(args)
-    env = trex_joystick.TrexJoystick(config)
+    env = _TASKS[args.task][0](config)
     policy = _load_policy(args.checkpoint)
     jit_policy = jax.jit(policy)
     jit_step = jax.jit(env.step)
@@ -242,6 +249,7 @@ def analyze(args: argparse.Namespace) -> None:
             metric_sums[key] += float(jax.device_get(value))
 
     print(f"checkpoint: {args.checkpoint}")
+    print(f"task: {args.task}")
     print(f"reset_pose: {args.reset_pose}")
     print(f"command_forward: {args.forward:.3f}")
     print(f"command_turn: {args.turn:.3f}")
@@ -320,6 +328,9 @@ def analyze(args: argparse.Namespace) -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("checkpoint", type=Path)
+    parser.add_argument(
+        "--task", choices=tuple(_TASKS.keys()), default="TrexJoystick"
+    )
     parser.add_argument("--impl", default="warp", choices=("jax", "warp"))
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--steps", type=int, default=1000)
