@@ -93,6 +93,11 @@ def default_config() -> config_dict.ConfigDict:
         lateral_vel=-0.25,
         vertical_vel=-0.5,
         base_tilt_ang_vel=-1.0,
+        moving_orientation=-20.0,
+        moving_torso_height=-20.0,
+        moving_non_foot_clearance=-20.0,
+        moving_lateral_vel=-1.0,
+        moving_vertical_vel=-2.0,
         no_foot_contact=-12.0,
         running_height_excess=-8.0,
         foot_slip=-0.2,
@@ -418,6 +423,21 @@ class TrexJoystick(trex_getup.TrexGetup):
             "vertical_vel": locomotion_gate * jp.square(local_linvel[1]),
             "base_tilt_ang_vel": locomotion_gate
             * self._cost_base_tilt_ang_vel(local_angvel),
+            "moving_orientation": moving_gate
+            * self._running_speed_gate(info["command"])
+            * jp.square(1.0 - orientation),
+            "moving_torso_height": moving_gate
+            * self._running_speed_gate(info["command"])
+            * jp.square(1.0 - height),
+            "moving_non_foot_clearance": moving_gate
+            * self._running_speed_gate(info["command"])
+            * jp.square(1.0 - clearance),
+            "moving_lateral_vel": moving_gate
+            * self._running_speed_gate(info["command"])
+            * jp.square(local_linvel[2]),
+            "moving_vertical_vel": moving_gate
+            * self._running_speed_gate(info["command"])
+            * jp.square(local_linvel[1]),
             "no_foot_contact": moving_gate
             * self._running_speed_gate(info["command"])
             * self._cost_no_foot_contact(data),

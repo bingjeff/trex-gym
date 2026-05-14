@@ -4,6 +4,7 @@ import jax
 import jax.numpy as jp
 import mujoco
 from mujoco import mjx
+from mujoco_playground._src import mjx_env
 import numpy as np
 
 from mjx_gym import train
@@ -492,6 +493,68 @@ class TestMjxGym(unittest.TestCase):
         self.assertGreater(running, 0.9)
         self.assertLess(both_planted, 0.1)
         self.assertGreater(alternating_duty, 0.9)
+
+    def test_trex_joystick_moving_costs_penalize_collapsed_posture(self):
+        env = trex_joystick.TrexJoystick()
+        standing_data = mjx_env.make_data(
+            env.mj_model,
+            qpos=env._standing_qpos,
+            qvel=jp.zeros(env.mjx_model.nv),
+            ctrl=env._default_ctrl,
+            impl=env.mjx_model.impl.value,
+            naconmax=env._config.naconmax,
+            njmax=env._config.njmax,
+        )
+        standing_data = mjx.forward(env.mjx_model, standing_data)
+        collapsed_qpos = env._side_qpos.at[2].set(0.7)
+        collapsed_data = mjx_env.make_data(
+            env.mj_model,
+            qpos=collapsed_qpos,
+            qvel=jp.zeros(env.mjx_model.nv),
+            ctrl=env._default_ctrl,
+            impl=env.mjx_model.impl.value,
+            naconmax=env._config.naconmax,
+            njmax=env._config.njmax,
+        )
+        collapsed_data = mjx.forward(env.mjx_model, collapsed_data)
+        info = {
+            "command": jp.array([2.0, 0.0]),
+            "last_act": jp.zeros(env.action_size),
+            "last_last_act": jp.zeros(env.action_size),
+            "stand_hold_act": jp.zeros(env.action_size),
+            "was_standing_command": jp.zeros(()),
+            "last_foot_centers": env._foot_centers_world(standing_data),
+            "contact_duty": jp.zeros(2),
+            "feet_air_time": jp.zeros(2),
+            "last_contact": jp.zeros(2, dtype=bool),
+            "gait_phase": jp.zeros(()),
+            "steps_until_next_cmd": jp.array(1),
+            "rng": jax.random.PRNGKey(0),
+        }
+
+        standing_rewards = env._get_reward(
+            standing_data,
+            jp.zeros(env.action_size),
+            info,
+            jp.zeros(2, dtype=bool),
+            jp.zeros(2),
+        )
+        collapsed_rewards = env._get_reward(
+            collapsed_data,
+            jp.zeros(env.action_size),
+            info,
+            jp.zeros(2, dtype=bool),
+            jp.zeros(2),
+        )
+
+        for key in (
+            "moving_orientation",
+            "moving_torso_height",
+            "moving_non_foot_clearance",
+        ):
+            self.assertGreater(
+                float(collapsed_rewards[key]), float(standing_rewards[key])
+            )
 
     def test_trex_joystick_moving_support_gate_requires_foot_contact(self):
         env = trex_joystick.TrexJoystick()
