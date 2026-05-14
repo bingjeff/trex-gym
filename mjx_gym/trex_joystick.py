@@ -19,6 +19,9 @@ def default_config() -> config_dict.ConfigDict:
     config.reset_command_interval_mean = 3.0
     config.contact_duty_alpha = 0.02
     config.stand_action_smoothing = 0.5
+    config.terminate_on_fall = False
+    config.fall_orientation_threshold = 0.35
+    config.fall_torso_height = 1.2
     config.stand_pose_action = [
         0.0,
         0.0,
@@ -248,7 +251,7 @@ class TrexJoystick(trex_getup.TrexGetup):
         contact_filt = contact | state.info["last_contact"]
         feet_air_time = state.info["feet_air_time"] + self.dt
         first_contact = (feet_air_time > 0.0) & contact_filt
-        done = jp.zeros(())
+        done = self._fall_done(data)
         rewards = self._get_reward(
             data, applied_action, state.info, first_contact, feet_air_time
         )
@@ -604,6 +607,16 @@ class TrexJoystick(trex_getup.TrexGetup):
             & (clearance > self._config.stand_pose_clearance_threshold)
         )
         return standing_gate * ready.astype(jp.float32)
+
+    def _fall_done(self, data: mjx.Data) -> jax.Array:
+        if not self._config.terminate_on_fall:
+            return jp.zeros(())
+        orientation = self._reward_orientation(self.get_gravity(data))
+        torso_height = data.site_xpos[self._imu_site_id, 2]
+        fallen = (orientation < self._config.fall_orientation_threshold) | (
+            torso_height < self._config.fall_torso_height
+        )
+        return fallen.astype(jp.float32)
 
     def _running_speed_gate(self, command: jax.Array) -> jax.Array:
         return jp.clip((jp.abs(command[0]) - 0.5) / 1.5, 0.0, 1.0)
