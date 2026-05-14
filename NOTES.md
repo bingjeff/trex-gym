@@ -424,3 +424,14 @@ May 14 parallel GPU experiments:
   `/workspace/train-a5000-walk-standing-speed12-seed10.log`. It keeps the
   standing-start setup but raises `walk_command_forward_max` from `0.8` to
   `1.2 m/s`.
+- L40S 50M 4096-env seed 9 completed:
+  `/workspace/runs/TrexJoystick-20260514-162436-humanoid-reset-l40s-walk-standing-50m-n4096-seed9`.
+  Rewards were `-1.614`, `8.258`, `17.174`, `13.902`, `13.205`, `15.442`,
+  `16.798`, `16.892`; compile `28.0 s`, train `627.7 s` for 57.3M effective
+  steps. Throughput stayed high (~91.4k steps/s), but reward plateaued lower
+  than the A5000 1024-env 20M seed 5 result.
+- Started L40S 2048-env 50M comparison in tmux
+  `train-l40s-walk-standing-50m-n2048-seed11`, log
+  `/workspace/train-l40s-walk-standing-50m-n2048-seed11.log`. Purpose: test
+  whether a smaller L40S batch improves optimization quality while still being
+  faster than A5000.
