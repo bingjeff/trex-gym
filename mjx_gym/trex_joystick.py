@@ -69,6 +69,7 @@ def default_config() -> config_dict.ConfigDict:
         gait_anti_phase=2.0,
         gait_symmetry=1.0,
         phase_contact=1.0,
+        phase_contact_error=-2.0,
         phase_foot_clearance=1.0,
         feet_air_time=0.5,
         contact_duty_symmetry=1.0,
@@ -376,6 +377,8 @@ class TrexJoystick(trex_getup.TrexGetup):
             * self._reward_gait_anti_phase(data),
             "gait_symmetry": achieved_running_gate * self._reward_gait_symmetry(data),
             "phase_contact": running_gate * self._reward_phase_contact(data, info),
+            "phase_contact_error": running_gate
+            * self._cost_phase_contact_error(data, info),
             "phase_foot_clearance": running_gate
             * self._reward_phase_foot_clearance(data, info),
             "feet_air_time": running_gate
@@ -669,14 +672,19 @@ class TrexJoystick(trex_getup.TrexGetup):
     def _reward_phase_contact(
         self, data: mjx.Data, info: dict[str, Any]
     ) -> jax.Array:
+        error = self._cost_phase_contact_error(data, info)
+        return jp.exp(-2.0 * error)
+
+    def _cost_phase_contact_error(
+        self, data: mjx.Data, info: dict[str, Any]
+    ) -> jax.Array:
         left_contact, right_contact = self._foot_contact_scores(data)
         phase = info["gait_phase"]
         right_target = (jp.sin(phase) > 0.0).astype(jp.float32)
         left_target = 1.0 - right_target
-        error = jp.square(left_contact - left_target) + jp.square(
+        return jp.square(left_contact - left_target) + jp.square(
             right_contact - right_target
         )
-        return jp.exp(-2.0 * error)
 
     def _reward_phase_foot_clearance(
         self, data: mjx.Data, info: dict[str, Any]
