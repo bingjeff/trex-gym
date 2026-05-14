@@ -403,3 +403,14 @@ May 14 parallel GPU experiments:
   standing-start low-speed setup but increases `walk_command_turn_max` from
   `0.25` to `0.5 rad/s` to start testing whether the policy can learn a broader
   joystick turn distribution.
+- L40S 6144-env seed 7 completed without OOM:
+  `/workspace/runs/TrexJoystick-20260514-161737-humanoid-reset-l40s-walk-standing-20m-n6144-seed7`.
+  Rewards were `-1.039`, `3.044`, `7.223`, `8.386`; compile `29.2 s`, train
+  `330.8 s` for 22.1M effective steps. Throughput was about 66.9k steps/s,
+  worse than the 4096-env run (~82.6k steps/s), so 4096 envs is currently the
+  better L40S setting.
+- Started a longer L40S 4096-env run in tmux
+  `train-l40s-walk-standing-50m-seed9`: 50M requested steps, `num_envs=4096`,
+  `batch_size=1024`, `naconmax=131072,njmax=4096`. Purpose: see whether the
+  standing-start curriculum continues improving with a longer run at the best
+  observed L40S throughput setting.
