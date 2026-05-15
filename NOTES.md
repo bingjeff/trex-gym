@@ -1141,3 +1141,20 @@ May 15 phase-action-center extraction:
   useful open-loop gait. The `phase_action_center` hook remains useful, but the
   table needs to be designed as a stabilizable gait center, not extracted by
   averaging a feedback policy.
+
+May 15 phase-center residual bridge:
+
+- Added `phase_action_center_path` so training configs can reference a saved
+  phase-action-center JSON file without embedding a large table in command-line
+  overrides.
+- Trained run17 as a short bridge experiment:
+  `/workspace/runs/TrexRun-20260515-132926-run17-phasecenter-walk1to3-20m-from-walk`.
+  It warm-started from the stable expanded `TrexWalk` checkpoint, used the
+  extracted walk phase center, and trained `TrexRun` commands from `1-3 m/s`.
+- Eval scalar improved from `-71.928` to `-11.771`, but the fixed-command gate
+  failed badly. The final checkpoint terminated at step `369` for `1.0 m/s`,
+  step `77` for `2.0 m/s`, and step `65` for `3.0 m/s`; all ended collapsed
+  with torso height under about `1.0 m`.
+- Conclusion: scalar reward can be misleading for these bridge attempts. A
+  walking-policy-derived phase center plus residual PPO did not preserve the
+  stable walk behavior when moved into the stricter `TrexRun` task.

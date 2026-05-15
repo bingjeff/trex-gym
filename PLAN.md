@@ -725,6 +725,11 @@ Conclusion:
   open-loop: in `TrexRun` it terminated within about `83-90` steps and moved
   only around `0.29 m/s`. Averaging a feedback policy by phase is therefore not
   enough; the explicit center needs to be designed as a stabilizable gait.
+- A short residual-policy bridge from the stable walking checkpoint into
+  `TrexRun` with that extracted phase center improved training scalar reward
+  but failed fixed-command gates: the final checkpoint terminated at steps
+  `369`, `77`, and `65` for `1`, `2`, and `3 m/s` commands respectively.
+  Do not treat scalar improvement alone as progress for this phase.
 - The next step should be model/control debugging, not another blind PPO run:
   inspect actuator force/position limits, whether the leg/tail action space can
   generate the required stride impulse, whether the simplified collision feet

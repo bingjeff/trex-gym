@@ -712,3 +712,44 @@ Conclusion:
   fine-tuned from run14.
 - The next high-speed attempt should start from a different control template or
   curriculum, not from the same run12/run14 bounding family.
+
+## TrexRun phase-center residual bridge experiment Warp 20M
+
+- Remote path:
+  `/workspace/runs/TrexRun-20260515-132926-run17-phasecenter-walk1to3-20m-from-walk/`
+- Warm start:
+  `/workspace/runs/TrexWalk-20260515-024930-walk-expand-30m-from-gaitprior/checkpoints/000032768000`
+- Phase center:
+  `/workspace/runs/phase_centers/walk_expand_f1p0_applied8.json`
+- Training backend: MuJoCo MJX Warp
+- Training length: 20M requested steps; final saved checkpoint at
+  `000026214400`
+
+This was not promoted. It tested whether a `TrexRun` policy could bridge from
+the stable expanded walking checkpoint while using an extracted walking
+phase-action center as the residual-action center.
+
+Training eval reward improved monotonically:
+
+- `0`: `-71.928`
+- `6553600`: `-38.968`
+- `13107200`: `-19.683`
+- `19660800`: `-14.195`
+- `26214400`: `-11.771`
+
+Fixed-command gates on the final checkpoint failed:
+
+- command `1.0 m/s`: terminated at step `369`, mean forward `0.063 m/s`, torso
+  height `0.446-1.035 m`, orientation reward `0.000-0.021`.
+- command `2.0 m/s`: terminated at step `77`, mean forward `-0.024 m/s`, torso
+  height `0.496-0.693 m`, orientation reward `0.002`.
+- command `3.0 m/s`: terminated at step `65`, mean forward `-0.003 m/s`, torso
+  height `0.510-0.601 m`, orientation reward `0.002`.
+
+Conclusion:
+
+- Scalar reward was misleading for this bridge experiment. The policy collapsed
+  and did not produce usable low-speed `TrexRun` locomotion.
+- The phase-center hook is still useful infrastructure, but a phase center
+  extracted from the walking feedback policy is not a good starting template for
+  TrexRun.
