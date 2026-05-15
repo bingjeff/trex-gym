@@ -548,6 +548,7 @@ class TestMjxGym(unittest.TestCase):
         self.assertGreater(run._config.reward_config.scales.tracking_forward_vel, 0.0)
         self.assertEqual(0.0, run._config.reward_config.high_speed_tracking_sigma_scale)
         self.assertLess(run._config.reward_config.scales.forward_speed_error, 0.0)
+        self.assertLess(run._config.reward_config.scales.forward_speed_abs_error, 0.0)
         self.assertEqual(0.0, run._config.reward_config.scales.forward_progress)
         self.assertLessEqual(run._config.reward_config.scales.termination, -1000.0)
         self.assertEqual(8, len(run._config.leg_actuator_kp_scale))
@@ -755,6 +756,7 @@ class TestMjxGym(unittest.TestCase):
             "forward_progress",
             "forward_speed_deficit",
             "forward_speed_error",
+            "forward_speed_abs_error",
             "orientation",
             "base_height",
             "low_torso_height",
@@ -901,6 +903,22 @@ class TestMjxGym(unittest.TestCase):
         self.assertEqual(
             1.0,
             float(joystick._gait_reward_gate(command, overspeed)),
+        )
+
+    def test_trex_run_absolute_speed_error_is_not_command_normalized(self):
+        run = trex_joystick.TrexRun()
+        low_command = jp.array([2.0, 0.0])
+        high_command = jp.array([6.0, 0.0])
+        low_velocity = jp.array([3.0, 0.0, 0.0])
+        high_velocity = jp.array([7.0, 0.0, 0.0])
+
+        self.assertAlmostEqual(
+            float(run._cost_forward_speed_abs_error(low_command, low_velocity)),
+            float(run._cost_forward_speed_abs_error(high_command, high_velocity)),
+        )
+        self.assertGreater(
+            float(run._cost_forward_speed_error(low_command, low_velocity)),
+            float(run._cost_forward_speed_error(high_command, high_velocity)),
         )
 
     def test_trex_joystick_gait_rewards_are_disabled_for_stand_command(self):

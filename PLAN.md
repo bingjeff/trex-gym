@@ -802,3 +802,9 @@ Conclusion:
   the current direct expansion branch is blocked above the strict `5 m/s`
   bridge. The next phase should inspect and change the model/control/gait
   parameterization before spending more GPU time on high-speed PPO.
+- The first follow-up objective correction is to add an absolute forward speed
+  error term. The older speed-error cost is normalized by command speed, so it
+  becomes weaker at the high speeds where overspeeding is the failure mode.
+  `TrexRun` now keeps the normalized error term and also enables
+  `forward_speed_abs_error=-4.0`; this should be evaluated with a narrow
+  `5-6 m/s` continuation from run29 before any broader expansion.

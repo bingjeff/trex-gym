@@ -125,6 +125,7 @@ def default_config() -> config_dict.ConfigDict:
         forward_progress=0.0,
         forward_speed_deficit=0.0,
         forward_speed_error=0.0,
+        forward_speed_abs_error=0.0,
         orientation=-2.0,
         base_height=-0.5,
         low_torso_height=-5.0,
@@ -319,6 +320,7 @@ def run_config() -> config_dict.ConfigDict:
     config.reward_config.scales.forward_progress = 0.0
     config.reward_config.scales.forward_speed_deficit = -12.0
     config.reward_config.scales.forward_speed_error = -100.0
+    config.reward_config.scales.forward_speed_abs_error = -4.0
     config.reward_config.scales.orientation = -8.0
     config.reward_config.scales.base_height = -1.0
     config.reward_config.scales.low_torso_height = -10.0
@@ -676,6 +678,9 @@ class TrexJoystick(trex_getup.TrexGetup):
             "forward_speed_error": moving_gate
             * orientation
             * self._cost_forward_speed_error(info["command"], local_linvel),
+            "forward_speed_abs_error": moving_gate
+            * orientation
+            * self._cost_forward_speed_abs_error(info["command"], local_linvel),
             "orientation": jp.square(1.0 - orientation),
             "base_height": jp.square(1.0 - height),
             "low_torso_height": self._cost_low_torso_height(torso_height),
@@ -1153,6 +1158,13 @@ class TrexJoystick(trex_getup.TrexGetup):
             commanded_forward, 1.0
         )
         return moving_forward * jp.square(normalized_error)
+
+    def _cost_forward_speed_abs_error(
+        self, command: jax.Array, local_linvel: jax.Array
+    ) -> jax.Array:
+        commanded_forward = jp.maximum(command[0], 0.0)
+        moving_forward = commanded_forward > 0.05
+        return moving_forward * jp.square(local_linvel[0] - commanded_forward)
 
     def _reward_tracking_turn_vel(
         self, command: jax.Array, local_angvel: jax.Array

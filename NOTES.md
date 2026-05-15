@@ -1404,3 +1404,24 @@ May 15 speed-gated gait reward diagnostic:
   about `5 m/s`; further progress should come from model/control debugging or a
   different action/gait parameterization rather than more direct speed-only PPO
   expansion.
+
+May 15 speed-error objective correction:
+
+- Full diagnostics comparing run29 at `5 m/s` and run31 at `6 m/s` showed the
+  failed high-speed policy is not simply missing the new gait gate. The `6 m/s`
+  rollout has higher foot speed, vertical velocity penalty, hip/knee
+  saturation, ankle saturation, and foot slip penalty, while gait anti-phase
+  stays poor.
+- Found an objective weakness in the current speed-error cost:
+  `_cost_forward_speed_error` divides by commanded speed. A `1 m/s` absolute
+  overspeed is therefore penalized much less at `6-10 m/s` than at `2 m/s`,
+  which works against command tracking exactly where the run task is failing.
+- Added a default-disabled `forward_speed_abs_error` cost and enabled it for
+  `TrexRun` with scale `-4.0`. This keeps the existing normalized error term
+  but adds an absolute m/s tracking penalty that does not weaken at high
+  command speeds.
+- Focused local tests passed:
+  `test_trex_single_skill_task_configs`,
+  `test_trex_joystick_humanoid_style_reward_terms`,
+  `test_trex_run_gates_positive_gait_rewards_by_speed_tracking`, and
+  `test_trex_run_absolute_speed_error_is_not_command_normalized`.
