@@ -931,3 +931,48 @@ Conclusion:
   look like a low hopping/bounding mode. Do not expand speed from this yet;
   first try stronger contact/phase/anti-phase discipline at the same command
   range.
+
+## TrexRun stronger gait-discipline continuation run22 Warp 20M
+
+- Remote path:
+  `/workspace/runs/TrexRun-20260515-153148-run22-termcost-gaitstrong-1to2p5-20m-from-run21/`
+- Warm start:
+  `/workspace/runs/TrexRun-20260515-151406-run21-termcost-gaitdiscipline-1to2p5-20m-from-run20/checkpoints/000026214400`
+- Config change: same `1.0-2.5 m/s` range and phase center, with stronger
+  contact/phase/anti-phase terms, lower forward-progress weight, and stronger
+  no-foot-contact/vertical/tilt/excess-height costs.
+
+Training eval rewards:
+
+- `0`: `247.702`
+- `6553600`: `250.772`
+- `13107200`: `258.070`
+- `19660800`: `264.230`
+- `26214400`: `271.479`
+
+Fixed-command diagnostics, Warp, standing reset, seed 0, final 500 steps:
+
+- command `1.0 m/s`: no termination, mean forward `0.991 m/s`, mean lateral
+  `0.011 m/s`, gait anti-phase `0.250`, torso height `2.510-2.545 m`,
+  orientation reward `0.986-1.000`.
+- command `1.5 m/s`: no termination, mean forward `1.514 m/s`, mean lateral
+  `0.006 m/s`, gait anti-phase `0.252`, torso height `2.479-2.527 m`,
+  orientation reward `0.978-1.000`.
+- command `2.0 m/s`: no termination, mean forward `2.007 m/s`, mean lateral
+  `-0.038 m/s`, gait anti-phase `0.266`, torso height `2.459-2.522 m`,
+  orientation reward `0.982-1.000`.
+- command `2.5 m/s`: no termination, mean forward `2.508 m/s`, mean lateral
+  `-0.066 m/s`, gait anti-phase `0.297`, torso height `2.483-2.539 m`,
+  orientation reward `0.987-1.000`.
+
+Videos on the remote:
+
+- `/workspace/runs/TrexRun-20260515-153148-run22-termcost-gaitstrong-1to2p5-20m-from-run21/videos/run22_f2p0.mp4`
+- `/workspace/runs/TrexRun-20260515-153148-run22-termcost-gaitstrong-1to2p5-20m-from-run21/videos/run22_f2p5.mp4`
+
+Conclusion:
+
+- Run22 is the current best low-speed `TrexRun` base. It still does not look
+  like a fully natural alternating gait, but it improves tracking, lateral
+  drift, uprightness, and anti-phase relative to run20/run21. Use this for the
+  next staged speed expansion.

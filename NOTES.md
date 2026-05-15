@@ -1267,3 +1267,16 @@ May 15 lateral velocity and gait-discipline continuation:
   rendered frames still show a low hopping/bounding mode. The next experiment
   should use stronger contact/phase/anti-phase terms at the same speed band,
   rather than expanding speed.
+
+May 15 stronger gait-discipline continuation:
+
+- Trained run22 from run21 with much stronger contact/phase/anti-phase terms:
+  `/workspace/runs/TrexRun-20260515-153148-run22-termcost-gaitstrong-1to2p5-20m-from-run21`.
+- This improved the fixed-command gates without losing tracking:
+  - `1.0 m/s`: mean forward `0.991`, lateral `0.011`, anti-phase `0.250`.
+  - `1.5 m/s`: mean forward `1.514`, lateral `0.006`, anti-phase `0.252`.
+  - `2.0 m/s`: mean forward `2.007`, lateral `-0.038`, anti-phase `0.266`.
+  - `2.5 m/s`: mean forward `2.508`, lateral `-0.066`, anti-phase `0.297`.
+- Rendered frames are still not a fully natural alternating gait, but the body
+  is more level and the lateral drift is much better controlled. Run22 is the
+  best current low-speed `TrexRun` base for the next staged expansion.

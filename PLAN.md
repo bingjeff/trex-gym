@@ -755,12 +755,14 @@ Conclusion:
 - The current active step is therefore a gait-discipline continuation over the
   same `1.0-2.5 m/s` range, with a new `lateral_vel` cost and stronger
   phase/contact/anti-phase terms. The first continuation improved lateral drift
-  and uprightness but not gait anti-phase, so the immediate next step is one
-  stronger contact/phase/anti-phase continuation at the same speed range. If
-  that preserves speed tracking while improving rendered gait quality, expand
-  command speed gradually. If it collapses or keeps the same exploit mode,
-  pause PPO and return to model/control debugging: inspect actuator
-  force/position limits, whether the leg/tail action space can generate the
-  required stride impulse, whether the simplified collision feet are giving
-  enough traction/contact fidelity, and whether the high-speed gait prior
-  should be replaced with a better open-loop running template.
+  and uprightness but not gait anti-phase. A stronger continuation improved
+  tracking, lateral drift, uprightness, and anti-phase enough to serve as the
+  next low-speed base, though rendered frames still show a simplified
+  hopping/bounding gait. The next step is staged speed expansion from this base,
+  while continuing to inspect frames after each phase. If expansion collapses or
+  recreates the old high-speed exploit, pause PPO and return to model/control
+  debugging: inspect actuator force/position limits, whether the leg/tail
+  action space can generate the required stride impulse, whether the simplified
+  collision feet are giving enough traction/contact fidelity, and whether the
+  high-speed gait prior should be replaced with a better open-loop running
+  template.
