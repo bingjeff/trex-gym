@@ -631,3 +631,43 @@ Conclusion:
   not a satisfactory alternating physical run.
 - This run should be treated as evidence that actuator authority is part of the
   limit, but not as a checkpoint to use locally.
+
+## TrexRun anti-flight reward rebalance experiment Warp 30M
+
+- Remote path:
+  `/workspace/runs/TrexRun-20260515-114027-run15-antiflight-ankle1p5-30m-from-run14/`
+- Warm start:
+  `/workspace/runs/TrexRun-20260515-110344-run14-ankle1p5-8to10-60m-from-run12/checkpoints/000117964800`
+- Training backend: MuJoCo MJX Warp
+- Training length: 30M requested steps; final saved checkpoint at
+  `000032768000`
+- Code/config change: kept ankle `1.5x` `Kp`, reduced forward-tracking reward,
+  and sharply increased no-foot-contact, vertical velocity, excess-height,
+  phase-contact-error, contact-duty-error, and foot-slip penalties.
+
+This was not promoted. The stricter objective exposed the long-flight bounding
+behavior but did not train it away.
+
+Training eval rewards:
+
+- `0`: `-289.565`
+- `6553600`: `-267.191`
+- `13107200`: `-264.810`
+- `19660800`: `-284.959`
+- `26214400`: `-291.173`
+- `32768000`: `-303.267`
+
+Least-bad checkpoint `000013107200`, Warp, standing reset, seed 0, final 500
+steps:
+
+- command `8.0 m/s`: mean forward `9.097 m/s`, no termination, gait anti-phase
+  `0.132`, torso height `2.086-3.006 m`.
+- command `10.0 m/s`: mean forward `9.190 m/s`, no termination, gait anti-phase
+  `0.127`, torso height `2.027-2.874 m`.
+
+Conclusion:
+
+- Stronger anti-flight penalties did not fix the high-speed mode; they mainly
+  made the same behavior score worse.
+- Further work should change the control/model formulation or gait template
+  instead of continuing scalar reward reweighting from the same checkpoint.

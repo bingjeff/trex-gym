@@ -1037,3 +1037,21 @@ May 15 ankle-gain adaptation:
   run14 is not a solved high-speed running policy. The next high-speed step
   should change the model/control formulation or the gait template, not merely
   continue PPO from run14.
+
+May 15 anti-flight reward rebalance:
+
+- Trained run15 from run14 final with ankle `1.5x` still enabled, lower
+  velocity/progress reward, and much stronger no-foot-contact, vertical
+  velocity, excess-height, phase-contact-error, contact-duty-error, and
+  foot-slip penalties:
+  `/workspace/runs/TrexRun-20260515-114027-run15-antiflight-ankle1p5-30m-from-run14`.
+- This did not recover. Eval reward started at `-289.565`, improved only to
+  `-264.810`, and degraded to `-303.267` by the final checkpoint.
+- The least-bad checkpoint still averaged `9.097 m/s` on an `8.0 m/s` command
+  and `9.190 m/s` on a `10.0 m/s` command. Gait anti-phase stayed low
+  (`0.127-0.132`) and torso height/contact behavior remained similar to run14.
+- Conclusion: this is not just a scalar weight issue. The existing high-speed
+  solution family remains a long-flight bounding mode even when made expensive.
+  Further progress likely needs a better gait generator/template, different
+  action parameterization, or model/contact changes rather than more PPO
+  continuations from run12/run14.

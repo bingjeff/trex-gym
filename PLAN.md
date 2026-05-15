@@ -698,6 +698,11 @@ Conclusion:
   `8.838-8.969 m/s` for a `10.0 m/s` command, and it oversped the `8.0 m/s`
   command at `9.694 m/s`. Rendered frames show a long-flight bounding mode
   rather than a clean physical running gait.
+- A follow-up anti-flight reward rebalance from run14 made no useful progress:
+  the least-bad run15 checkpoint still averaged about `9.1 m/s`, had low gait
+  anti-phase around `0.13`, and kept similar contact/height behavior, but the
+  scalar reward stayed strongly negative once flight and vertical-motion costs
+  were made dominant.
 - The next step should be model/control debugging, not another blind PPO run:
   inspect actuator force/position limits, whether the leg/tail action space can
   generate the required stride impulse, whether the simplified collision feet
