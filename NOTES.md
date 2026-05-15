@@ -1356,3 +1356,19 @@ May 15 strict tracking at 5 m/s:
 - Rendered frames still show a simplified bounding gait, but the posture is
   stable and the old `6-7+ m/s` overspeed mode is largely suppressed. Use run29
   as the next staged-expansion base.
+
+May 15 failed strict 5-7 m/s expansion:
+
+- Trained run30 from run29 over `5.0-7.0 m/s`, keeping strict tracking sigma
+  and `forward_speed_error=-100`:
+  `/workspace/runs/TrexRun-20260515-174521-run30-stricttrack-5to7-20m-from-run29`.
+- Scalar reward degraded from `-222.224` to `-303.814`.
+- Fixed gates:
+  - `5.0 m/s`: mean forward `5.357`, lateral `0.101`, anti-phase `0.281`.
+  - `6.0 m/s`: mean forward `7.181`, lateral `0.210`, anti-phase `0.234`.
+  - `7.0 m/s`: mean forward `9.061`, lateral `0.290`, anti-phase `0.225`.
+- Conclusion: run29 is a usable strict `5 m/s` bridge, but the current approach
+  is blocked again above `5 m/s`. Strict tracking suppresses the first overspeed
+  transition, but `6-7 m/s` still falls into the old fast bounding mode. Further
+  progress likely needs a model/control change rather than another direct speed
+  expansion.

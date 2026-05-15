@@ -1168,3 +1168,38 @@ Conclusion:
   `0.44 m/s` and visually remains a simplified bounding gait, but it suppresses
   the previous `6-7+ m/s` overspeed mode enough to use as the next staged
   expansion base.
+
+## TrexRun failed strict 5-7 m/s expansion run30
+
+- Remote path:
+  `/workspace/runs/TrexRun-20260515-174521-run30-stricttrack-5to7-20m-from-run29/`
+- Warm start:
+  `/workspace/runs/TrexRun-20260515-173053-run29-target5-stricter-4p5to5-20m-from-run28/checkpoints/000026214400`
+- Config change: command range `5.0-7.0 m/s`, strict tracking sigma, and
+  `forward_speed_error=-100`.
+
+Training eval rewards:
+
+- `0`: `-222.224`
+- `6553600`: `-224.501`
+- `13107200`: `-238.143`
+- `19660800`: `-289.806`
+- `26214400`: `-303.814`
+
+Fixed-command diagnostics, Warp, standing reset, seed 0, final 500 steps:
+
+- command `5.0 m/s`: no termination, mean forward `5.357 m/s`, mean lateral
+  `0.101 m/s`, gait anti-phase `0.281`, torso height `2.492-2.628 m`,
+  orientation reward `0.976-0.993`.
+- command `6.0 m/s`: no termination, mean forward `7.181 m/s`, mean lateral
+  `0.210 m/s`, gait anti-phase `0.234`, torso height `2.493-2.678 m`,
+  orientation reward `0.983-1.000`.
+- command `7.0 m/s`: no termination, mean forward `9.061 m/s`, mean lateral
+  `0.290 m/s`, gait anti-phase `0.225`, torso height `2.518-2.754 m`,
+  orientation reward `0.974-0.998`.
+
+Conclusion:
+
+- Run30 failed as a `5-7 m/s` expansion. The strict tracking setup preserves
+  the `5 m/s` bridge but does not prevent the overspeed/bounding mode at
+  `6-7 m/s`.

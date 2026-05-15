@@ -788,3 +788,7 @@ Conclusion:
   reduced the `5 m/s` overspeed from `6-7+ m/s` to about `5.44 m/s`. Use the
   strict tracking setup for the next staged expansion, while still treating
   rendered gait quality as a promotion gate.
+- The strict `5-7 m/s` expansion failed: `5 m/s` remained usable, but `6` and
+  `7 m/s` oversped to about `7.2` and `9.1 m/s`. Treat run29 as the current
+  best high-speed bridge and stop direct PPO speed expansion until the model or
+  action/gait parameterization changes.
