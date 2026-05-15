@@ -689,6 +689,15 @@ Conclusion:
 - Directly replaying the best checkpoint with higher global `Kp` destabilized
   the policy, so a global position-servo gain increase is not a safe shortcut.
   Any actuator-authority change should be targeted and retrained.
+- Added actuator-specific `Kp` scaling so individual leg actuators can be
+  strengthened without changing the whole model. A targeted ankle `1.5x`
+  continuation from run12 was trained as
+  `/workspace/runs/TrexRun-20260515-110344-run14-ankle1p5-8to10-60m-from-run12`.
+  The run was stable but did not pass the `10 m/s` gate: the best scalar
+  checkpoint averaged `9.127 m/s` for a `9.0 m/s` command but only
+  `8.838-8.969 m/s` for a `10.0 m/s` command, and it oversped the `8.0 m/s`
+  command at `9.694 m/s`. Rendered frames show a long-flight bounding mode
+  rather than a clean physical running gait.
 - The next step should be model/control debugging, not another blind PPO run:
   inspect actuator force/position limits, whether the leg/tail action space can
   generate the required stride impulse, whether the simplified collision feet

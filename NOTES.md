@@ -1010,3 +1010,30 @@ May 15 high-speed TrexRun phase:
   target. It is a useful experimental checkpoint for roughly `8-9 m/s`
   straight-line high-speed locomotion, but the next step should be a
   model/control investigation rather than another blind PPO continuation.
+
+May 15 ankle-gain adaptation:
+
+- Added actuator-specific position-gain scaling so individual leg actuators can
+  be tested without globally changing every joint. Focused tests verify that
+  only named actuator gains are scaled.
+- Trained run14 from run12 with ankle actuators at `1.5x` `Kp`:
+  `/workspace/runs/TrexRun-20260515-110344-run14-ankle1p5-8to10-60m-from-run12`.
+- The training scalar improved from `-58.824` to a peak of `16.489` at
+  checkpoint `000104857600`, then fell to `9.314` at the final checkpoint.
+- Fixed-command gate for the best scalar checkpoint:
+  - `8.0 m/s` command: `9.694 m/s`, no termination.
+  - `9.0 m/s` command: `9.127 m/s`, no termination.
+  - `10.0 m/s` command: about `8.9 m/s`, no termination.
+- Fixed-command gate for the final checkpoint:
+  - `8.0 m/s` command: `10.217 m/s`, no termination.
+  - `9.0 m/s` command: `9.212 m/s`, no termination.
+  - `10.0 m/s` command: `9.089 m/s`, no termination.
+- The best `10.0 m/s` diagnostic still has low gait anti-phase (`0.131`),
+  substantial phase/contact mismatch, high no-foot-contact penalty, and long
+  flight phases in rendered frames. Hip flexion targets are still often at
+  applied limits and the ankles are near applied saturation about half the
+  sampled steps.
+- Conclusion: targeted ankle authority is a useful diagnostic direction, but
+  run14 is not a solved high-speed running policy. The next high-speed step
+  should change the model/control formulation or the gait template, not merely
+  continue PPO from run14.

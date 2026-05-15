@@ -588,3 +588,46 @@ uv run python tools/drive_joystick_policy.py \
   --max-forward 10.0 \
   --max-turn 0.0
 ```
+
+## TrexRun ankle-gain adaptation experiment Warp 60M
+
+- Remote path:
+  `/workspace/runs/TrexRun-20260515-110344-run14-ankle1p5-8to10-60m-from-run12/`
+- Warm start:
+  `/workspace/runs/TrexRun-20260515-093556-run12-speed-8to10-60m-from-run11/checkpoints/000117964800`
+- Training backend: MuJoCo MJX Warp
+- Training length: 60M requested steps; final saved checkpoint at
+  `000117964800`
+- Code change: per-actuator `Kp` scaling with ankle actuators set to `1.5x`
+
+This was an experiment, not a promoted checkpoint. It tested whether the run12
+undertracking was caused by weak ankle position authority. Training scalar
+reward peaked at checkpoint `000104857600` and then declined:
+
+- `0`: `-58.824`
+- `39321600`: `2.878`
+- `65536000`: `10.083`
+- `91750400`: `15.563`
+- `104857600`: `16.489`
+- `117964800`: `9.314`
+
+Fixed-command diagnostics, Warp, standing reset, seed 0, final 500 steps:
+
+- Best scalar checkpoint `000104857600`:
+  - command `8.0 m/s`: mean forward `9.694 m/s`, no termination.
+  - command `9.0 m/s`: mean forward `9.127 m/s`, no termination.
+  - command `10.0 m/s`: mean forward `8.838-8.969 m/s`, no termination.
+- Final checkpoint `000117964800`:
+  - command `8.0 m/s`: mean forward `10.217 m/s`, no termination.
+  - command `9.0 m/s`: mean forward `9.212 m/s`, no termination.
+  - command `10.0 m/s`: mean forward `9.089 m/s`, no termination.
+
+Conclusion:
+
+- Targeted ankle `Kp` helped the policy reach the 9 m/s regime more reliably,
+  but it did not solve the `10 m/s` command and made the lower command band
+  overspeed.
+- Rendered frames for the best `10 m/s` rollout show long airborne bounding,
+  not a satisfactory alternating physical run.
+- This run should be treated as evidence that actuator authority is part of the
+  limit, but not as a checkpoint to use locally.
