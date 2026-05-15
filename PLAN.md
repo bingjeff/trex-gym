@@ -766,3 +766,8 @@ Conclusion:
   collision feet are giving enough traction/contact fidelity, and whether the
   high-speed gait prior should be replaced with a better open-loop running
   template.
+- The first staged expansion from the stronger low-speed base passed fixed
+  gates through `4 m/s`, with good lateral control and anti-phase around
+  `0.30-0.32`, but it oversped the `4 m/s` command and rendered frames still
+  show simplified airborne/bounding motion. Continue staged expansion, but keep
+  treating visuals and fixed gates as promotion requirements.

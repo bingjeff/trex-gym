@@ -1280,3 +1280,15 @@ May 15 stronger gait-discipline continuation:
 - Rendered frames are still not a fully natural alternating gait, but the body
   is more level and the lateral drift is much better controlled. Run22 is the
   best current low-speed `TrexRun` base for the next staged expansion.
+
+May 15 staged expansion to 4 m/s:
+
+- Trained run23 from run22 over `2.0-4.0 m/s`:
+  `/workspace/runs/TrexRun-20260515-155011-run23-termcost-gaitstrong-2to4-20m-from-run22`.
+- Fixed gates passed:
+  - `2.0 m/s`: mean forward `1.994`, lateral `-0.023`, anti-phase `0.316`.
+  - `3.0 m/s`: mean forward `3.052`, lateral `-0.008`, anti-phase `0.320`.
+  - `4.0 m/s`: mean forward `4.431`, lateral `0.057`, anti-phase `0.300`.
+- This is a successful staged expansion for survival and lateral control, but
+  the `4.0 m/s` command overspeeds and rendered frames still show a simplified
+  airborne/bounding gait. It is a bridge checkpoint, not final behavior.

@@ -976,3 +976,43 @@ Conclusion:
   like a fully natural alternating gait, but it improves tracking, lateral
   drift, uprightness, and anti-phase relative to run20/run21. Use this for the
   next staged speed expansion.
+
+## TrexRun staged expansion run23 Warp 20M
+
+- Remote path:
+  `/workspace/runs/TrexRun-20260515-155011-run23-termcost-gaitstrong-2to4-20m-from-run22/`
+- Warm start:
+  `/workspace/runs/TrexRun-20260515-153148-run22-termcost-gaitstrong-1to2p5-20m-from-run21/checkpoints/000026214400`
+- Command range: `2.0-4.0 m/s`, straight-line only.
+
+Training eval rewards:
+
+- `0`: `-40.958`
+- `6553600`: `77.598`
+- `13107200`: `164.326`
+- `19660800`: `199.615`
+- `26214400`: `231.268`
+
+Fixed-command diagnostics, Warp, standing reset, seed 0, final 500 steps:
+
+- command `2.0 m/s`: no termination, mean forward `1.994 m/s`, mean lateral
+  `-0.023 m/s`, gait anti-phase `0.316`, torso height `2.470-2.518 m`,
+  orientation reward `0.982-1.000`.
+- command `3.0 m/s`: no termination, mean forward `3.052 m/s`, mean lateral
+  `-0.008 m/s`, gait anti-phase `0.320`, torso height `2.484-2.552 m`,
+  orientation reward `0.986-1.000`.
+- command `4.0 m/s`: no termination, mean forward `4.431 m/s`, mean lateral
+  `0.057 m/s`, gait anti-phase `0.300`, torso height `2.539-2.647 m`,
+  orientation reward `0.977-0.999`.
+
+Videos on the remote:
+
+- `/workspace/runs/TrexRun-20260515-155011-run23-termcost-gaitstrong-2to4-20m-from-run22/videos/run23_f3p0.mp4`
+- `/workspace/runs/TrexRun-20260515-155011-run23-termcost-gaitstrong-2to4-20m-from-run22/videos/run23_f4p0.mp4`
+
+Conclusion:
+
+- Run23 successfully expands the controlled straight-line bridge to `4 m/s`.
+  It overspeeds the `4 m/s` command and still looks like a simplified
+  airborne/bounding gait, so it should not be promoted as final. It is suitable
+  as the next staged-expansion starting point.
