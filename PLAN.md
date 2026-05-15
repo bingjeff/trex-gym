@@ -735,6 +735,10 @@ Conclusion:
   surviving 750-step open-loop probes at `0.5-1.5 m/s` commands and moving
   about `0.6-0.75 m/s`. This is the best current candidate for a residual PPO
   center.
+- A residual PPO run from scratch around that searched center improved scalar
+  reward from `-29.399` to `5.736`, but failed deterministic fixed-command
+  gates and collapsed for `0.5`, `1.0`, and `1.5 m/s` commands. Scalar reward
+  remains unreliable for this branch.
 - The next step should be model/control debugging, not another blind PPO run:
   inspect actuator force/position limits, whether the leg/tail action space can
   generate the required stride impulse, whether the simplified collision feet

@@ -1175,3 +1175,17 @@ May 15 black-box phase-center search:
 - This is slow and not yet a policy, but it is a stabilizable phase center.
   Unlike the policy-averaged tables, it is worth trying as the center for a
   residual PPO curriculum.
+
+May 15 searched-center residual PPO:
+
+- Trained run18 from scratch with the searched stabilizable center and
+  `TrexRun` commands from `0.5-1.5 m/s`:
+  `/workspace/runs/TrexRun-20260515-140048-run18-searchedcenter-0p5to1p5-20m-scratch`.
+- Eval scalar improved from `-29.399` to `5.736`, but fixed-command gates
+  failed. The deterministic final checkpoint terminated at step `318` for
+  `0.5 m/s`, step `198` for `1.0 m/s`, and step `150` for `1.5 m/s`; all
+  ended collapsed with near-zero forward velocity.
+- Conclusion: even with a stabilizable searched center, the current residual
+  PPO setup can produce misleading scalar improvement without a usable
+  deterministic policy. Further work should inspect the evaluation/reset logic
+  or simplify the objective before spending more training time.

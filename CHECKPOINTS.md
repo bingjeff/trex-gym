@@ -753,3 +753,39 @@ Conclusion:
 - The phase-center hook is still useful infrastructure, but a phase center
   extracted from the walking feedback policy is not a good starting template for
   TrexRun.
+
+## TrexRun searched-center residual experiment Warp 20M
+
+- Remote path:
+  `/workspace/runs/TrexRun-20260515-140048-run18-searchedcenter-0p5to1p5-20m-scratch/`
+- Phase center:
+  `/workspace/runs/phase_centers/search_run_trexrun_f1p0_symmetric8.json`
+- Training backend: MuJoCo MJX Warp
+- Training length: 20M requested steps; final saved checkpoint at
+  `000026214400`
+
+This was not promoted. It tested whether a residual policy trained from scratch
+could improve on the first stabilizable searched open-loop phase center.
+
+Training eval reward improved and crossed positive:
+
+- `0`: `-29.399`
+- `6553600`: `-14.219`
+- `13107200`: `-6.165`
+- `19660800`: `-1.063`
+- `26214400`: `5.736`
+
+Fixed-command gates on the final deterministic checkpoint failed:
+
+- command `0.5 m/s`: terminated at step `318`, mean forward `0.000 m/s`,
+  torso height `0.508-0.517 m`, orientation reward `0.001`.
+- command `1.0 m/s`: terminated at step `198`, mean forward `-0.001 m/s`,
+  torso height `0.732-0.822 m`, orientation reward `0.015-0.017`.
+- command `1.5 m/s`: terminated at step `150`, mean forward `-0.002 m/s`,
+  torso height `0.743-0.816 m`, orientation reward `0.017-0.019`.
+
+Conclusion:
+
+- Positive scalar reward is still not a reliable success signal for this setup.
+- A searched stabilizable open-loop center was not enough to produce a
+  deterministic residual PPO policy under the current TrexRun objective.
