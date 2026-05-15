@@ -1016,3 +1016,36 @@ Conclusion:
   It overspeeds the `4 m/s` command and still looks like a simplified
   airborne/bounding gait, so it should not be promoted as final. It is suitable
   as the next staged-expansion starting point.
+
+## TrexRun failed 4-6 m/s expansions run24/run25
+
+Run24:
+
+- Remote path:
+  `/workspace/runs/TrexRun-20260515-160806-run24-termcost-gaitstrong-4to6-20m-from-run23/`
+- Change from run23: command range `4.0-6.0 m/s`, tighter high-speed tracking
+  sigma.
+- Final eval reward: `-16.671`.
+- Fixed gates survived but oversped badly:
+  - `4.0 m/s`: mean forward `4.631 m/s`, lateral `0.186`, anti-phase `0.299`.
+  - `5.0 m/s`: mean forward `6.400 m/s`, lateral `0.055`, anti-phase `0.215`.
+  - `6.0 m/s`: mean forward `6.873 m/s`, lateral `0.270`, anti-phase `0.193`.
+
+Run25:
+
+- Remote path:
+  `/workspace/runs/TrexRun-20260515-162638-run25-speederr-gaitstrong-4to6-20m-from-run23/`
+- Code/config change: added `forward_speed_error` and trained with
+  `forward_speed_error=-12`, no forward-progress reward, command range
+  `4.0-6.0 m/s`.
+- Final eval reward: `-37.717`.
+- Fixed gates again survived but oversped:
+  - `4.0 m/s`: mean forward `5.006 m/s`, lateral `0.157`, anti-phase `0.276`.
+  - `5.0 m/s`: mean forward `6.728 m/s`, lateral `-0.023`, anti-phase `0.208`.
+  - `6.0 m/s`: mean forward `6.701 m/s`, lateral `0.100`, anti-phase `0.226`.
+
+Conclusion:
+
+- Both `4-6 m/s` continuations failed as command-tracking policies. The next
+  expansion should be smaller (`3-5 m/s`) and should continue to use the
+  explicit speed-error term.

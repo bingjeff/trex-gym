@@ -771,3 +771,7 @@ Conclusion:
   `0.30-0.32`, but it oversped the `4 m/s` command and rendered frames still
   show simplified airborne/bounding motion. Continue staged expansion, but keep
   treating visuals and fixed gates as promotion requirements.
+- Direct `4-6 m/s` expansion attempts from the `2-4 m/s` bridge failed:
+  policies survived but oversped commands badly and lost gait quality. Added a
+  `forward_speed_error` term for explicit overspeed penalties. The next staged
+  attempt should back off to `3-5 m/s` from the run23 bridge.

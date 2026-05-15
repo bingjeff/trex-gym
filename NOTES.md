@@ -1292,3 +1292,18 @@ May 15 staged expansion to 4 m/s:
 - This is a successful staged expansion for survival and lateral control, but
   the `4.0 m/s` command overspeeds and rendered frames still show a simplified
   airborne/bounding gait. It is a bridge checkpoint, not final behavior.
+
+May 15 failed 4-6 m/s expansions:
+
+- Tried run24 from run23 over `4.0-6.0 m/s` with a tighter high-speed tracking
+  sigma. Scalar reward stayed negative and fixed gates showed severe overspeed:
+  `4.0 -> 4.631 m/s`, `5.0 -> 6.400 m/s`, `6.0 -> 6.873 m/s`; anti-phase
+  dropped at higher commands.
+- Added a default-disabled `forward_speed_error` cost so overspeed can be
+  penalized explicitly. Local focused tests passed.
+- Tried run25 from run23 over `4.0-6.0 m/s` with `forward_speed_error=-12`
+  and no forward-progress reward. It still oversped badly:
+  `4.0 -> 5.006 m/s`, `5.0 -> 6.728 m/s`, `6.0 -> 6.701 m/s`.
+- Conclusion: jumping directly from the run23 `2-4 m/s` bridge to `4-6 m/s`
+  is too aggressive for the current curriculum. The next attempt should be a
+  smaller `3-5 m/s` expansion from run23, using the explicit speed-error cost.
