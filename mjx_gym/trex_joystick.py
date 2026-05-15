@@ -123,6 +123,7 @@ def default_config() -> config_dict.ConfigDict:
         tracking_ang_vel=0.5,
         forward_progress=0.0,
         forward_speed_deficit=0.0,
+        forward_speed_error=0.0,
         orientation=-2.0,
         base_height=-0.5,
         low_torso_height=-5.0,
@@ -667,6 +668,9 @@ class TrexJoystick(trex_getup.TrexGetup):
             "forward_speed_deficit": moving_gate
             * orientation
             * self._cost_forward_speed_deficit(info["command"], local_linvel),
+            "forward_speed_error": moving_gate
+            * orientation
+            * self._cost_forward_speed_error(info["command"], local_linvel),
             "orientation": jp.square(1.0 - orientation),
             "base_height": jp.square(1.0 - height),
             "low_torso_height": self._cost_low_torso_height(torso_height),

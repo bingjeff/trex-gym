@@ -750,6 +750,7 @@ class TestMjxGym(unittest.TestCase):
             "tracking_ang_vel",
             "forward_progress",
             "forward_speed_deficit",
+            "forward_speed_error",
             "orientation",
             "base_height",
             "low_torso_height",
