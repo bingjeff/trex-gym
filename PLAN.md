@@ -792,3 +792,7 @@ Conclusion:
   `7 m/s` oversped to about `7.2` and `9.1 m/s`. Treat run29 as the current
   best high-speed bridge and stop direct PPO speed expansion until the model or
   action/gait parameterization changes.
+- The strict high-speed tracking settings have been promoted into the default
+  `TrexRun` config so future runs do not accidentally reintroduce the permissive
+  overspeed reward. Continue from model/control debugging rather than more
+  speed-only PPO.

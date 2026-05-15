@@ -1372,3 +1372,15 @@ May 15 failed strict 5-7 m/s expansion:
   transition, but `6-7 m/s` still falls into the old fast bounding mode. Further
   progress likely needs a model/control change rather than another direct speed
   expansion.
+
+May 15 TrexRun default reward update:
+
+- Updated `TrexRun` defaults to preserve the useful strict-tracking diagnosis:
+  `high_speed_tracking_sigma_scale=0.0`, `tracking_forward_vel=10.0`,
+  `forward_progress=0.0`, and `forward_speed_error=-100.0`.
+- This prevents future default `TrexRun` experiments from using the permissive
+  high-speed tracking reward that let overspeeding policies score well.
+- Focused local tests passed:
+  `test_trex_single_skill_task_configs`,
+  `test_trex_run_gates_positive_forward_rewards_by_support_and_height`, and
+  `test_trex_joystick_humanoid_style_reward_terms`.

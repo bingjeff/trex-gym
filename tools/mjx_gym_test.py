@@ -545,6 +545,9 @@ class TestMjxGym(unittest.TestCase):
         self.assertTrue(run._config.apply_gait_prior_action)
         self.assertTrue(run._config.gate_forward_rewards_by_support)
         self.assertGreater(run._config.reward_config.scales.tracking_forward_vel, 0.0)
+        self.assertEqual(0.0, run._config.reward_config.high_speed_tracking_sigma_scale)
+        self.assertLess(run._config.reward_config.scales.forward_speed_error, 0.0)
+        self.assertEqual(0.0, run._config.reward_config.scales.forward_progress)
         self.assertLessEqual(run._config.reward_config.scales.termination, -1000.0)
         self.assertEqual(8, len(run._config.leg_actuator_kp_scale))
 

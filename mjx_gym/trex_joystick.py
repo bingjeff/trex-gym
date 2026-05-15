@@ -311,10 +311,12 @@ def run_config() -> config_dict.ConfigDict:
     config.gate_forward_rewards_by_support = True
     config.running_action_residual_scale = [0.75] * 8 + [1.0, 1.0]
     config.recovery_action_residual_scale = [0.75] * 8 + [1.0, 1.0]
+    config.reward_config.high_speed_tracking_sigma_scale = 0.0
     config.reward_config.scales.tracking_lin_vel = 2.0
-    config.reward_config.scales.tracking_forward_vel = 9.0
-    config.reward_config.scales.forward_progress = 0.5
+    config.reward_config.scales.tracking_forward_vel = 10.0
+    config.reward_config.scales.forward_progress = 0.0
     config.reward_config.scales.forward_speed_deficit = -12.0
+    config.reward_config.scales.forward_speed_error = -100.0
     config.reward_config.scales.orientation = -8.0
     config.reward_config.scales.base_height = -1.0
     config.reward_config.scales.low_torso_height = -10.0
