@@ -1121,3 +1121,50 @@ Conclusion:
   current branch is blocked at the `5 m/s` transition: even a narrow target
   range and strong symmetric speed-error cost still produce an overspeeding
   bounding mode.
+
+## TrexRun strict 5 m/s bridge run28/run29
+
+Run28:
+
+- Remote path:
+  `/workspace/runs/TrexRun-20260515-171717-run28-target5-stricttrack-4to5-20m-from-run27/`
+- Warm start:
+  `/workspace/runs/TrexRun-20260515-165506-run27-target5-speederr-4to5-20m-from-run26/checkpoints/000026214400`
+- Config change: strict speed tracking with
+  `reward_config.high_speed_tracking_sigma_scale=0.0`, `tracking_sigma=0.25`,
+  `forward_speed_error=-50`.
+- Fixed gates:
+  - `4.0 m/s`: mean forward `4.138 m/s`, lateral `0.051`, anti-phase `0.310`.
+  - `4.5 m/s`: mean forward `4.849 m/s`, lateral `0.118`, anti-phase `0.288`.
+  - `5.0 m/s`: mean forward `5.749 m/s`, lateral `0.080`, anti-phase `0.286`.
+
+Run29:
+
+- Remote path:
+  `/workspace/runs/TrexRun-20260515-173053-run29-target5-stricter-4p5to5-20m-from-run28/`
+- Warm start:
+  `/workspace/runs/TrexRun-20260515-171717-run28-target5-stricttrack-4to5-20m-from-run27/checkpoints/000026214400`
+- Config change: narrower `4.5-5.0 m/s` range, `tracking_sigma=0.2`,
+  `forward_speed_error=-100`.
+- Training eval rewards:
+  - `0`: `52.562`
+  - `6553600`: `-38.372`
+  - `13107200`: `25.587`
+  - `19660800`: `67.152`
+  - `26214400`: `115.568`
+- Fixed gates:
+  - `4.5 m/s`: no termination, mean forward `4.748 m/s`, mean lateral
+    `0.104 m/s`, gait anti-phase `0.290`, torso height `2.506-2.625 m`,
+    orientation reward `0.979-0.995`.
+  - `5.0 m/s`: no termination, mean forward `5.441 m/s`, mean lateral
+    `0.098 m/s`, gait anti-phase `0.287`, torso height `2.490-2.628 m`,
+    orientation reward `0.976-0.993`.
+- Video on remote:
+  `/workspace/runs/TrexRun-20260515-173053-run29-target5-stricter-4p5to5-20m-from-run28/videos/run29_f5p0.mp4`
+
+Conclusion:
+
+- Run29 is the current best `5 m/s` bridge. It still overspeeds by about
+  `0.44 m/s` and visually remains a simplified bounding gait, but it suppresses
+  the previous `6-7+ m/s` overspeed mode enough to use as the next staged
+  expansion base.

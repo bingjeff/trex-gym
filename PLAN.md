@@ -783,3 +783,8 @@ Conclusion:
   `6.1 m/s`. Treat the current PPO/reward/curriculum branch as blocked at the
   `5 m/s` transition. The next plan step should be model/control debugging or a
   different gait/action parameterization, not more blind speed expansion.
+- Diagnostics showed the high-speed tracking reward was too forgiving because
+  the tracking sigma widened with command speed. Strict tracking-sigma runs
+  reduced the `5 m/s` overspeed from `6-7+ m/s` to about `5.44 m/s`. Use the
+  strict tracking setup for the next staged expansion, while still treating
+  rendered gait quality as a promotion gate.

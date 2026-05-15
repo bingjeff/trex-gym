@@ -1337,3 +1337,22 @@ May 15 targeted 5 m/s blocker:
   needs a control/model change, such as a different gait/action parameterization,
   actuator/limit analysis, or an explicit running template that can sustain
   controlled `5+ m/s` without falling into the overspeed mode.
+
+May 15 strict tracking at 5 m/s:
+
+- Detailed diagnostics showed the overspeeding `5 m/s` policy was still earning
+  a very large positive `tracking_forward_vel` reward because
+  `high_speed_tracking_sigma_scale` widened the tracking reward at high command
+  speeds. The speed-error penalty was present but not dominant enough.
+- Trained run28 from run27 with `high_speed_tracking_sigma_scale=0.0` and
+  strict `tracking_sigma=0.25`. This improved but did not solve the issue:
+  `5.0 m/s` commanded `5.749 m/s`.
+- Trained run29 from run28 over a narrower `4.5-5.0 m/s` band with
+  `tracking_sigma=0.2` and `forward_speed_error=-100`:
+  `/workspace/runs/TrexRun-20260515-173053-run29-target5-stricter-4p5to5-20m-from-run28`.
+- Run29 is the first acceptable `5 m/s` bridge:
+  - `4.5 m/s`: mean forward `4.748`, lateral `0.104`, anti-phase `0.290`.
+  - `5.0 m/s`: mean forward `5.441`, lateral `0.098`, anti-phase `0.287`.
+- Rendered frames still show a simplified bounding gait, but the posture is
+  stable and the old `6-7+ m/s` overspeed mode is largely suppressed. Use run29
+  as the next staged-expansion base.
