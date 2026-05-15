@@ -12,10 +12,43 @@ from mjx_gym import trex_constants
 from mjx_gym import trex_getup
 from mjx_gym import trex_joystick
 from tools import analyze_open_loop_gait
+from tools import extract_phase_action_center
 from tools import mjx_model_simplification
 
 
 class TestMjxGym(unittest.TestCase):
+    def test_extract_phase_action_center_bins_and_averages(self):
+        bins = 4
+        sums = np.zeros((bins, 2))
+        counts = np.zeros(bins)
+        phases = [0.0, 0.25 * np.pi, 0.5 * np.pi, np.pi, 1.5 * np.pi]
+        samples = [
+            np.array([1.0, 0.0]),
+            np.array([3.0, 2.0]),
+            np.array([0.5, 0.25]),
+            np.array([-1.0, 4.0]),
+            np.array([0.0, -2.0]),
+        ]
+
+        for phase, sample in zip(phases, samples):
+            bin_index = extract_phase_action_center._phase_bin_index(phase, bins)
+            sums[bin_index] += sample
+            counts[bin_index] += 1.0
+
+        table = extract_phase_action_center._action_center_from_bins(sums, counts)
+
+        np.testing.assert_allclose(table[0], [2.0, 1.0])
+        np.testing.assert_allclose(table[1], [0.5, 0.25])
+        np.testing.assert_allclose(table[2], [-1.0, 4.0])
+        np.testing.assert_allclose(table[3], [0.0, -2.0])
+        self.assertEqual(0, extract_phase_action_center._phase_bin_index(2 * np.pi, 4))
+
+    def test_extract_phase_action_center_rejects_empty_bins(self):
+        with self.assertRaises(ValueError):
+            extract_phase_action_center._action_center_from_bins(
+                np.zeros((2, 3)), np.array([1.0, 0.0])
+            )
+
     def test_open_loop_phase_template_interpolates_and_wraps(self):
         template = np.asarray(
             [

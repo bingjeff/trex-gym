@@ -720,6 +720,11 @@ Conclusion:
   that table. This preserves the existing 10-action interface while allowing
   future curricula to test explicit gait centers instead of the fixed sine
   prior.
+- Added a phase-action-center extractor and tested a table extracted from the
+  stable expanded walking checkpoint. The extracted walking table also failed
+  open-loop: in `TrexRun` it terminated within about `83-90` steps and moved
+  only around `0.29 m/s`. Averaging a feedback policy by phase is therefore not
+  enough; the explicit center needs to be designed as a stabilizable gait.
 - The next step should be model/control debugging, not another blind PPO run:
   inspect actuator force/position limits, whether the leg/tail action space can
   generate the required stride impulse, whether the simplified collision feet

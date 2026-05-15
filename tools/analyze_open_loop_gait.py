@@ -20,6 +20,7 @@ from tools.analyze_joystick_rollout import _apply_nested_config
 
 _TASKS = {
     "TrexJoystick": (trex_joystick.TrexJoystick, trex_joystick.default_config),
+    "TrexWalk": (trex_joystick.TrexWalk, trex_joystick.walk_config),
     "TrexRun": (trex_joystick.TrexRun, trex_joystick.run_config),
 }
 

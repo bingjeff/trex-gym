@@ -1119,3 +1119,25 @@ May 15 phase-action-center control hook:
   experiment is to design a better template, or start a new curriculum from a
   lower-speed walking checkpoint using this hook, rather than continuing from
   the run12/run14 high-speed bounding family.
+
+May 15 phase-action-center extraction:
+
+- Added `tools/extract_phase_action_center.py`, which rolls out a checkpoint,
+  bins raw or applied actions by gait phase, and writes a JSON table compatible
+  with `phase_action_center`.
+- Extracted an 8-bin applied-action center from the stable expanded walking
+  checkpoint at `1.0 m/s`:
+  `/workspace/runs/phase_centers/walk_expand_f1p0_applied8.json`.
+- Replaying that table open-loop was not dynamically viable:
+  - `TrexWalk`, `1.0 m/s` command: no termination because walk does not use
+    fall termination, but orientation fell as low as `0.001` and mean forward
+    speed was only `0.303 m/s`.
+  - `TrexRun`, `1.0 m/s` command: termination at step `83`, mean forward
+    speed `0.288 m/s`.
+  - `TrexRun`, `3.0 m/s` command: termination at step `90`, mean forward
+    speed `0.292 m/s`.
+- Conclusion: stable walking policies also depend on closed-loop feedback; a
+  phase-average action table from a trained policy is not enough to produce a
+  useful open-loop gait. The `phase_action_center` hook remains useful, but the
+  table needs to be designed as a stabilizable gait center, not extracted by
+  averaging a feedback policy.
