@@ -779,3 +779,7 @@ Conclusion:
   gate to more than `7 m/s`. The next diagnostic is a narrow `4-5 m/s` target
   with a much stronger speed-error cost; if that still overspeeds, this is a
   control/objective blocker rather than a simple curriculum-width issue.
+- The narrow `4-5 m/s` diagnostic still oversped the `5 m/s` command to about
+  `6.1 m/s`. Treat the current PPO/reward/curriculum branch as blocked at the
+  `5 m/s` transition. The next plan step should be model/control debugging or a
+  different gait/action parameterization, not more blind speed expansion.

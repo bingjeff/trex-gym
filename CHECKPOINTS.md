@@ -1085,3 +1085,39 @@ Conclusion:
   stable to about `4 m/s`, but `5 m/s` still falls into the old overspeed
   bounding mode. A targeted `4-5 m/s` run with stronger speed-error cost is the
   next diagnostic.
+
+## TrexRun targeted 5 m/s diagnostic run27 Warp 20M
+
+- Remote path:
+  `/workspace/runs/TrexRun-20260515-165506-run27-target5-speederr-4to5-20m-from-run26/`
+- Warm start:
+  `/workspace/runs/TrexRun-20260515-164126-run26-speederr-gaitstrong-3to5-20m-from-run23/checkpoints/000026214400`
+- Config change: command range `4.0-5.0 m/s`, `forward_speed_error=-50`,
+  no forward-progress reward, and stronger tracking-forward reward.
+
+Training eval rewards:
+
+- `0`: `-35.295`
+- `6553600`: `-136.210`
+- `13107200`: `-151.527`
+- `19660800`: `3.229`
+- `26214400`: `125.754`
+
+Fixed-command diagnostics, Warp, standing reset, seed 0, final 500 steps:
+
+- command `4.0 m/s`: no termination, mean forward `4.238 m/s`, mean lateral
+  `0.075 m/s`, gait anti-phase `0.297`, torso height `2.511-2.607 m`,
+  orientation reward `0.987-0.999`.
+- command `4.5 m/s`: no termination, mean forward `5.128 m/s`, mean lateral
+  `0.114 m/s`, gait anti-phase `0.288`, torso height `2.504-2.634 m`,
+  orientation reward `0.983-0.999`.
+- command `5.0 m/s`: no termination, mean forward `6.116 m/s`, mean lateral
+  `0.117 m/s`, gait anti-phase `0.274`, torso height `2.498-2.661 m`,
+  orientation reward `0.981-1.000`.
+
+Conclusion:
+
+- Run27 reduced the overspeed compared with run26 but did not solve it. The
+  current branch is blocked at the `5 m/s` transition: even a narrow target
+  range and strong symmetric speed-error cost still produce an overspeeding
+  bounding mode.

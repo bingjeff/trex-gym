@@ -1321,3 +1321,19 @@ May 15 smaller 3-5 m/s expansion:
   around `5 m/s` trigger the old overspeed/bounding mode. The next attempt
   should directly target `4-5 m/s` with a much stronger symmetric speed-error
   cost instead of broadening the command distribution.
+
+May 15 targeted 5 m/s blocker:
+
+- Trained run27 from run26 over `4.0-5.0 m/s` with
+  `forward_speed_error=-50`, no forward-progress reward, and stronger tracking:
+  `/workspace/runs/TrexRun-20260515-165506-run27-target5-speederr-4to5-20m-from-run26`.
+- The targeted run reduced but did not eliminate overspeed:
+  - `4.0 m/s`: mean forward `4.238`, lateral `0.075`, anti-phase `0.297`.
+  - `4.5 m/s`: mean forward `5.128`, lateral `0.114`, anti-phase `0.288`.
+  - `5.0 m/s`: mean forward `6.116`, lateral `0.117`, anti-phase `0.274`.
+- Conclusion: the current PPO/reward/curriculum branch is blocked at the
+  transition to `5 m/s`. Stronger symmetric speed-error penalties and narrower
+  command ranges still produce overspeed/bounding. Further progress probably
+  needs a control/model change, such as a different gait/action parameterization,
+  actuator/limit analysis, or an explicit running template that can sustain
+  controlled `5+ m/s` without falling into the overspeed mode.
