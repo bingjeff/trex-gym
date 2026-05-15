@@ -382,3 +382,78 @@ uv run python tools/analyze_joystick_rollout.py \
   --reset-pose standing \
   --config-overrides '{"walk_command_forward_min":0.25,"walk_command_forward_max":1.2,"walk_command_zero_prob":0.05,"gait_frequency_max":1.6,"gait_frequency_per_mps":0.25}'
 ```
+
+## TrexJoystick signed-turn Warp 30M
+
+- Local path: `checkpoints/TrexJoystick-20260515-034759-joystick-turn2-30m-from-turn1/`
+- Checkpoint: `checkpoints/TrexJoystick-20260515-034759-joystick-turn2-30m-from-turn1/000026214400/`
+- Source run on pod: `/workspace/runs/TrexJoystick-20260515-034759-joystick-turn2-30m-from-turn1`
+- Warm start: `/workspace/runs/TrexJoystick-20260515-032050-joystick-turn-30m-from-walk-expand/checkpoints/000032768000`
+- Training source: `a01ce05b2e8a14bb5981d3e74f04d977551f88fa`
+- Training backend: MuJoCo MJX Warp
+- Training length: 30M requested steps; best scalar checkpoint at `000026214400`
+
+This is the first successful standing-start joystick policy with signed yaw-rate
+control. It is not a get-up policy. The verified command envelope is moderate:
+about `0.5-0.8 m/s` forward speed and `+/-0.25 rad/s` yaw rate.
+
+Training eval rewards:
+
+- `0`: `217.593`
+- `6553600`: `223.973`
+- `13107200`: `237.344`
+- `19660800`: `220.135`
+- `26214400`: `244.018`
+- `32768000`: `240.361`
+
+Fixed-command diagnostics on checkpoint `000026214400` used Warp with standing
+resets, seed 0, and the final 500 steps of a 1000-step rollout:
+
+- Command `(0.0 m/s, 0.0 rad/s)`: mean forward velocity `0.006 m/s`,
+  mean turn velocity `0.009 rad/s`, base XY displacement `0.036 m`, orientation
+  reward `0.969-0.999`, and no termination.
+- Command `(0.5 m/s, 0.0 rad/s)`: mean forward velocity `0.518 m/s`,
+  mean turn velocity `-0.020 rad/s`, orientation reward `0.998-1.000`, and no
+  termination.
+- Command `(0.5 m/s, +0.25 rad/s)`: mean forward velocity `0.514 m/s`,
+  mean turn velocity `0.195 rad/s`, mean turn error `0.055 rad/s`, orientation
+  reward `0.995-0.999`, and no termination.
+- Command `(0.5 m/s, -0.25 rad/s)`: mean forward velocity `0.511 m/s`,
+  mean turn velocity `-0.219 rad/s`, mean turn error `0.031 rad/s`,
+  orientation reward `0.996-1.000`, and no termination.
+- Command `(0.8 m/s, +0.25 rad/s)`: mean forward velocity `0.816 m/s`,
+  mean turn velocity `0.195 rad/s`, mean turn error `0.055 rad/s`, orientation
+  reward `0.994-0.999`, and no termination.
+- Command `(0.8 m/s, -0.25 rad/s)`: mean forward velocity `0.786 m/s`,
+  mean turn velocity `-0.219 rad/s`, mean turn error `0.031 rad/s`,
+  orientation reward `0.992-0.999`, and no termination.
+- Local drive-entrypoint smoke test loaded the policy with
+  `tools/drive_joystick_policy.py --check-load --impl jax`, produced action size
+  `10`, and completed one env step.
+- Local JAX rollout smoke at command `(0.5 m/s, +0.25 rad/s)` ran 50 steps with
+  no termination, mean forward velocity `0.466 m/s`, mean turn velocity
+  `0.219 rad/s`, torso height `2.581-2.855 m`, and orientation reward
+  `0.997-1.000`.
+
+Representative rollout videos copied locally:
+
+- `checkpoints/TrexJoystick-20260515-034759-joystick-turn2-30m-from-turn1/videos/joystick_f0p8_t0p25.mp4`
+- `checkpoints/TrexJoystick-20260515-034759-joystick-turn2-30m-from-turn1/videos/joystick_f0p8_tm0p25.mp4`
+
+Check local load without opening the viewer:
+
+```bash
+uv run python tools/drive_joystick_policy.py \
+  /home/bingjeff/projects/trex-gym/checkpoints/TrexJoystick-20260515-034759-joystick-turn2-30m-from-turn1/000026214400 \
+  --check-load \
+  --impl jax
+```
+
+Run interactively with a connected gamepad:
+
+```bash
+uv run python tools/drive_joystick_policy.py \
+  /home/bingjeff/projects/trex-gym/checkpoints/TrexJoystick-20260515-034759-joystick-turn2-30m-from-turn1/000026214400 \
+  --start standing \
+  --impl jax
+```

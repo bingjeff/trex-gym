@@ -563,3 +563,41 @@ Next direction:
 - Start a separate turning/joystick phase from the expanded walking checkpoint.
 - Use moderate forward speeds and low yaw-rate commands first.
 - Keep `TrexRun` and combined get-up/balance/walk policy as later phases.
+
+## Phase 8: Signed Joystick Turning
+
+Status: completed for a standing-start joystick policy.
+
+Goal:
+
+1. Warm-start from expanded straight-line walking.
+2. Add moderate signed yaw-rate commands.
+3. Reject policies that only turn one direction or merely preserve forward
+   walking.
+4. Verify local loading through the interactive joystick entrypoint.
+
+Results:
+
+- First run preserved walking but failed signed yaw: both positive and negative
+  commands produced positive yaw. It was kept as a warm start only.
+- Tightened the joystick curriculum to `0.25-0.8 m/s` and `+/-0.25 rad/s`,
+  forced nonzero turn samples, and increased the yaw-rate tracking weight.
+- Successful checkpoint:
+  `checkpoints/TrexJoystick-20260515-034759-joystick-turn2-30m-from-turn1/000026214400`.
+- Verified remote fixed-command tracking:
+  - `(0.5, +0.25)`: forward `0.514 m/s`, yaw `0.195 rad/s`.
+  - `(0.5, -0.25)`: forward `0.511 m/s`, yaw `-0.219 rad/s`.
+  - `(0.8, +0.25)`: forward `0.816 m/s`, yaw `0.195 rad/s`.
+  - `(0.8, -0.25)`: forward `0.786 m/s`, yaw `-0.219 rad/s`.
+- Rendered left/right turn videos and copied them locally.
+- Local `tools/drive_joystick_policy.py --check-load --impl jax` passed, so the
+  checkpoint can be loaded by the local joystick entrypoint.
+
+Next direction:
+
+- Decide how to combine get-up/recovery with the standing-start joystick policy.
+- The low-risk route is an explicit local controller/orchestrator that uses the
+  get-up policy until upright and then switches to the joystick policy.
+- A single monolithic get-up-plus-joystick PPO policy remains possible but has
+  been much harder historically and should be attempted only after the
+  orchestrated baseline works.

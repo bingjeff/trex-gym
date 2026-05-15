@@ -860,3 +860,37 @@ May 15 expanded walking phase:
 - This completes the straight-line walking expansion phase through about
   `1.0 m/s`. Next phase should introduce turning/joystick commands from this
   checkpoint, not push speed further yet.
+
+May 15 signed joystick turning phase:
+
+- First joystick-turn attempt:
+  `/workspace/runs/TrexJoystick-20260515-032050-joystick-turn-30m-from-walk-expand`.
+  It improved scalar rewards from `-631.991` to `134.404` and preserved walking,
+  but fixed-command diagnostics showed a yaw sign failure: both positive and
+  negative turn commands produced positive yaw rates. This was not promoted.
+- Tightened `joystick_config()` in commit `a01ce05`: reduced command range to
+  `0.25-0.8 m/s`, required nonzero turn samples, reduced turn max to
+  `0.25 rad/s`, narrowed turn tracking sigma to `0.08`, and increased
+  `tracking_ang_vel` to `6.0`.
+- Second joystick-turn run:
+  `/workspace/runs/TrexJoystick-20260515-034759-joystick-turn2-30m-from-turn1`.
+  Eval rewards were `217.593`, `223.973`, `237.344`, `220.135`, `244.018`,
+  `240.361`; the best scalar checkpoint was `000026214400`.
+- Remote fixed-command diagnostics on `000026214400` verified signed yaw:
+  `(0.5, +0.25)` tracked at forward `0.514 m/s`, yaw `0.195 rad/s`;
+  `(0.5, -0.25)` tracked at forward `0.511 m/s`, yaw `-0.219 rad/s`;
+  `(0.8, +0.25)` tracked at forward `0.816 m/s`, yaw `0.195 rad/s`;
+  `(0.8, -0.25)` tracked at forward `0.786 m/s`, yaw `-0.219 rad/s`.
+  All had no termination and orientation reward ranges above `0.992` except
+  straight standing, which was also stable.
+- Rendered left/right videos under
+  `/workspace/runs/TrexJoystick-20260515-034759-joystick-turn2-30m-from-turn1/videos/`
+  and copied the checkpoint/videos locally to
+  `checkpoints/TrexJoystick-20260515-034759-joystick-turn2-30m-from-turn1/`.
+- Local joystick entrypoint smoke test passed:
+  `tools/drive_joystick_policy.py ... --check-load --impl jax` loaded the
+  checkpoint, produced action size `10`, and stepped once. A short local rollout
+  at `(0.5 m/s, +0.25 rad/s)` also tracked signed yaw with no termination.
+- This completes the first standing-start joystickable policy. It does not get
+  up from the ground; the remaining combined-policy phase must add recovery or
+  orchestration between the get-up/balance policy and the joystick policy.
