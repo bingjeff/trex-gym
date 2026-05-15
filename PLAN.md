@@ -714,6 +714,12 @@ Conclusion:
   `5-9 m/s` initial velocity both raw and applied templates fell within
   `18-30` steps. The learned high-speed behavior is therefore closed-loop and
   not a reusable phase-only gait template.
+- Added a `phase_action_center` control hook to the joystick environment. When
+  configured, moving commands use an interpolated phase-binned applied-action
+  table as the action center, and the policy learns residual feedback around
+  that table. This preserves the existing 10-action interface while allowing
+  future curricula to test explicit gait centers instead of the fixed sine
+  prior.
 - The next step should be model/control debugging, not another blind PPO run:
   inspect actuator force/position limits, whether the leg/tail action space can
   generate the required stride impulse, whether the simplified collision feet

@@ -652,6 +652,36 @@ class TestMjxGym(unittest.TestCase):
             0.1,
         )
 
+    def test_trex_phase_action_center_overrides_gait_prior(self):
+        config = trex_joystick.run_config()
+        config.reset_standing_prob = 1.0
+        config.fixed_gait_phase = 0.0
+        config.phase_action_center = [
+            [0.10] * 10,
+            [0.20] * 10,
+            [0.30] * 10,
+            [0.40] * 10,
+        ]
+        env = trex_joystick.TrexRun(config)
+        state = env.reset(jax.random.PRNGKey(0))
+        state.info["command"] = jp.array([1.0, 0.0])
+        state.info["gait_phase"] = jp.array(0.0)
+
+        next_state = env.step(state, jp.zeros(env.action_size))
+
+        np.testing.assert_allclose(
+            np.asarray(next_state.info["last_act"]),
+            np.asarray([0.10] * 10),
+            atol=1e-6,
+        )
+
+    def test_trex_phase_action_center_validates_shape(self):
+        config = trex_joystick.run_config()
+        config.phase_action_center = [[0.0] * 9, [0.0] * 9]
+
+        with self.assertRaises(ValueError):
+            trex_joystick.TrexRun(config)
+
     def test_trex_joystick_humanoid_style_reward_terms(self):
         env = trex_joystick.TrexJoystick()
         expected_terms = {

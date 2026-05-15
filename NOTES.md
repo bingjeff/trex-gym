@@ -1102,3 +1102,20 @@ May 15 phase-template replay:
   template. It depends on closed-loop state feedback and likely exploits a
   narrow dynamic mode. A better prior probably needs a different structure
   rather than averaging the existing policy's actions by gait phase.
+
+May 15 phase-action-center control hook:
+
+- Added `phase_action_center` to the joystick config. It is disabled by
+  default. When populated with a phase-binned table of applied actions, moving
+  commands use the interpolated table as the action center, then apply the
+  policy residual action exactly as before.
+- This keeps the action size at 10, so existing training/drive/render plumbing
+  still works. It also means a future policy can learn closed-loop corrections
+  around an explicit gait template without needing a new policy architecture.
+- Focused tests verify that:
+  - zero residual action follows the phase action center exactly.
+  - malformed phase-action center tables are rejected.
+- No training run has been promoted with this hook yet. The next useful
+  experiment is to design a better template, or start a new curriculum from a
+  lower-speed walking checkpoint using this hook, rather than continuing from
+  the run12/run14 high-speed bounding family.

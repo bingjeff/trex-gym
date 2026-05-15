@@ -6,6 +6,7 @@ import jax
 import jax.numpy as jp
 from ml_collections import config_dict
 from mujoco import mjx
+import numpy as np
 
 from mujoco_playground._src import gait
 from mujoco_playground._src import mjx_env
@@ -89,6 +90,7 @@ def default_config() -> config_dict.ConfigDict:
     config.gait_swing_height = 0.12
     config.fixed_gait_phase = -1.0
     config.random_initial_gait_phase = True
+    config.phase_action_center = []
     config.running_gate_start = 0.05
     config.running_gate_full = 0.25
     config.gate_forward_rewards_by_support = False
@@ -346,6 +348,9 @@ class TrexJoystick(trex_getup.TrexGetup):
         self._command_zero = jp.zeros(2)
         self._stand_pose_action = jp.array(self._config.stand_pose_action)
         self._action_residual_scale = jp.array(self._config.action_residual_scale)
+        self._phase_action_center = self._parse_phase_action_center(
+            self._config.phase_action_center
+        )
         self._running_action_residual_scale = jp.array(
             self._config.running_action_residual_scale
         )
@@ -359,6 +364,21 @@ class TrexJoystick(trex_getup.TrexGetup):
                 self._standing_left_foot_offset[2] + self._standing_right_foot_offset[2],
             ]
         )
+
+    def _parse_phase_action_center(self, rows: list[Any]) -> jax.Array:
+        if not rows:
+            return jp.zeros((0, self.action_size))
+        table = np.asarray(rows, dtype=np.float32)
+        if table.ndim != 2:
+            raise ValueError("phase_action_center must be a 2D list.")
+        if table.shape[0] < 2:
+            raise ValueError("phase_action_center must have at least two rows.")
+        if table.shape[1] != self.action_size:
+            raise ValueError(
+                "phase_action_center rows must have "
+                f"{self.action_size} values, got {table.shape[1]}."
+            )
+        return jp.array(table)
 
     def reset(self, rng: jax.Array) -> mjx_env.State:
         (
@@ -983,7 +1003,37 @@ class TrexJoystick(trex_getup.TrexGetup):
         )
         return moving_gate * speed_gate * self._config.gait_prior_scale * gait
 
+    def _has_phase_action_center(self) -> bool:
+        return self._phase_action_center.shape[0] > 0
+
+    def _phase_action_center_action(self, info: dict[str, Any]) -> jax.Array:
+        phase_count = self._phase_action_center.shape[0]
+        scaled_phase = jp.mod(info["gait_phase"], 2.0 * jp.pi) * (
+            phase_count / (2.0 * jp.pi)
+        )
+        lower = jp.floor(scaled_phase).astype(jp.int32)
+        upper = (lower + 1) % phase_count
+        alpha = scaled_phase - lower
+        return (1.0 - alpha) * self._phase_action_center[lower] + (
+            alpha * self._phase_action_center[upper]
+        )
+
     def _action_center(self, info: dict[str, Any]) -> jax.Array:
+        if self._has_phase_action_center():
+            moving_gate = 1.0 - self._standing_command_gate(info["command"])
+            speed_gate = jp.where(
+                self._is_march_task() | self._is_walk_task(),
+                1.0,
+                self._running_speed_gate(info["command"]),
+            )
+            phase_gate = moving_gate * speed_gate
+            phase_center = self._phase_action_center_action(info)
+            return jp.clip(
+                (1.0 - phase_gate) * self._stand_pose_action
+                + phase_gate * phase_center,
+                -1.0,
+                1.0,
+            )
         gait_prior = jp.where(
             self._config.apply_gait_prior_action,
             self._gait_prior_action(info),
