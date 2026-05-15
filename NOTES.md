@@ -1417,7 +1417,7 @@ May 15 speed-error objective correction:
   overspeed is therefore penalized much less at `6-10 m/s` than at `2 m/s`,
   which works against command tracking exactly where the run task is failing.
 - Added a default-disabled `forward_speed_abs_error` cost and enabled it for
-  `TrexRun` with scale `-4.0`. This keeps the existing normalized error term
+  `TrexRun`. This keeps the existing normalized error term
   but adds an absolute m/s tracking penalty that does not weaken at high
   command speeds.
 - Focused local tests passed:
@@ -1425,3 +1425,32 @@ May 15 speed-error objective correction:
   `test_trex_joystick_humanoid_style_reward_terms`,
   `test_trex_run_gates_positive_gait_rewards_by_speed_tracking`, and
   `test_trex_run_absolute_speed_error_is_not_command_normalized`.
+
+May 15 absolute-speed and grounded continuations:
+
+- Trained run32 from run29 over `5.0-6.0 m/s` with
+  `forward_speed_abs_error=-4`:
+  `/workspace/runs/TrexRun-20260515-184136-run32-absspeed-5to6-20m-from-run29`.
+  Fixed gates improved only slightly:
+  - `5.0 m/s`: mean forward `5.334`, lateral `0.139`, vertical `0.403`.
+  - `6.0 m/s`: mean forward `6.742`, lateral `0.065`, vertical `0.498`.
+- Trained run33 from run32 with `forward_speed_abs_error=-12`:
+  `/workspace/runs/TrexRun-20260515-185327-run33-absspeed12-5to6-20m-from-run32`.
+  This was the best speed-tracking improvement:
+  - `5.0 m/s`: mean forward `5.227`, lateral `0.103`, vertical `0.464`.
+  - `6.0 m/s`: mean forward `6.418`, lateral `-0.034`, vertical `0.694`.
+  Rendered frames still showed a long-flight bounding mode.
+- Trained run34 from run33 with the `-12` absolute speed penalty plus stronger
+  vertical velocity, height excess, missing-foot-contact, foot slip, phase
+  contact, and contact-duty penalties:
+  `/workspace/runs/TrexRun-20260515-190803-run34-grounded-5to6-20m-from-run33`.
+  Fixed gates improved further numerically:
+  - `5.0 m/s`: mean forward `5.238`, lateral `0.073`, vertical `0.368`.
+  - `6.0 m/s`: mean forward `6.277`, lateral `0.083`, vertical `0.517`.
+  However rendered frames still showed airborne bounding, not a grounded
+  alternating gait.
+- Conclusion: stronger absolute speed tracking helps command error, and the
+  grounded penalties improve the numeric 6 m/s gate, but this reward branch has
+  not solved the visual/physical gait problem. The next useful step should be a
+  structural gait/contact change, not another scalar-only continuation. Keep
+  `forward_speed_abs_error=-12` as the better TrexRun default.

@@ -1237,3 +1237,57 @@ Conclusion:
   speed tracking improved the final scalar but did not eliminate the
   overspeed/bounding mode. Run29 remains the best current strict `5 m/s`
   bridge.
+
+## TrexRun absolute-speed diagnostics run32/run33/run34
+
+Run32:
+
+- Remote path:
+  `/workspace/runs/TrexRun-20260515-184136-run32-absspeed-5to6-20m-from-run29/`
+- Warm start:
+  `/workspace/runs/TrexRun-20260515-173053-run29-target5-stricter-4p5to5-20m-from-run28/checkpoints/000026214400`
+- Config change: `forward_speed_abs_error=-4`, command range `5.0-6.0 m/s`.
+- Fixed gates:
+  - `5.0 m/s`: mean forward `5.334 m/s`, lateral `0.139`, vertical `0.403`,
+    anti-phase `0.281`.
+  - `6.0 m/s`: mean forward `6.742 m/s`, lateral `0.065`, vertical `0.498`,
+    anti-phase `0.251`.
+
+Run33:
+
+- Remote path:
+  `/workspace/runs/TrexRun-20260515-185327-run33-absspeed12-5to6-20m-from-run32/`
+- Warm start:
+  `/workspace/runs/TrexRun-20260515-184136-run32-absspeed-5to6-20m-from-run29/checkpoints/000026214400`
+- Config change: `forward_speed_abs_error=-12`.
+- Fixed gates:
+  - `5.0 m/s`: mean forward `5.227 m/s`, lateral `0.103`, vertical `0.464`,
+    anti-phase `0.292`.
+  - `6.0 m/s`: mean forward `6.418 m/s`, lateral `-0.034`, vertical `0.694`,
+    anti-phase `0.273`.
+- Rendered sample:
+  `/workspace/runs/TrexRun-20260515-185327-run33-absspeed12-5to6-20m-from-run32/videos/run33_f6p0.mp4`
+
+Run34:
+
+- Remote path:
+  `/workspace/runs/TrexRun-20260515-190803-run34-grounded-5to6-20m-from-run33/`
+- Warm start:
+  `/workspace/runs/TrexRun-20260515-185327-run33-absspeed12-5to6-20m-from-run32/checkpoints/000026214400`
+- Config change: kept `forward_speed_abs_error=-12` and strengthened vertical
+  velocity, height excess, missing-foot-contact, foot slip, phase-contact, and
+  contact-duty penalties.
+- Fixed gates:
+  - `5.0 m/s`: mean forward `5.238 m/s`, lateral `0.073`, vertical `0.368`,
+    anti-phase `0.297`.
+  - `6.0 m/s`: mean forward `6.277 m/s`, lateral `0.083`, vertical `0.517`,
+    anti-phase `0.275`.
+- Rendered sample:
+  `/workspace/runs/TrexRun-20260515-190803-run34-grounded-5to6-20m-from-run33/videos/run34_f6p0.mp4`
+
+Conclusion:
+
+- The absolute speed term improves command tracking, and `-12` is better than
+  `-4`, but the rendered `6 m/s` samples still show airborne bounding rather
+  than a grounded alternating gait. Run34 is numerically better than run33 but
+  should not be promoted as a successful high-speed checkpoint.

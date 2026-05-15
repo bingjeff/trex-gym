@@ -320,7 +320,7 @@ def run_config() -> config_dict.ConfigDict:
     config.reward_config.scales.forward_progress = 0.0
     config.reward_config.scales.forward_speed_deficit = -12.0
     config.reward_config.scales.forward_speed_error = -100.0
-    config.reward_config.scales.forward_speed_abs_error = -4.0
+    config.reward_config.scales.forward_speed_abs_error = -12.0
     config.reward_config.scales.orientation = -8.0
     config.reward_config.scales.base_height = -1.0
     config.reward_config.scales.low_torso_height = -10.0

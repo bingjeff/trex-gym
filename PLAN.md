@@ -806,5 +806,12 @@ Conclusion:
   error term. The older speed-error cost is normalized by command speed, so it
   becomes weaker at the high speeds where overspeeding is the failure mode.
   `TrexRun` now keeps the normalized error term and also enables
-  `forward_speed_abs_error=-4.0`; this should be evaluated with a narrow
-  `5-6 m/s` continuation from run29 before any broader expansion.
+  `forward_speed_abs_error=-12.0`.
+- Narrow `5-6 m/s` tests with the absolute speed term improved command
+  tracking from `6.81 m/s` down to `6.28 m/s` for a `6.0 m/s` command, but
+  rendered frames still show a long-flight bounding mode. Stronger scalar
+  anti-flight penalties improved the numbers without solving the visual gait.
+  The next high-speed phase should therefore be a structural gait/contact
+  change, such as a stricter contact-state reward based on actual floor-contact
+  pairs, a lower-flight gait template, or a different action parameterization
+  that cannot satisfy the run task by synchronized bounding.
