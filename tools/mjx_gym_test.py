@@ -440,7 +440,10 @@ class TestMjxGym(unittest.TestCase):
         self.assertGreater(balance._config.push_linvel_max, 0.0)
         self.assertEqual("walk", walk._config.curriculum_task)
         self.assertEqual(0.0, walk._config.walk_command_turn_max)
-        self.assertLessEqual(joystick._config.command_config.forward_max, 3.0)
+        self.assertTrue(joystick._config.apply_gait_prior_action)
+        self.assertLessEqual(joystick._config.command_config.forward_max, 1.0)
+        self.assertLessEqual(joystick._config.command_config.turn_max, 0.35)
+        self.assertGreater(joystick._config.reward_config.scales.tracking_ang_vel, 0.0)
         self.assertEqual(10.0, run._config.command_config.forward_max)
 
         for env in (balance, walk, joystick, run):
