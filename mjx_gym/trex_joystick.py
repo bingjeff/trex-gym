@@ -56,6 +56,7 @@ def default_config() -> config_dict.ConfigDict:
         0.75,
         0.75,
     ]
+    config.recovery_action_residual_scale = list(config.action_residual_scale)
     config.running_action_residual_scale = [
         0.25,
         0.25,
@@ -247,6 +248,7 @@ def joystick_config() -> config_dict.ConfigDict:
     config.gait_swing_height = 0.14
     config.gait_prior_scale = 0.45
     config.walk_action_residual_scale = [0.25] * 8 + [0.5, 0.5]
+    config.recovery_action_residual_scale = [0.75] * 8 + [1.0, 1.0]
     config.reward_config.scales.tracking_lin_vel = 1.0
     config.reward_config.scales.tracking_forward_vel = 5.0
     config.reward_config.turn_tracking_sigma = 0.08
@@ -460,7 +462,7 @@ class TrexJoystick(trex_getup.TrexGetup):
     def step(self, state: mjx_env.State, action: jax.Array) -> mjx_env.State:
         clipped_action = jp.clip(action, -1.0, 1.0)
         standing_gate = self._standing_command_gate(state.info["command"])
-        residual_scale = self._residual_scale(state.info["command"])
+        residual_scale = self._residual_scale_for_state(state)
         action_center = self._action_center(state.info)
         applied_action = jp.clip(
             action_center + clipped_action * residual_scale,
@@ -1110,6 +1112,18 @@ class TrexJoystick(trex_getup.TrexGetup):
         speed_gate = self._running_speed_gate(command)
         return (1.0 - speed_gate) * self._action_residual_scale + (
             speed_gate * self._running_action_residual_scale
+        )
+
+    def _residual_scale_for_state(self, state: mjx_env.State) -> jax.Array:
+        command_scale = self._residual_scale(state.info["command"])
+        recovery_scale = jp.array(self._config.recovery_action_residual_scale)
+        gravity = self.get_gravity(state.data)
+        orientation = self._reward_orientation(gravity)
+        torso_height = state.data.site_xpos[self._imu_site_id][2]
+        posture_gate = self._locomotion_posture_gate(orientation, torso_height)
+        recovery_gate = 1.0 - posture_gate
+        return (1.0 - recovery_gate) * command_scale + recovery_gate * jp.maximum(
+            command_scale, recovery_scale
         )
 
     def _achieved_running_speed_gate(

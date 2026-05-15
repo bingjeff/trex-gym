@@ -555,6 +555,23 @@ class TestMjxGym(unittest.TestCase):
             np.asarray(run._config.running_action_residual_scale),
         )
 
+    def test_trex_joystick_uses_larger_residual_scale_when_not_upright(self):
+        config = trex_joystick.joystick_config()
+        config.reset_standing_prob = 0.0
+        env = trex_joystick.TrexJoystick(config)
+        state = env.reset(jax.random.PRNGKey(0))
+        state.info["command"] = jp.array([0.0, 0.0])
+
+        command_scale = np.asarray(env._residual_scale(state.info["command"]))
+        state_scale = np.asarray(env._residual_scale_for_state(state))
+
+        self.assertGreater(np.max(state_scale - command_scale), 0.1)
+        np.testing.assert_allclose(
+            state_scale,
+            np.maximum(command_scale, np.asarray(config.recovery_action_residual_scale)),
+            atol=1e-6,
+        )
+
     def test_trex_walk_zero_residual_applies_gait_prior_for_moving_command(self):
         config = trex_joystick.walk_config()
         config.reset_standing_prob = 1.0
