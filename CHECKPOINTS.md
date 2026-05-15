@@ -208,3 +208,109 @@ MUJOCO_GL=egl uv run python tools/render_joystick_policy.py \
   --height 540 \
   --camera-distance 12
 ```
+
+## TrexBalance Warp 10M
+
+- Local path: `checkpoints/TrexBalance-20260514-235829-balance-10m-buf-best/`
+- Checkpoint: `checkpoints/TrexBalance-20260514-235829-balance-10m-buf-best/000009830400/`
+- Source run on pod: `/workspace/runs/TrexBalance-20260514-235829-balance-10m-buf-best`
+- Training source: `96a9bb5f508ca6f8a2b98daafc8c8fb7d6618b44` plus the later task-specific diagnostic tooling.
+- Training backend: MuJoCo MJX Warp
+- Training length: 10M requested steps; best scalar checkpoint copied from step `000009830400`
+
+This is the first successful single-policy standing-balance checkpoint from the
+task split. It starts from nominal standing, holds a zero command, and rejects
+small randomized pushes during training.
+
+Standing diagnostic evidence:
+
+- Remote long diagnostic, seed 0, final 500 sampled steps: mean forward velocity
+  `-0.003 m/s`, mean lateral velocity `0.001 m/s`, base XY displacement
+  `0.072 m`, torso height `2.620-2.642 m`, orientation reward `0.927-0.944`,
+  and no termination.
+- Remote long diagnostic, seed 1, final 500 sampled steps: base XY displacement
+  `0.014 m`, torso height `2.611-2.676 m`, orientation reward `0.930-0.987`,
+  and no termination.
+- Local load/run smoke test with JAX, seed 0, 50 steps: no termination, mean
+  forward velocity `0.016 m/s`, mean lateral velocity `-0.016 m/s`, base XY
+  displacement `0.023 m`, torso height `2.772-2.852 m`, and orientation reward
+  `0.997-1.000`.
+
+Verify local policy loading:
+
+```bash
+uv run python tools/analyze_joystick_rollout.py \
+  /home/bingjeff/projects/trex-gym/checkpoints/TrexBalance-20260514-235829-balance-10m-buf-best/000009830400 \
+  --task TrexBalance \
+  --impl jax \
+  --seed 0 \
+  --steps 50 \
+  --skip-steps 0 \
+  --forward 0.0 \
+  --turn 0.0 \
+  --reset-pose standing
+```
+
+## TrexWalk gait-prior Warp 20M
+
+- Local path: `checkpoints/TrexWalk-20260515-011532-walk-gaitprior-20m-from-balance/`
+- Checkpoint: `checkpoints/TrexWalk-20260515-011532-walk-gaitprior-20m-from-balance/000026214400/`
+- Source run on pod: `/workspace/runs/TrexWalk-20260515-011532-walk-gaitprior-20m-from-balance`
+- Warm start: `/workspace/runs/TrexBalance-20260514-235829-balance-10m-buf-best/checkpoints/000009830400`
+- Training source: `167b40f2eaab9493b5218489bac9647b1c574a7c`
+- Training backend: MuJoCo MJX Warp
+- Training length: 20M requested steps; final saved checkpoint at `000026214400`
+
+This is the first successful low-speed velocity-guided walking checkpoint from
+the reset plan. The task uses a gait-prior action center for moving commands and
+learns residual actions around that center. The verified command range is
+currently low-speed walking; it is not a run policy.
+
+Training eval rewards moved in the intended direction:
+
+- `0`: `-710.969`
+- `6553600`: `-657.894`
+- `13107200`: `-540.841`
+- `19660800`: `-9.190`
+- `26214400`: `21.782`
+
+Fixed-command diagnostics on the final checkpoint used Warp with standing
+resets, seed 0, and the final 500 steps of a 1000-step rollout:
+
+- Command `0.25 m/s`: mean forward velocity `0.255 m/s`, mean forward error
+  `0.005 m/s`, base XY displacement `2.586 m`, torso height `2.575-2.740 m`,
+  orientation reward `0.913-0.981`, left/right contact duty `0.672/0.622`, and
+  no termination.
+- Command `0.5 m/s`: mean forward velocity `0.494 m/s`, mean forward error
+  `0.006 m/s`, base XY displacement `5.005 m`, torso height `2.660-2.804 m`,
+  orientation reward `0.923-0.948`, left/right contact duty `0.578/0.752`, and
+  no termination.
+- Command `0.8 m/s`: mean forward velocity `0.611 m/s`, mean forward error
+  `0.189 m/s`, base XY displacement `6.049 m`, orientation reward
+  `0.590-0.803`, and no termination. This is forward motion but not yet a clean
+  high-speed walk.
+- Local load/run smoke test with JAX at command `0.5 m/s`, seed 0, 50 steps:
+  no termination, mean forward velocity `0.447 m/s`, mean forward error
+  `0.053 m/s`, base XY displacement `0.574 m`, torso height `2.639-2.853 m`,
+  and orientation reward `0.966-1.000`.
+
+Representative rollout videos copied locally:
+
+- `checkpoints/TrexWalk-20260515-011532-walk-gaitprior-20m-from-balance/videos/walk_0p25ms.mp4`
+- `checkpoints/TrexWalk-20260515-011532-walk-gaitprior-20m-from-balance/videos/walk_0p5ms.mp4`
+- `checkpoints/TrexWalk-20260515-011532-walk-gaitprior-20m-from-balance/videos/walk_0p8ms.mp4`
+
+Verify local policy loading:
+
+```bash
+uv run python tools/analyze_joystick_rollout.py \
+  /home/bingjeff/projects/trex-gym/checkpoints/TrexWalk-20260515-011532-walk-gaitprior-20m-from-balance/000026214400 \
+  --task TrexWalk \
+  --impl jax \
+  --seed 0 \
+  --steps 50 \
+  --skip-steps 0 \
+  --forward 0.5 \
+  --turn 0.0 \
+  --reset-pose standing
+```

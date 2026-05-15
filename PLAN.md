@@ -473,3 +473,58 @@ Follow-up debugging:
 - Exact nominal standing posture for fixed leg PD targets.
 - Exact sensor set for the first version: only torso IMU and foot/contact
   sites, or additional body pose sensors for debugging.
+
+## Phase 6: Single-Policy Skill Reset
+
+Status: completed for the first successful single-skill checkpoints.
+
+Goal:
+
+1. Keep get-up, standing balance, and velocity-guided walking as separate
+   policies before attempting a combined joystick policy.
+2. Verify each policy with rollout metrics, local checkpoint loading, and
+   rendered samples when useful.
+3. Keep persistent remote checkpoints under `/workspace/runs`.
+
+Results:
+
+- Get-up from ground remains covered by the existing verified checkpoint
+  `checkpoints/TrexGetup-20260513-033812-still2-warp-10m/000011468800`.
+  Current-code diagnostics show it reaches upright, foot-supported standing
+  from the side reset, though it is not a quiet balance policy.
+- Standing balance is covered by
+  `checkpoints/TrexBalance-20260514-235829-balance-10m-buf-best/000009830400`,
+  sourced from
+  `/workspace/runs/TrexBalance-20260514-235829-balance-10m-buf-best/checkpoints/000009830400`.
+  It holds a zero command from standing with near-zero drift and no termination.
+- Low-speed velocity-guided walking is covered by
+  `checkpoints/TrexWalk-20260515-011532-walk-gaitprior-20m-from-balance/000026214400`,
+  sourced from
+  `/workspace/runs/TrexWalk-20260515-011532-walk-gaitprior-20m-from-balance/checkpoints/000026214400`.
+  It tracks `0.25 m/s` and `0.5 m/s` standing-start forward commands with low
+  error and no termination. The `0.8 m/s` rollout moves forward but is not yet
+  clean enough to count as high-speed walking.
+- The `TrexWalk` task now applies the gait prior as the moving-command action
+  center, instead of using it only as a reward target. Focused regression tests
+  cover this behavior and preserve the default zero-command standing action.
+- Walking verification videos are stored under
+  `checkpoints/TrexWalk-20260515-011532-walk-gaitprior-20m-from-balance/videos/`.
+
+Validation:
+
+- Focused local tests passed:
+  - `test_trex_walk_zero_residual_applies_gait_prior_for_moving_command`
+  - `test_trex_joystick_actions_are_default_pose_residuals`
+  - `test_trex_single_skill_task_configs`
+- Local JAX checkpoint-load smoke tests passed for the balance and walk
+  checkpoints.
+- Remote Warp diagnostics passed for walking commands `0.25`, `0.5`, and
+  `0.8 m/s`; the first two are accepted as the first low-speed walking success.
+
+Next direction:
+
+- Improve the walk policy beyond the current low-speed envelope before adding
+  turns.
+- After walking is stronger, train a separate velocity-steered joystick policy.
+- Leave the combined get-up/balance/walk policy until the individual policies
+  are more robust.

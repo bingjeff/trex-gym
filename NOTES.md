@@ -785,3 +785,50 @@ May 14 policy reset implementation:
   It is still not a quiet stand by the stricter new gate: base displacement was
   `5.407 m`, mean base linear speed `1.273 m/s`, and mean angular speed
   `0.481 rad/s`.
+
+May 15 single-policy reset results:
+
+- Committed `167b40f2eaab9493b5218489bac9647b1c574a7c` to apply the walking
+  gait prior as an action center for moving `TrexWalk` commands. The previous
+  code only used `_gait_prior_action()` as a reward target, so the walking
+  policy had to discover leg cycling from residual noise around a static stand
+  pose. A focused regression test now verifies that a zero residual action in
+  `TrexWalk` produces `stand_pose_action + gait_prior_action` for a moving
+  command, while the zero-command default stand behavior remains unchanged.
+- Lowered the first `TrexWalk` curriculum to `0.25-0.8 m/s`, reduced the
+  forward-speed deficit cost, and strengthened orientation/height penalties.
+  This intentionally targets a reliable low-speed velocity-guided walk before
+  expanding to faster commands.
+- Remote training ran on the L40S with Warp from the verified balance checkpoint:
+  `/workspace/runs/TrexWalk-20260515-011532-walk-gaitprior-20m-from-balance`.
+  Checkpoints and logs were written under `/workspace/runs` per the storage
+  directive. The eval reward sequence was `-710.969`, `-657.894`, `-540.841`,
+  `-9.190`, `21.782`; final checkpoint `000026214400` was selected.
+- Final walking checkpoint diagnostics, standing reset, seed 0, final 500 steps:
+  command `0.25 m/s` tracked at `0.255 m/s`, command `0.5 m/s` tracked at
+  `0.494 m/s`, and command `0.8 m/s` moved forward at `0.611 m/s`. The first two
+  are acceptable low-speed velocity-guided walking checks; the 0.8 m/s rollout
+  is forward but degraded and should not be treated as high-speed success.
+- Rendered videos with `MUJOCO_GL=egl` under:
+  `/workspace/runs/TrexWalk-20260515-011532-walk-gaitprior-20m-from-balance/videos/`.
+  The local copies are in
+  `checkpoints/TrexWalk-20260515-011532-walk-gaitprior-20m-from-balance/videos/`.
+  Visual frame inspection of the 0.5 m/s rollout showed upright posture with
+  feet under the body rather than the prior fall/spin failure.
+- Copied the verified balance checkpoint locally from
+  `/workspace/runs/TrexBalance-20260514-235829-balance-10m-buf-best/checkpoints/000009830400`
+  to `checkpoints/TrexBalance-20260514-235829-balance-10m-buf-best/000009830400`.
+  A local JAX smoke test loaded it and ran 50 standing steps with no termination,
+  `0.023 m` XY displacement, torso height `2.772-2.852 m`, and orientation
+  reward `0.997-1.000`.
+- Copied the verified walking checkpoint locally to
+  `checkpoints/TrexWalk-20260515-011532-walk-gaitprior-20m-from-balance/000026214400`.
+  A local JAX smoke test loaded it and ran 50 standing-start steps at command
+  `0.5 m/s` with no termination, mean forward velocity `0.447 m/s`, mean
+  forward error `0.053 m/s`, torso height `2.639-2.853 m`, and orientation
+  reward `0.966-1.000`.
+- Current status against the reset plan: get-up from ground has a verified older
+  checkpoint, balance has a verified new single-policy checkpoint, and low-speed
+  velocity-guided walking now has a verified single-policy checkpoint. Remaining
+  work is to expand beyond low-speed walking into turning and running, and later
+  combine get-up, balance, and walk only after each single skill is stronger.
