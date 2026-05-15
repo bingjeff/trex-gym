@@ -894,3 +894,43 @@ May 15 signed joystick turning phase:
 - This completes the first standing-start joystickable policy. It does not get
   up from the ground; the remaining combined-policy phase must add recovery or
   orchestration between the get-up/balance policy and the joystick policy.
+
+May 15 combined recovery and joystick phase:
+
+- Added `tools/drive_combined_policy.py` as an orchestrated local fallback that
+  can load get-up, optional balance, and joystick checkpoints. The first checks
+  showed why a learned combined policy was still needed: direct handoff from the
+  older get-up checkpoint destabilized, and the balance policy was not robust to
+  the recovered get-up state.
+- Combined PPO attempt 1:
+  `/workspace/runs/TrexJoystick-20260515-043020-combined1-side-joystick-40m`.
+  It learned side-start moving-command recovery and preserved signed joystick
+  behavior, but side-start zero command failed to stand.
+- Combined PPO attempt 2:
+  `/workspace/runs/TrexJoystick-20260515-045113-combined2-zero-recovery-30m`.
+  It increased zero-command sampling and get-up/stand rewards. Standing-start
+  behavior and side-start moving commands remained good, but side-start zero
+  command still failed.
+- Added recovery-only residual scaling in commit `1c19c49`: while posture is
+  not upright, the joystick task uses `recovery_action_residual_scale`
+  (`0.75` for legs, `1.0` for tail) so neutral-command side recovery is not
+  constrained to tiny residuals around the static standing pose. Once upright,
+  the normal command-dependent residual scale is restored.
+- Combined PPO attempt 3:
+  `/workspace/runs/TrexJoystick-20260515-051704-combined3-recovery-scale-30m`.
+  Eval rewards improved from `-25.925` to `360.719`.
+- Final checkpoint `000032768000` passed all required gates in remote Warp
+  diagnostics, seed 0, final 500 steps of 1000-step rollouts:
+  standing zero stayed quiet; standing `(0.5,+/-0.25)` tracked signed turns;
+  side zero recovered to quiet standing; side `(0.5,+/-0.25)` recovered and
+  tracked signed turns. Side-zero final metrics were forward `-0.001 m/s`,
+  turn `-0.013 rad/s`, base displacement `0.160 m`, torso height
+  `2.506-2.589 m`, and orientation reward `0.992-1.000`.
+- Copied the combined checkpoint and videos locally to
+  `checkpoints/TrexJoystick-20260515-051704-combined3-recovery-scale-30m/`.
+  `tools/drive_joystick_policy.py` now uses `joystick_config()` so local
+  interactive driving matches the newer joystick/combined checkpoints. Local
+  `--check-load --start side` succeeds with the final combined checkpoint.
+- Current combined limitations: the verified speed/turn envelope is moderate
+  (`0.5 m/s`, `+/-0.25 rad/s`). This is a successful joystickable combined
+  baseline, not the final high-speed run policy.

@@ -601,3 +601,45 @@ Next direction:
 - A single monolithic get-up-plus-joystick PPO policy remains possible but has
   been much harder historically and should be attempted only after the
   orchestrated baseline works.
+
+## Phase 9: Combined Recovery And Joystick
+
+Status: completed for the first single combined checkpoint.
+
+Goal:
+
+1. Produce a policy that can start from the side, recover, stand under a neutral
+   command, and track moderate signed joystick commands.
+2. Verify both side-start and standing-start behavior.
+3. Make sure the final checkpoint can be loaded by a local joystick entrypoint.
+
+Results:
+
+- An orchestrated local runner was added as a fallback, but direct handoff from
+  the older get-up policy was not robust enough to count as the combined
+  solution.
+- A monolithic `TrexJoystick` combined policy was trained through three
+  attempts. The third attempt added recovery-only residual scaling so the
+  neutral-command fallen state has enough action authority to get up.
+- Successful checkpoint:
+  `checkpoints/TrexJoystick-20260515-051704-combined3-recovery-scale-30m/000032768000`.
+- Remote source:
+  `/workspace/runs/TrexJoystick-20260515-051704-combined3-recovery-scale-30m/checkpoints/000032768000`.
+- Verified remote Warp gates:
+  - standing reset, zero command: quiet stand.
+  - standing reset, `(0.5,+0.25)`: forward `0.547 m/s`, yaw `0.223 rad/s`.
+  - standing reset, `(0.5,-0.25)`: forward `0.492 m/s`, yaw `-0.209 rad/s`.
+  - side reset, zero command: get-up and quiet stand.
+  - side reset, `(0.5,+0.25)`: get-up, forward `0.547 m/s`, yaw `0.224 rad/s`.
+  - side reset, `(0.5,-0.25)`: get-up, forward `0.492 m/s`, yaw `-0.209 rad/s`.
+- Rendered side-start videos for neutral, left-turn, and right-turn commands.
+- Local `tools/drive_joystick_policy.py --check-load --start side --impl jax`
+  loads the final combined checkpoint and steps the environment.
+
+Remaining future work:
+
+- Expand the combined policy beyond the current moderate command envelope.
+- Train or fine-tune a separate high-speed `TrexRun` policy up to the original
+  `10 m/s` goal.
+- Consider adding perturbation robustness after the combined baseline is less
+  speed-limited.

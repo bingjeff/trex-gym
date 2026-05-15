@@ -81,7 +81,7 @@ def _copy_to_mujoco_viewer(data, mj_data: mujoco.MjData) -> None:
 
 
 def drive(args: argparse.Namespace) -> None:
-    config = trex_joystick.default_config()
+    config = trex_joystick.joystick_config()
     config.impl = args.impl
     config.reset_standing_prob = 1.0 if args.start == "standing" else 0.0
     env = trex_joystick.TrexJoystick(config)

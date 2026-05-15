@@ -457,3 +457,87 @@ uv run python tools/drive_joystick_policy.py \
   --start standing \
   --impl jax
 ```
+
+## TrexJoystick combined recovery and joystick Warp 30M
+
+- Local path: `checkpoints/TrexJoystick-20260515-051704-combined3-recovery-scale-30m/`
+- Checkpoint: `checkpoints/TrexJoystick-20260515-051704-combined3-recovery-scale-30m/000032768000/`
+- Source run on pod: `/workspace/runs/TrexJoystick-20260515-051704-combined3-recovery-scale-30m`
+- Warm start: `/workspace/runs/TrexJoystick-20260515-045113-combined2-zero-recovery-30m/checkpoints/000032768000`
+- Training source: `1c19c49f8ea9342f91b650c17dd4713e2abbcf7c`
+- Training backend: MuJoCo MJX Warp
+- Training length: 30M requested steps; final saved checkpoint at `000032768000`
+
+This is the first successful single combined policy. From a side reset, it can
+recover to quiet standing under a zero command and can also recover into signed
+moderate joystick locomotion. The verified joystick envelope remains moderate:
+about `0.5 m/s` forward and `+/-0.25 rad/s` yaw.
+
+The key implementation change for this run was a recovery-only residual action
+scale. When the posture gate says the model is not upright, `TrexJoystick`
+temporarily gives the policy a larger action envelope; once upright, it returns
+to the existing standing/joystick residual scale. This fixed the earlier
+zero-command side-recovery failure.
+
+Training eval rewards:
+
+- `0`: `-25.925`
+- `6553600`: `45.616`
+- `13107200`: `214.927`
+- `19660800`: `301.984`
+- `26214400`: `329.282`
+- `32768000`: `360.719`
+
+Fixed-command diagnostics on the final checkpoint used Warp, seed 0, and the
+final 500 steps of a 1000-step rollout:
+
+- Standing reset, command `(0.0, 0.0)`: mean forward velocity `-0.006 m/s`,
+  mean turn velocity `-0.013 rad/s`, base XY displacement `0.209 m`, torso
+  height `2.496-2.584 m`, orientation reward `0.990-1.000`, and no termination.
+- Standing reset, command `(0.5, +0.25)`: mean forward velocity `0.547 m/s`,
+  mean turn velocity `0.223 rad/s`, orientation reward `0.993-0.999`, and no
+  termination.
+- Standing reset, command `(0.5, -0.25)`: mean forward velocity `0.492 m/s`,
+  mean turn velocity `-0.209 rad/s`, orientation reward `0.993-1.000`, and no
+  termination.
+- Side reset, command `(0.0, 0.0)`: mean forward velocity `-0.001 m/s`, mean
+  turn velocity `-0.013 rad/s`, base XY displacement `0.160 m`, torso height
+  `2.506-2.589 m`, orientation reward `0.992-1.000`, and no termination.
+- Side reset, command `(0.5, +0.25)`: mean forward velocity `0.547 m/s`, mean
+  turn velocity `0.224 rad/s`, orientation reward `0.993-0.999`, and no
+  termination.
+- Side reset, command `(0.5, -0.25)`: mean forward velocity `0.492 m/s`, mean
+  turn velocity `-0.209 rad/s`, orientation reward `0.993-1.000`, and no
+  termination.
+- Local joystick-entrypoint smoke test loaded the policy with
+  `tools/drive_joystick_policy.py --check-load --impl jax --start side` and
+  completed one env step.
+
+Representative side-start rollout videos copied locally:
+
+- `checkpoints/TrexJoystick-20260515-051704-combined3-recovery-scale-30m/videos/combined_side_f0p0_t0p0.mp4`
+- `checkpoints/TrexJoystick-20260515-051704-combined3-recovery-scale-30m/videos/combined_side_f0p5_t0p25.mp4`
+- `checkpoints/TrexJoystick-20260515-051704-combined3-recovery-scale-30m/videos/combined_side_f0p5_tm0p25.mp4`
+
+Check local load without opening the viewer:
+
+```bash
+uv run python tools/drive_joystick_policy.py \
+  /home/bingjeff/projects/trex-gym/checkpoints/TrexJoystick-20260515-051704-combined3-recovery-scale-30m/000032768000 \
+  --check-load \
+  --impl jax \
+  --start side \
+  --max-forward 0.8 \
+  --max-turn 0.25
+```
+
+Run interactively with a connected gamepad:
+
+```bash
+uv run python tools/drive_joystick_policy.py \
+  /home/bingjeff/projects/trex-gym/checkpoints/TrexJoystick-20260515-051704-combined3-recovery-scale-30m/000032768000 \
+  --start side \
+  --impl jax \
+  --max-forward 0.8 \
+  --max-turn 0.25
+```
