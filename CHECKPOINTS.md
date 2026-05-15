@@ -314,3 +314,71 @@ uv run python tools/analyze_joystick_rollout.py \
   --turn 0.0 \
   --reset-pose standing
 ```
+
+## TrexWalk expanded straight-line Warp 30M
+
+- Local path: `checkpoints/TrexWalk-20260515-024930-walk-expand-30m-from-gaitprior/`
+- Checkpoint: `checkpoints/TrexWalk-20260515-024930-walk-expand-30m-from-gaitprior/000032768000/`
+- Source run on pod: `/workspace/runs/TrexWalk-20260515-024930-walk-expand-30m-from-gaitprior`
+- Warm start: `/workspace/runs/TrexWalk-20260515-011532-walk-gaitprior-20m-from-balance/checkpoints/000026214400`
+- Training source: `6225cc4f7c0d4be94620a9f2d90ee0b75061b80e`
+- Training backend: MuJoCo MJX Warp
+- Training length: 30M requested steps; final saved checkpoint at `000032768000`
+
+This checkpoint expands the straight-line walking envelope. It uses the same
+gait-prior action-center formulation as the first `TrexWalk` checkpoint, with a
+wider training command range of `0.25-1.2 m/s`. The useful verified range is
+currently up to about `1.0 m/s`; `1.2 m/s` still degrades.
+
+Training eval rewards:
+
+- `0`: `-48.491`
+- `6553600`: `-222.306`
+- `13107200`: `-255.569`
+- `19660800`: `-99.695`
+- `26214400`: `11.538`
+- `32768000`: `95.853`
+
+Fixed-command diagnostics on the final checkpoint used Warp with standing
+resets, seed 0, and the final 500 steps of a 1000-step rollout:
+
+- Command `0.25 m/s`: mean forward velocity `0.329 m/s`, mean forward error
+  `0.079 m/s`, torso height `2.703-2.798 m`, orientation reward `0.992-1.000`,
+  left/right contact duty `0.740/0.660`, and no termination.
+- Command `0.5 m/s`: mean forward velocity `0.506 m/s`, mean forward error
+  `0.006 m/s`, torso height `2.639-2.735 m`, orientation reward `0.973-0.992`,
+  left/right contact duty `0.746/0.612`, and no termination.
+- Command `0.8 m/s`: mean forward velocity `0.755 m/s`, mean forward error
+  `0.045 m/s`, torso height `2.642-2.723 m`, orientation reward `0.944-0.966`,
+  left/right contact duty `0.682/0.668`, and no termination.
+- Command `1.0 m/s`: mean forward velocity `0.943 m/s`, mean forward error
+  `0.057 m/s`, torso height `2.659-2.739 m`, orientation reward `0.937-0.956`,
+  left/right contact duty `0.654/0.696`, and no termination.
+- Command `1.2 m/s`: mean forward velocity `0.457 m/s`, mean forward error
+  `0.743 m/s`, orientation reward `0.595-0.784`, right contact duty `1.000`.
+  This is not counted as success.
+- Local load/run smoke test with JAX at command `1.0 m/s`, seed 0, 50 steps:
+  no termination, mean forward velocity `0.791 m/s`, base XY displacement
+  `0.875 m`, torso height `2.762-2.932 m`, and orientation reward
+  `0.907-1.000`.
+
+Representative rollout videos copied locally:
+
+- `checkpoints/TrexWalk-20260515-024930-walk-expand-30m-from-gaitprior/videos/walk_0p8ms.mp4`
+- `checkpoints/TrexWalk-20260515-024930-walk-expand-30m-from-gaitprior/videos/walk_1p0ms.mp4`
+
+Verify local policy loading:
+
+```bash
+uv run python tools/analyze_joystick_rollout.py \
+  /home/bingjeff/projects/trex-gym/checkpoints/TrexWalk-20260515-024930-walk-expand-30m-from-gaitprior/000032768000 \
+  --task TrexWalk \
+  --impl jax \
+  --seed 0 \
+  --steps 50 \
+  --skip-steps 0 \
+  --forward 1.0 \
+  --turn 0.0 \
+  --reset-pose standing \
+  --config-overrides '{"walk_command_forward_min":0.25,"walk_command_forward_max":1.2,"walk_command_zero_prob":0.05,"gait_frequency_max":1.6,"gait_frequency_per_mps":0.25}'
+```

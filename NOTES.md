@@ -832,3 +832,31 @@ May 15 single-policy reset results:
   velocity-guided walking now has a verified single-policy checkpoint. Remaining
   work is to expand beyond low-speed walking into turning and running, and later
   combine get-up, balance, and walk only after each single skill is stronger.
+
+May 15 expanded walking phase:
+
+- Started a straight-line `TrexWalk` continuation from the verified gait-prior
+  walking checkpoint. Remote run:
+  `/workspace/runs/TrexWalk-20260515-024930-walk-expand-30m-from-gaitprior`.
+  Overrides widened the speed curriculum to `0.25-1.2 m/s`, kept turn commands
+  at zero, reduced zero-command sampling to `0.05`, and raised gait frequency
+  scaling/max slightly.
+- The final checkpoint `000032768000` had the best scalar eval reward:
+  `-48.491`, `-222.306`, `-255.569`, `-99.695`, `11.538`, `95.853`.
+- Remote Warp diagnostics, standing reset, seed 0, final 500 steps:
+  `0.25 m/s` command tracked at `0.329 m/s`, `0.5 m/s` at `0.506 m/s`,
+  `0.8 m/s` at `0.755 m/s`, and `1.0 m/s` at `0.943 m/s`, all with no
+  termination and upright orientation ranges above `0.937` except the lower
+  commands, which were stronger. The `1.2 m/s` command failed to track
+  (`0.457 m/s`, orientation `0.595-0.784`, one foot effectively stuck).
+- Rendered EGL videos for `0.8 m/s` and `1.0 m/s`. Visual frame inspection of
+  the `1.0 m/s` sample showed the model upright with feet under the body, not a
+  fall/spin exploit.
+- Copied the checkpoint and videos locally to
+  `checkpoints/TrexWalk-20260515-024930-walk-expand-30m-from-gaitprior/`.
+  A local JAX smoke test loaded the checkpoint and ran 50 steps at `1.0 m/s`
+  with no termination. Short-horizon local mean speed was `0.791 m/s`; the
+  longer remote Warp diagnostic remains the primary settled-speed evidence.
+- This completes the straight-line walking expansion phase through about
+  `1.0 m/s`. Next phase should introduce turning/joystick commands from this
+  checkpoint, not push speed further yet.

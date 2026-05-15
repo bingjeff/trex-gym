@@ -528,3 +528,38 @@ Next direction:
 - After walking is stronger, train a separate velocity-steered joystick policy.
 - Leave the combined get-up/balance/walk policy until the individual policies
   are more robust.
+
+## Phase 7: Expanded Straight-Line Walking
+
+Status: completed through approximately `1.0 m/s`.
+
+Goal:
+
+1. Continue from the first low-speed `TrexWalk` checkpoint.
+2. Expand the straight-line command range before introducing turn commands.
+3. Verify fixed-speed rollouts at several commands and reject scalar-only
+   success.
+
+Results:
+
+- Continued from
+  `/workspace/runs/TrexWalk-20260515-011532-walk-gaitprior-20m-from-balance/checkpoints/000026214400`.
+- Remote run:
+  `/workspace/runs/TrexWalk-20260515-024930-walk-expand-30m-from-gaitprior`.
+- Final checkpoint:
+  `checkpoints/TrexWalk-20260515-024930-walk-expand-30m-from-gaitprior/000032768000`.
+- Verified fixed-command walking up to about `1.0 m/s`:
+  - `0.25 m/s` command: `0.329 m/s` mean forward velocity.
+  - `0.5 m/s` command: `0.506 m/s` mean forward velocity.
+  - `0.8 m/s` command: `0.755 m/s` mean forward velocity.
+  - `1.0 m/s` command: `0.943 m/s` mean forward velocity.
+  - `1.2 m/s` command: failed, only `0.457 m/s` mean forward velocity with
+    degraded orientation.
+- Rendered videos for `0.8 m/s` and `1.0 m/s` and inspected frames for posture.
+- Local JAX checkpoint-load smoke test passed at `1.0 m/s`.
+
+Next direction:
+
+- Start a separate turning/joystick phase from the expanded walking checkpoint.
+- Use moderate forward speeds and low yaw-rate commands first.
+- Keep `TrexRun` and combined get-up/balance/walk policy as later phases.
