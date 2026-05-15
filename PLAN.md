@@ -708,6 +708,12 @@ Conclusion:
   height band. A 30M continuation from run14 did not solve the mode: the
   least-bad run16 checkpoint averaged `8.477 m/s` on a `10.0 m/s` command and
   still had low gait anti-phase around `0.15`.
+- Extended the open-loop gait diagnostic to replay explicit phase-binned action
+  templates. Replaying the run14 raw/applied phase-action means did not produce
+  a viable gait: from rest the raw template moved only `0.274 m/s`, and with
+  `5-9 m/s` initial velocity both raw and applied templates fell within
+  `18-30` steps. The learned high-speed behavior is therefore closed-loop and
+  not a reusable phase-only gait template.
 - The next step should be model/control debugging, not another blind PPO run:
   inspect actuator force/position limits, whether the leg/tail action space can
   generate the required stride impulse, whether the simplified collision feet

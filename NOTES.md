@@ -1081,3 +1081,24 @@ May 15 forward-reward support gate:
   does not salvage the current high-speed checkpoint family. The next attempt
   should develop a better high-speed gait template or action parameterization
   before spending more PPO time.
+
+May 15 phase-template replay:
+
+- Extended `tools/analyze_open_loop_gait.py` with:
+  - `--task` so open-loop probes can instantiate `TrexRun` directly.
+  - `--phase-template` for JSON phase-binned action tables.
+  - `--template-space raw|applied` so both raw policy-action means and final
+    applied-action means can be replayed.
+  - `--initial-forward-velocity` for sustain tests.
+- Replayed run14 phase-binned raw action means and applied action means from
+  the successful-looking high-speed rollout.
+- From rest:
+  - raw template: no termination over 500 steps, but only `0.274 m/s`.
+  - applied template: termination at step `168`, only `0.336 m/s`.
+- With initial forward velocity:
+  - `5.0 m/s`: raw fell at step `30`; applied fell at step `27`.
+  - `9.0 m/s`: raw fell at step `20`; applied fell at step `18`.
+- Conclusion: the high-speed policy is not reducible to a phase-only open-loop
+  template. It depends on closed-loop state feedback and likely exploits a
+  narrow dynamic mode. A better prior probably needs a different structure
+  rather than averaging the existing policy's actions by gait phase.

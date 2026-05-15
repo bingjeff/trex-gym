@@ -11,10 +11,55 @@ from mjx_gym import train
 from mjx_gym import trex_constants
 from mjx_gym import trex_getup
 from mjx_gym import trex_joystick
+from tools import analyze_open_loop_gait
 from tools import mjx_model_simplification
 
 
 class TestMjxGym(unittest.TestCase):
+    def test_open_loop_phase_template_interpolates_and_wraps(self):
+        template = np.asarray(
+            [
+                [0.0, 0.0],
+                [1.0, 2.0],
+                [2.0, 4.0],
+                [3.0, 6.0],
+            ],
+            dtype=np.float32,
+        )
+
+        np.testing.assert_allclose(
+            np.asarray(analyze_open_loop_gait._phase_template_action(0.0, template)),
+            [0.0, 0.0],
+        )
+        np.testing.assert_allclose(
+            np.asarray(
+                analyze_open_loop_gait._phase_template_action(0.25 * np.pi, template)
+            ),
+            [0.5, 1.0],
+            atol=1e-6,
+        )
+        np.testing.assert_allclose(
+            np.asarray(
+                analyze_open_loop_gait._phase_template_action(2.0 * np.pi, template)
+            ),
+            [0.0, 0.0],
+            atol=1e-6,
+        )
+
+    def test_open_loop_phase_template_validates_shape(self):
+        with self.assertRaises(ValueError):
+            analyze_open_loop_gait._parse_phase_template("[1, 2, 3]", action_size=3)
+
+        with self.assertRaises(ValueError):
+            analyze_open_loop_gait._parse_phase_template(
+                "[[1, 2], [3, 4]]", action_size=3
+            )
+
+        parsed = analyze_open_loop_gait._parse_phase_template(
+            "[[1, 2, 3], [4, 5, 6]]", action_size=3
+        )
+        self.assertEqual((2, 3), parsed.shape)
+
     def test_trex_getup_model_reset_and_step(self):
         env = trex_getup.TrexGetup()
 
