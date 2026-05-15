@@ -151,6 +151,8 @@ def analyze(args: argparse.Namespace) -> None:
     phase_bin_right_target = np.zeros(4)
     phase_bin_left_contact = np.zeros(4)
     phase_bin_right_contact = np.zeros(4)
+    phase_bin_action_sums = np.zeros((4, env.action_size))
+    phase_bin_applied_action_sums = np.zeros((4, env.action_size))
 
     for step_index in range(args.steps):
         state.info["command"] = command
@@ -287,6 +289,8 @@ def analyze(args: argparse.Namespace) -> None:
         phase_bin_right_target[phase_bin] += float(right_target)
         phase_bin_left_contact[phase_bin] += float(left_contact > 0.5)
         phase_bin_right_contact[phase_bin] += float(right_contact > 0.5)
+        phase_bin_action_sums[phase_bin] += action_np
+        phase_bin_applied_action_sums[phase_bin] += applied_action_np
         left_contact_duty += float(left_contact > 0.5)
         right_contact_duty += float(right_contact > 0.5)
 
@@ -366,6 +370,21 @@ def analyze(args: argparse.Namespace) -> None:
             f"right_target={phase_bin_right_target[index] / count:.3f} "
             f"left_contact={phase_bin_left_contact[index] / count:.3f} "
             f"right_contact={phase_bin_right_contact[index] / count:.3f}"
+        )
+    print("phase_action_means:")
+    for index, count in enumerate(phase_bin_counts):
+        if count <= 0:
+            print(f"  bin_{index}: count=0")
+            continue
+        action_mean = phase_bin_action_sums[index] / count
+        applied_mean = phase_bin_applied_action_sums[index] / count
+        action_text = " ".join(f"{value:.3f}" for value in action_mean)
+        applied_text = " ".join(f"{value:.3f}" for value in applied_mean)
+        print(
+            "  "
+            f"bin_{index}: count={int(count)} "
+            f"action_mean=[{action_text}] "
+            f"applied_mean=[{applied_text}]"
         )
     if first_xy is not None and last_xy is not None:
         print(f"base_xy_displacement: {np.linalg.norm(last_xy - first_xy):.3f}")

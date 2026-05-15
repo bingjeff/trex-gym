@@ -91,6 +91,7 @@ def default_config() -> config_dict.ConfigDict:
     config.random_initial_gait_phase = True
     config.running_gate_start = 0.05
     config.running_gate_full = 0.25
+    config.gate_forward_rewards_by_support = False
     config.locomotion_height_gate_fraction = 0.97
     config.locomotion_orientation_gate_threshold = 0.90
     config.foot_contact_force_scale = 20000.0
@@ -300,6 +301,7 @@ def run_config() -> config_dict.ConfigDict:
     config.gait_swing_height = 0.22
     config.gait_prior_scale = 0.65
     config.apply_gait_prior_action = True
+    config.gate_forward_rewards_by_support = True
     config.running_action_residual_scale = [0.75] * 8 + [1.0, 1.0]
     config.recovery_action_residual_scale = [0.75] * 8 + [1.0, 1.0]
     config.reward_config.scales.tracking_lin_vel = 2.0
@@ -616,18 +618,23 @@ class TrexJoystick(trex_getup.TrexGetup):
         local_linvel = self.get_local_linvel(data)
         local_angvel = self.get_local_angvel(data)
         done = self._fall_done(data)
+        forward_reward_gate = self._forward_reward_gate(data, torso_height)
         return {
-            "tracking_lin_vel": posture_gate * self._reward_tracking_lin_vel(
+            "tracking_lin_vel": posture_gate
+            * forward_reward_gate
+            * self._reward_tracking_lin_vel(
                 info["command"], local_linvel
             ),
             "tracking_forward_vel": moving_gate
             * orientation
+            * forward_reward_gate
             * self._reward_tracking_forward_vel(info["command"], local_linvel),
             "tracking_ang_vel": posture_gate * self._reward_tracking_ang_vel(
                 info["command"], local_angvel
             ),
             "forward_progress": moving_gate
             * orientation
+            * forward_reward_gate
             * self._reward_forward_progress(info["command"], local_linvel),
             "forward_speed_deficit": moving_gate
             * orientation
@@ -1090,6 +1097,15 @@ class TrexJoystick(trex_getup.TrexGetup):
     def _moving_foot_support_gate(self, data: mjx.Data) -> jax.Array:
         contact_sum = sum(self._foot_contact_scores(data))
         return jp.clip(contact_sum / 0.75, 0.0, 1.0)
+
+    def _forward_reward_gate(
+        self, data: mjx.Data, torso_height: jax.Array
+    ) -> jax.Array:
+        if not self._config.gate_forward_rewards_by_support:
+            return jp.array(1.0)
+        return self._moving_foot_support_gate(data) * self._reward_running_height_gate(
+            torso_height
+        )
 
     def _cost_running_height_excess(self, torso_height: jax.Array) -> jax.Array:
         max_running_height = self._target_torso_height + 0.10

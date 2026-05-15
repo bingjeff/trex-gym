@@ -449,6 +449,7 @@ class TestMjxGym(unittest.TestCase):
         )
         self.assertEqual(10.0, run._config.command_config.forward_max)
         self.assertTrue(run._config.apply_gait_prior_action)
+        self.assertTrue(run._config.gate_forward_rewards_by_support)
         self.assertGreater(run._config.reward_config.scales.tracking_forward_vel, 0.0)
         self.assertEqual(8, len(run._config.leg_actuator_kp_scale))
 
@@ -718,6 +719,29 @@ class TestMjxGym(unittest.TestCase):
                     jp.array([0.0, 0.0]), jp.zeros(3), jp.zeros(3)
                 )
             ),
+        )
+
+    def test_trex_run_gates_positive_forward_rewards_by_support_and_height(self):
+        run = trex_joystick.TrexRun()
+        state = run.reset(jax.random.PRNGKey(0))
+        state.info["command"] = jp.array([0.5, 0.0])
+        info = {**state.info, "gait_phase": jp.array(0.0)}
+
+        nominal_rewards = run._get_reward(
+            state.data,
+            jp.zeros(run.action_size),
+            info,
+            jp.zeros(2, dtype=bool),
+            jp.zeros(2),
+        )
+        self.assertGreater(float(nominal_rewards["tracking_lin_vel"]), 0.0)
+        self.assertGreater(float(nominal_rewards["tracking_forward_vel"]), 0.0)
+
+        high_torso = run._target_torso_height + 1.0
+        self.assertLess(float(run._reward_running_height_gate(high_torso)), 0.001)
+        self.assertLess(
+            float(run._forward_reward_gate(state.data, high_torso)),
+            0.001,
         )
 
     def test_trex_joystick_gait_rewards_are_disabled_for_stand_command(self):
