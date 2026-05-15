@@ -739,6 +739,11 @@ Conclusion:
   reward from `-29.399` to `5.736`, but failed deterministic fixed-command
   gates and collapsed for `0.5`, `1.0`, and `1.5 m/s` commands. Scalar reward
   remains unreliable for this branch.
+- Found one concrete scalar/gate mismatch: all rewards are multiplied by
+  `dt=0.02`, so the old TrexRun termination scale of `-100` only cost about
+  `-2` when the model fell. Increased the TrexRun termination scale to `-1000`
+  so falling is much more visible to PPO and scalar eval should better match
+  fixed-command survival gates.
 - The next step should be model/control debugging, not another blind PPO run:
   inspect actuator force/position limits, whether the leg/tail action space can
   generate the required stride impulse, whether the simplified collision feet

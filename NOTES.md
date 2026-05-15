@@ -1189,3 +1189,16 @@ May 15 searched-center residual PPO:
   PPO setup can produce misleading scalar improvement without a usable
   deterministic policy. Further work should inspect the evaluation/reset logic
   or simplify the objective before spending more training time.
+
+May 15 termination-cost mismatch:
+
+- Root cause for several misleading scalar improvements: `TrexJoystick.step`
+  multiplies the full reward sum by `dt=0.02`. The old run termination scale of
+  `-100` was therefore only about `-2` once at the falling step.
+- Training/eval can reset after termination, while the fixed gates correctly
+  treat any termination as failure. This made policies that briefly moved or
+  scored reward before falling look much better in scalar eval than in the
+  deterministic fixed-command gates.
+- Increased the TrexRun termination scale to `-1000`, making the terminal
+  penalty about `-20` before clipping. This should make PPO care more about
+  survival and align scalar eval better with the gates.

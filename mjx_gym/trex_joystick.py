@@ -335,6 +335,7 @@ def run_config() -> config_dict.ConfigDict:
     config.reward_config.scales.gait_symmetry = 0.1
     config.reward_config.scales.lin_vel_z = -4.0
     config.reward_config.scales.ang_vel_xy = -2.0
+    config.reward_config.scales.termination = -1000.0
     config.reward_config.scales.action_rate = -0.015
     return config
 
