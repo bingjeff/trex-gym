@@ -679,6 +679,13 @@ Conclusion:
 
 - The current model can train a stable high-speed straight-line mode around
   `8-9 m/s`, but it does not yet command-track to `10 m/s`.
+- A follow-up gait-discipline run from the best high-speed checkpoint failed:
+  increasing gait-prior, anti-phase, symmetry, leg-action alternation, and
+  phase-contact terms caused the final policy to terminate and average only
+  `2.346 m/s` on a `10.0 m/s` command.
+- Enhanced rollout diagnostics show that the current high-speed policy has
+  frequent hip-flexion and ankle target saturation, high actuator forces, low
+  gait anti-phase, and substantial phase/contact mismatch.
 - The next step should be model/control debugging, not another blind PPO run:
   inspect actuator force/position limits, whether the leg/tail action space can
   generate the required stride impulse, whether the simplified collision feet

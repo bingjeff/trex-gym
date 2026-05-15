@@ -978,6 +978,24 @@ May 15 high-speed TrexRun phase:
 - Added `--task run` to `tools/drive_joystick_policy.py` so a `TrexRun`
   checkpoint can be loaded locally with the same run action scaling used during
   training. Local JAX `--check-load --task run` passed for the run12 checkpoint.
+- Extended `tools/analyze_joystick_rollout.py` to print per-actuator action
+  saturation, applied target saturation, control ranges, actuator force ranges,
+  and leg joint qpos/qvel ranges. On the run12 `10.0 m/s` command, the key
+  bottleneck signs were:
+  - hip flexion applied targets saturated for roughly `35-45%` of sampled
+    steps, with max actuator forces around `2.2e6`.
+  - ankle applied targets saturated for roughly `45-47%` of sampled steps.
+  - raw actions touched `+/-1` on most leg channels, but average action was only
+    about `0.76`, so this is not a pure policy-output saturation problem.
+  - gait anti-phase remained low (`0.15`) and phase/contact mismatch remained
+    high.
+- Tried one bounded gait-discipline continuation from run12:
+  `/workspace/runs/TrexRun-20260515-102103-run13-gait-8to10-40m-from-run12`.
+  It increased `gait_prior_tracking`, `gait_anti_phase`, `gait_symmetry`,
+  `leg_action_alternation`, `phase_contact`, `phase_contact_error`, and
+  `feet_phase` weights. This failed: eval reward degraded from `11.551` to
+  `-54.790`, and a final `10.0 m/s` gate terminated at step `635`, averaged
+  only `2.346 m/s`, and dropped torso height to `0.419 m`.
 - Current blocker: the high-speed policy has not met the original `10 m/s`
   target. It is a useful experimental checkpoint for roughly `8-9 m/s`
   straight-line high-speed locomotion, but the next step should be a

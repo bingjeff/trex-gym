@@ -16,6 +16,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from mjx_gym import trex_constants as consts
 from mjx_gym import trex_joystick
 from tools.analyze_policy_rollout import _load_policy
 
@@ -71,6 +72,19 @@ def analyze(args: argparse.Namespace) -> None:
     policy = _load_policy(args.checkpoint)
     jit_policy = jax.jit(policy)
     jit_step = jax.jit(env.step)
+    action_actuator_ids = np.asarray(
+        jax.device_get(env._action_actuator_ids), dtype=int
+    )
+    leg_qpos_ids = np.asarray(jax.device_get(env._leg_qpos_ids), dtype=int)
+    leg_qvel_ids = np.asarray(
+        [
+            env._mj_model.jnt_dofadr[env._mj_model.joint(name).id]
+            for name in consts.LEG_JOINTS
+        ],
+        dtype=int,
+    )
+    action_names = list(consts.ACTION_ACTUATORS)
+    leg_joint_names = list(consts.LEG_JOINTS)
 
     rng = jax.random.PRNGKey(args.seed)
     state = env.reset(rng)
@@ -87,6 +101,20 @@ def analyze(args: argparse.Namespace) -> None:
     max_turn_error = 0.0
     mean_abs_action = 0.0
     max_abs_action = 0.0
+    action_abs_sums = np.zeros(env.action_size)
+    action_max_abs = np.zeros(env.action_size)
+    action_sat_counts = np.zeros(env.action_size)
+    applied_abs_sums = np.zeros(env.action_size)
+    applied_max_abs = np.zeros(env.action_size)
+    applied_sat_counts = np.zeros(env.action_size)
+    ctrl_sums = np.zeros(env.action_size)
+    ctrl_min = np.full(env.action_size, np.inf)
+    ctrl_max = np.full(env.action_size, -np.inf)
+    actuator_force_abs_sums = np.zeros(env.action_size)
+    actuator_force_max_abs = np.zeros(env.action_size)
+    leg_qpos_min = np.full(len(leg_qpos_ids), np.inf)
+    leg_qpos_max = np.full(len(leg_qpos_ids), -np.inf)
+    leg_qvel_max_abs = np.zeros(len(leg_qpos_ids))
     mean_foot_speed = 0.0
     max_foot_speed = 0.0
     mean_stride_extent = 0.0
@@ -133,6 +161,7 @@ def analyze(args: argparse.Namespace) -> None:
         state = jit_step(state, action)
         data = jax.device_get(state.data)
         action_np = np.asarray(jax.device_get(action))
+        applied_action_np = np.asarray(jax.device_get(state.info["last_act"]))
         done = bool(np.asarray(jax.device_get(state.done)))
         if done and first_done_step is None:
             first_done_step = step_index
@@ -161,6 +190,28 @@ def analyze(args: argparse.Namespace) -> None:
         max_turn_error = max(max_turn_error, turn_error)
         mean_abs_action += float(np.mean(np.abs(action_np)))
         max_abs_action = max(max_abs_action, float(np.max(np.abs(action_np))))
+        action_abs = np.abs(action_np)
+        applied_abs = np.abs(applied_action_np)
+        action_abs_sums += action_abs
+        action_max_abs = np.maximum(action_max_abs, action_abs)
+        action_sat_counts += action_abs > 0.98
+        applied_abs_sums += applied_abs
+        applied_max_abs = np.maximum(applied_max_abs, applied_abs)
+        applied_sat_counts += applied_abs > 0.98
+        ctrl_np = np.asarray(data.ctrl)[action_actuator_ids]
+        ctrl_sums += ctrl_np
+        ctrl_min = np.minimum(ctrl_min, ctrl_np)
+        ctrl_max = np.maximum(ctrl_max, ctrl_np)
+        actuator_force_abs = np.abs(np.asarray(data.actuator_force)[
+            action_actuator_ids
+        ])
+        actuator_force_abs_sums += actuator_force_abs
+        actuator_force_max_abs = np.maximum(actuator_force_max_abs, actuator_force_abs)
+        qpos_np = np.asarray(data.qpos)[leg_qpos_ids]
+        qvel_np = np.asarray(data.qvel)[leg_qvel_ids]
+        leg_qpos_min = np.minimum(leg_qpos_min, qpos_np)
+        leg_qpos_max = np.maximum(leg_qpos_max, qpos_np)
+        leg_qvel_max_abs = np.maximum(leg_qvel_max_abs, np.abs(qvel_np))
         foot_centers = np.asarray(jax.device_get(env._foot_centers_world(state.data)))
         if previous_foot_centers is not None:
             foot_speed = np.linalg.norm(
@@ -323,6 +374,30 @@ def analyze(args: argparse.Namespace) -> None:
     print("reward_terms:")
     for key in sorted(metric_sums):
         print(f"  {key}: {metric_sums[key]:.3f}")
+    print("action_actuator_stats:")
+    for index, name in enumerate(action_names):
+        print(
+            "  "
+            f"{name}: "
+            f"mean_abs_action={action_abs_sums[index] / sample_steps:.3f} "
+            f"max_abs_action={action_max_abs[index]:.3f} "
+            f"action_sat_frac={action_sat_counts[index] / sample_steps:.3f} "
+            f"mean_abs_applied={applied_abs_sums[index] / sample_steps:.3f} "
+            f"max_abs_applied={applied_max_abs[index]:.3f} "
+            f"applied_sat_frac={applied_sat_counts[index] / sample_steps:.3f} "
+            f"mean_ctrl={ctrl_sums[index] / sample_steps:.3f} "
+            f"ctrl_range={ctrl_min[index]:.3f}..{ctrl_max[index]:.3f} "
+            f"mean_abs_force={actuator_force_abs_sums[index] / sample_steps:.3f} "
+            f"max_abs_force={actuator_force_max_abs[index]:.3f}"
+        )
+    print("leg_joint_ranges:")
+    for index, name in enumerate(leg_joint_names):
+        print(
+            "  "
+            f"{name}: "
+            f"qpos_range={leg_qpos_min[index]:.3f}..{leg_qpos_max[index]:.3f} "
+            f"max_abs_qvel={leg_qvel_max_abs[index]:.3f}"
+        )
 
 
 def parse_args() -> argparse.Namespace:
