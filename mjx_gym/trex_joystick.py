@@ -94,6 +94,7 @@ def default_config() -> config_dict.ConfigDict:
     config.random_initial_gait_phase = True
     config.phase_action_center = []
     config.phase_action_center_path = ""
+    config.gate_gait_rewards_by_speed_tracking = False
     config.running_gate_start = 0.05
     config.running_gate_full = 0.25
     config.gate_forward_rewards_by_support = False
@@ -309,6 +310,7 @@ def run_config() -> config_dict.ConfigDict:
     config.gait_prior_scale = 0.65
     config.apply_gait_prior_action = True
     config.gate_forward_rewards_by_support = True
+    config.gate_gait_rewards_by_speed_tracking = True
     config.running_action_residual_scale = [0.75] * 8 + [1.0, 1.0]
     config.recovery_action_residual_scale = [0.75] * 8 + [1.0, 1.0]
     config.reward_config.high_speed_tracking_sigma_scale = 0.0
@@ -650,6 +652,7 @@ class TrexJoystick(trex_getup.TrexGetup):
         local_angvel = self.get_local_angvel(data)
         done = self._fall_done(data)
         forward_reward_gate = self._forward_reward_gate(data, torso_height)
+        gait_reward_gate = self._gait_reward_gate(info["command"], local_linvel)
         return {
             "tracking_lin_vel": posture_gate
             * forward_reward_gate
@@ -697,33 +700,40 @@ class TrexJoystick(trex_getup.TrexGetup):
             "ang_vel_xy": self._cost_base_tilt_ang_vel(local_angvel),
             "feet_phase": moving_gate
             * posture_gate
+            * gait_reward_gate
             * self._reward_feet_phase(data, info["gait_phase"]),
             "feet_phase_height": moving_gate
             * orientation
+            * gait_reward_gate
             * self._reward_feet_phase_height(
                 data, info["gait_phase"], info["command"]
             ),
             "phase_contact": moving_gate
             * orientation
+            * gait_reward_gate
             * self._reward_phase_contact(data, info),
             "phase_contact_error": moving_gate
             * orientation
             * self._cost_phase_contact_error(data, info),
             "phase_foot_clearance": moving_gate
             * orientation
+            * gait_reward_gate
             * self._reward_phase_foot_clearance(data, info),
             "feet_air_time": moving_gate
             * posture_gate
+            * gait_reward_gate
             * self._reward_feet_air_time(
                 feet_air_time, first_contact, info["command"]
             ),
             "feet_slip": self._cost_foot_slip(data, info),
             "foot_contact_balance": moving_gate
             * orientation
+            * gait_reward_gate
             * self._reward_foot_contact_balance(data),
             "no_foot_contact": moving_gate * self._cost_no_foot_contact(data),
             "contact_duty_symmetry": moving_gate
             * orientation
+            * gait_reward_gate
             * self._reward_contact_duty_symmetry(data, info),
             "contact_duty_error": moving_gate
             * orientation
@@ -733,15 +743,19 @@ class TrexJoystick(trex_getup.TrexGetup):
             * self._cost_running_height_excess(torso_height),
             "gait_prior_tracking": moving_gate
             * orientation
+            * gait_reward_gate
             * self._reward_gait_prior_tracking(action, info),
             "leg_action_alternation": moving_gate
             * orientation
+            * gait_reward_gate
             * self._reward_leg_action_alternation(action),
             "gait_anti_phase": moving_gate
             * orientation
+            * gait_reward_gate
             * self._reward_gait_anti_phase(data),
             "gait_symmetry": moving_gate
             * orientation
+            * gait_reward_gate
             * self._reward_gait_symmetry(data),
             "stand_still": self._cost_stand_still(info["command"], data.qpos[7:]),
             "commanded_stand_still": posture_gate
@@ -1096,6 +1110,13 @@ class TrexJoystick(trex_getup.TrexGetup):
             * jp.square(high_speed)
         )
         return jp.exp(-error / sigma)
+
+    def _gait_reward_gate(
+        self, command: jax.Array, local_linvel: jax.Array
+    ) -> jax.Array:
+        if not self._config.gate_gait_rewards_by_speed_tracking:
+            return jp.array(1.0)
+        return self._reward_tracking_forward_vel(command, local_linvel)
 
     def _reward_forward_progress(
         self, command: jax.Array, local_linvel: jax.Array

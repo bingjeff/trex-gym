@@ -544,6 +544,7 @@ class TestMjxGym(unittest.TestCase):
         self.assertEqual(10.0, run._config.command_config.forward_max)
         self.assertTrue(run._config.apply_gait_prior_action)
         self.assertTrue(run._config.gate_forward_rewards_by_support)
+        self.assertTrue(run._config.gate_gait_rewards_by_speed_tracking)
         self.assertGreater(run._config.reward_config.scales.tracking_forward_vel, 0.0)
         self.assertEqual(0.0, run._config.reward_config.high_speed_tracking_sigma_scale)
         self.assertLess(run._config.reward_config.scales.forward_speed_error, 0.0)
@@ -885,6 +886,21 @@ class TestMjxGym(unittest.TestCase):
         self.assertLess(
             float(run._forward_reward_gate(state.data, high_torso)),
             0.001,
+        )
+
+    def test_trex_run_gates_positive_gait_rewards_by_speed_tracking(self):
+        run = trex_joystick.TrexRun()
+        command = jp.array([5.0, 0.0])
+        on_speed = jp.array([5.0, 0.0, 0.0])
+        overspeed = jp.array([7.0, 0.0, 0.0])
+
+        self.assertGreater(float(run._gait_reward_gate(command, on_speed)), 0.99)
+        self.assertLess(float(run._gait_reward_gate(command, overspeed)), 0.001)
+
+        joystick = trex_joystick.TrexJoystick()
+        self.assertEqual(
+            1.0,
+            float(joystick._gait_reward_gate(command, overspeed)),
         )
 
     def test_trex_joystick_gait_rewards_are_disabled_for_stand_command(self):
