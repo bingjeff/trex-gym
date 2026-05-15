@@ -135,6 +135,7 @@ def default_config() -> config_dict.ConfigDict:
         getup_base_lin_vel=0.0,
         getup_base_ang_vel=0.0,
         getup_non_foot_clearance_deficit=0.0,
+        lateral_vel=0.0,
         lin_vel_z=-0.5,
         ang_vel_xy=-0.15,
         feet_phase=1.0,
@@ -317,6 +318,7 @@ def run_config() -> config_dict.ConfigDict:
     config.reward_config.scales.base_height = -1.0
     config.reward_config.scales.low_torso_height = -10.0
     config.reward_config.scales.non_foot_clearance = 0.0
+    config.reward_config.scales.lateral_vel = -2.0
     config.reward_config.scales.feet_phase = 1.5
     config.reward_config.scales.feet_phase_height = 0.2
     config.reward_config.scales.phase_contact = 0.2
@@ -684,6 +686,7 @@ class TrexJoystick(trex_getup.TrexGetup):
             "getup_non_foot_clearance_deficit": orientation
             * height
             * jp.square(1.0 - clearance),
+            "lateral_vel": moving_gate * jp.square(local_linvel[2]),
             "lin_vel_z": jp.square(local_linvel[1]),
             "ang_vel_xy": self._cost_base_tilt_ang_vel(local_angvel),
             "feet_phase": moving_gate
