@@ -934,3 +934,51 @@ May 15 combined recovery and joystick phase:
 - Current combined limitations: the verified speed/turn envelope is moderate
   (`0.5 m/s`, `+/-0.25 rad/s`). This is a successful joystickable combined
   baseline, not the final high-speed run policy.
+
+May 15 high-speed TrexRun phase:
+
+- Added stricter `TrexRun`-only reward shaping after the first 1-4 m/s run
+  learned a bounding/floating solution: fall termination is enabled for run
+  training, non-foot clearance no longer gives a positive run reward, and
+  vertical velocity, tilt angular velocity, excess running height, no-foot
+  contact, and contact-duty error are penalized more strongly.
+- Added run-only contact-duty reward terms and a running-height-excess cost to
+  the joystick reward dictionary. These default to zero outside the run config.
+- Increased run-only leg action authority and gait prior for the high-speed
+  curriculum after diagnostics showed the policy was touching action limits:
+  `running_action_residual_scale` is now `0.75` for the eight leg actions,
+  `gait_prior_scale` is `0.65`, `gait_frequency_per_mps` is `0.12`, and
+  `gait_frequency_max` is `2.4`.
+- The useful training sequence was:
+  - `run4-strict-1to3`: consolidated clean tracking through `3.0 m/s`.
+  - `run5-strict-1p5to3p5`: passed the `3.5 m/s` gate.
+  - `run6-strict-2to4p5`: reached about `4.0 m/s` reliably.
+  - `run9-speed-4to7`: reached about `5.6 m/s`.
+  - `run10-capacity-5to8`: reached about `6.1 m/s`.
+  - `run11-speed-6to10`: reached the high-speed regime, tracking `8.0 m/s`
+    almost exactly but plateauing near `8.0 m/s` for a `10.0 m/s` command.
+  - `run12-speed-8to10`: improved the high-speed mode but still did not solve
+    `10.0 m/s` command tracking.
+- Best current high-speed checkpoint copied locally:
+  `checkpoints/TrexRun-20260515-093556-run12-speed-8to10-60m-from-run11/000117964800`.
+- Final run12 fixed-command diagnostics, Warp, standing reset, seed 0, final
+  500 steps:
+  - command `8.0 m/s`: mean forward `9.583 m/s`, no termination, torso height
+    `2.052-3.086 m`, orientation reward `0.868-1.000`.
+  - command `9.0 m/s`: mean forward `8.595 m/s`, no termination, torso height
+    `2.098-2.933 m`, orientation reward `0.848-1.000`.
+  - command `10.0 m/s`: mean forward `8.622 m/s`, no termination, torso height
+    `2.043-2.930 m`, orientation reward `0.836-1.000`.
+- Additional seed checks at `10.0 m/s` on run12 gave `8.406 m/s` and
+  `8.342 m/s`, confirming the undertracking is not just one rollout seed.
+- Videos and frames for `8.0` and `10.0 m/s` were rendered and copied under
+  `checkpoints/TrexRun-20260515-093556-run12-speed-8to10-60m-from-run11/`.
+  The high-speed policy is stable, but visually it still looks more like a
+  high-speed bounding mode than a fully satisfactory alternating run.
+- Added `--task run` to `tools/drive_joystick_policy.py` so a `TrexRun`
+  checkpoint can be loaded locally with the same run action scaling used during
+  training. Local JAX `--check-load --task run` passed for the run12 checkpoint.
+- Current blocker: the high-speed policy has not met the original `10 m/s`
+  target. It is a useful experimental checkpoint for roughly `8-9 m/s`
+  straight-line high-speed locomotion, but the next step should be a
+  model/control investigation rather than another blind PPO continuation.

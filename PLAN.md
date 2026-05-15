@@ -643,3 +643,44 @@ Remaining future work:
   `10 m/s` goal.
 - Consider adding perturbation robustness after the combined baseline is less
   speed-limited.
+
+## Phase 10: High-Speed TrexRun
+
+Status: partially completed; blocked before the original `10 m/s` target.
+
+Goal:
+
+1. Train a separate straight-line `TrexRun` policy after the combined joystick
+   baseline.
+2. Preserve physical posture/contact constraints while increasing speed.
+3. Verify fixed-command tracking up to `10 m/s`.
+
+Results:
+
+- The initial 1-4 m/s continuation learned a floating/bounding exploit, so
+  `TrexRun` was tightened before further expansion: fall termination is enabled,
+  excess running height, vertical velocity, tilt angular velocity, missing foot
+  contact, contact-duty error, and phase-contact error are penalized more
+  strongly, and positive non-foot-clearance reward is removed for run training.
+- The stricter curriculum was expanded in stages from `1-3 m/s` through
+  `8-10 m/s`. The best current checkpoint is:
+  `checkpoints/TrexRun-20260515-093556-run12-speed-8to10-60m-from-run11/000117964800`.
+- Verified run12 diagnostics, Warp, standing reset, seed 0:
+  - command `8.0 m/s`: mean forward `9.583 m/s`, no termination.
+  - command `9.0 m/s`: mean forward `8.595 m/s`, no termination.
+  - command `10.0 m/s`: mean forward `8.622 m/s`, no termination.
+- Additional `10.0 m/s` seed checks gave `8.406 m/s` and `8.342 m/s`.
+- Videos for `8.0` and `10.0 m/s` were rendered and copied locally.
+- Local `tools/drive_joystick_policy.py --check-load --task run --impl jax`
+  passed after adding a task switch so the run checkpoint uses `TrexRun`
+  dynamics and action scaling.
+
+Conclusion:
+
+- The current model can train a stable high-speed straight-line mode around
+  `8-9 m/s`, but it does not yet command-track to `10 m/s`.
+- The next step should be model/control debugging, not another blind PPO run:
+  inspect actuator force/position limits, whether the leg/tail action space can
+  generate the required stride impulse, whether the simplified collision feet
+  are giving enough traction/contact fidelity, and whether the high-speed gait
+  prior should be replaced with a better open-loop running template.

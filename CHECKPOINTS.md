@@ -541,3 +541,50 @@ uv run python tools/drive_joystick_policy.py \
   --max-forward 0.8 \
   --max-turn 0.25
 ```
+
+## TrexRun high-speed experimental Warp 60M
+
+- Local path: `checkpoints/TrexRun-20260515-093556-run12-speed-8to10-60m-from-run11/`
+- Checkpoint: `checkpoints/TrexRun-20260515-093556-run12-speed-8to10-60m-from-run11/000117964800/`
+- Source run on pod: `/workspace/runs/TrexRun-20260515-093556-run12-speed-8to10-60m-from-run11`
+- Warm start: `/workspace/runs/TrexRun-20260515-091029-run11-speed-6to10-60m-from-run10/checkpoints/000117964800`
+- Training backend: MuJoCo MJX Warp
+- Training length: 60M requested steps; final saved checkpoint at `000117964800`
+
+This is the best current high-speed straight-line `TrexRun` checkpoint. It is
+stable in the high-speed regime but is not a successful `10 m/s` tracking
+checkpoint. Treat it as experimental evidence for the current model/control
+limit.
+
+Fixed-command diagnostics, Warp, standing reset, seed 0, final 500 steps:
+
+- Command `8.0 m/s`: mean forward velocity `9.583 m/s`, no termination, torso
+  height `2.052-3.086 m`, orientation reward `0.868-1.000`.
+- Command `9.0 m/s`: mean forward velocity `8.595 m/s`, no termination, torso
+  height `2.098-2.933 m`, orientation reward `0.848-1.000`.
+- Command `10.0 m/s`: mean forward velocity `8.622 m/s`, no termination,
+  torso height `2.043-2.930 m`, orientation reward `0.836-1.000`.
+
+Additional `10.0 m/s` seed checks gave `8.406 m/s` and `8.342 m/s`, so the
+undertracking appears persistent rather than seed-specific.
+
+Representative local videos:
+
+- `checkpoints/TrexRun-20260515-093556-run12-speed-8to10-60m-from-run11/videos/run_f8p0.mp4`
+- `checkpoints/TrexRun-20260515-093556-run12-speed-8to10-60m-from-run11/videos/run_f10p0.mp4`
+
+Local JAX load smoke passed with `--task run`; the loaded checkpoint produced
+action size `10` and completed one environment step.
+
+Check local load without opening the viewer:
+
+```bash
+uv run python tools/drive_joystick_policy.py \
+  /home/bingjeff/projects/trex-gym/checkpoints/TrexRun-20260515-093556-run12-speed-8to10-60m-from-run11/000117964800 \
+  --check-load \
+  --task run \
+  --impl jax \
+  --start standing \
+  --max-forward 10.0 \
+  --max-turn 0.0
+```

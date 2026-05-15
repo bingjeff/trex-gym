@@ -81,10 +81,15 @@ def _copy_to_mujoco_viewer(data, mj_data: mujoco.MjData) -> None:
 
 
 def drive(args: argparse.Namespace) -> None:
-    config = trex_joystick.joystick_config()
+    if args.task == "run":
+        config = trex_joystick.run_config()
+        env_cls = trex_joystick.TrexRun
+    else:
+        config = trex_joystick.joystick_config()
+        env_cls = trex_joystick.TrexJoystick
     config.impl = args.impl
     config.reset_standing_prob = 1.0 if args.start == "standing" else 0.0
-    env = trex_joystick.TrexJoystick(config)
+    env = env_cls(config)
     policy = jax.jit(_load_policy(args.checkpoint))
     step = jax.jit(env.step)
 
@@ -141,6 +146,7 @@ def drive(args: argparse.Namespace) -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("checkpoint", type=Path)
+    parser.add_argument("--task", choices=("joystick", "run"), default="joystick")
     parser.add_argument("--impl", choices=("jax", "warp"), default="jax")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--gamepad", type=int, default=0)

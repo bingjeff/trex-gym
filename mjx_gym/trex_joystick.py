@@ -140,6 +140,9 @@ def default_config() -> config_dict.ConfigDict:
         feet_slip=-0.25,
         foot_contact_balance=0.0,
         no_foot_contact=0.0,
+        contact_duty_symmetry=0.0,
+        contact_duty_error=0.0,
+        running_height_excess=0.0,
         gait_prior_tracking=0.0,
         leg_action_alternation=0.0,
         gait_anti_phase=0.0,
@@ -284,6 +287,7 @@ def run_config() -> config_dict.ConfigDict:
     config = default_config()
     config.episode_length = 1000
     config.reset_standing_prob = 1.0
+    config.terminate_on_fall = True
     config.command_config.forward_min = 3.0
     config.command_config.forward_max = 10.0
     config.command_config.high_speed_min = 7.0
@@ -291,34 +295,39 @@ def run_config() -> config_dict.ConfigDict:
     config.command_config.turn_max = 0.25
     config.command_config.zero_prob = 0.0
     config.gait_frequency_min = 1.0
-    config.gait_frequency_per_mps = 0.08
-    config.gait_frequency_max = 1.8
-    config.gait_swing_height = 0.18
-    config.gait_prior_scale = 0.45
+    config.gait_frequency_per_mps = 0.12
+    config.gait_frequency_max = 2.4
+    config.gait_swing_height = 0.22
+    config.gait_prior_scale = 0.65
     config.apply_gait_prior_action = True
-    config.running_action_residual_scale = [0.35] * 8 + [1.0, 1.0]
+    config.running_action_residual_scale = [0.75] * 8 + [1.0, 1.0]
     config.recovery_action_residual_scale = [0.75] * 8 + [1.0, 1.0]
     config.reward_config.scales.tracking_lin_vel = 2.0
-    config.reward_config.scales.tracking_forward_vel = 8.0
-    config.reward_config.scales.forward_progress = 2.0
-    config.reward_config.scales.forward_speed_deficit = -4.0
-    config.reward_config.scales.orientation = -4.0
+    config.reward_config.scales.tracking_forward_vel = 9.0
+    config.reward_config.scales.forward_progress = 0.5
+    config.reward_config.scales.forward_speed_deficit = -12.0
+    config.reward_config.scales.orientation = -8.0
     config.reward_config.scales.base_height = -1.0
     config.reward_config.scales.low_torso_height = -10.0
+    config.reward_config.scales.non_foot_clearance = 0.0
     config.reward_config.scales.feet_phase = 1.5
     config.reward_config.scales.feet_phase_height = 0.2
     config.reward_config.scales.phase_contact = 0.2
-    config.reward_config.scales.phase_contact_error = -0.1
+    config.reward_config.scales.phase_contact_error = -1.0
     config.reward_config.scales.phase_foot_clearance = 0.2
-    config.reward_config.scales.feet_air_time = 1.5
+    config.reward_config.scales.feet_air_time = 0.3
     config.reward_config.scales.feet_slip = -0.75
-    config.reward_config.scales.foot_contact_balance = 0.2
-    config.reward_config.scales.no_foot_contact = -2.0
+    config.reward_config.scales.foot_contact_balance = 1.0
+    config.reward_config.scales.no_foot_contact = -10.0
+    config.reward_config.scales.contact_duty_symmetry = 0.5
+    config.reward_config.scales.contact_duty_error = -1.0
+    config.reward_config.scales.running_height_excess = -10.0
     config.reward_config.scales.gait_prior_tracking = 0.1
     config.reward_config.scales.leg_action_alternation = 0.2
     config.reward_config.scales.gait_anti_phase = 0.2
     config.reward_config.scales.gait_symmetry = 0.1
-    config.reward_config.scales.ang_vel_xy = -0.30
+    config.reward_config.scales.lin_vel_z = -4.0
+    config.reward_config.scales.ang_vel_xy = -2.0
     config.reward_config.scales.action_rate = -0.015
     return config
 
@@ -671,6 +680,15 @@ class TrexJoystick(trex_getup.TrexGetup):
             * orientation
             * self._reward_foot_contact_balance(data),
             "no_foot_contact": moving_gate * self._cost_no_foot_contact(data),
+            "contact_duty_symmetry": moving_gate
+            * orientation
+            * self._reward_contact_duty_symmetry(data, info),
+            "contact_duty_error": moving_gate
+            * orientation
+            * self._cost_contact_duty_error(data, info),
+            "running_height_excess": moving_gate
+            * orientation
+            * self._cost_running_height_excess(torso_height),
             "gait_prior_tracking": moving_gate
             * orientation
             * self._reward_gait_prior_tracking(action, info),
