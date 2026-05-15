@@ -92,6 +92,7 @@ def apply_mass_scaled_joint_tuning(
     actuator_kp_per_row_sum: float = DEFAULT_PASSIVE_STIFFNESS_PER_ROW_SUM,
     actuated_joint_stiffness_scale: float = 1.0,
     joint_stiffness_scale_overrides: dict[str, float] | None = None,
+    actuator_kp_scale_overrides: dict[str, float] | None = None,
 ) -> dict[str, float]:
     """Applies mass-matrix-row-sum-scaled passive and actuator gains.
 
@@ -105,6 +106,7 @@ def apply_mass_scaled_joint_tuning(
     tendon_scales = _fixed_tendon_scales(mujoco_node, joint_scales)
     actuated_joints = _actuated_joint_names(mujoco_node)
     joint_stiffness_scale_overrides = joint_stiffness_scale_overrides or {}
+    actuator_kp_scale_overrides = actuator_kp_scale_overrides or {}
 
     for joint in mujoco_node.findall(".//joint"):
         name = joint.get("name")
@@ -126,13 +128,19 @@ def apply_mass_scaled_joint_tuning(
     actuator = mujoco_node.find("actuator")
     if actuator is not None:
         for position in actuator.findall("position"):
-            if position.get("joint") in joint_scales:
-                scale = joint_scales[position.get("joint")]
-            elif position.get("tendon") in tendon_scales:
-                scale = tendon_scales[position.get("tendon")]
+            joint_name = position.get("joint")
+            tendon_name = position.get("tendon")
+            if joint_name in joint_scales:
+                scale = joint_scales[joint_name]
+                kp_scale = actuator_kp_scale_overrides.get(joint_name, 1.0)
+            elif tendon_name in tendon_scales:
+                scale = tendon_scales[tendon_name]
+                kp_scale = actuator_kp_scale_overrides.get(tendon_name, 1.0)
             else:
                 continue
-            position.set("kp", _format_float(actuator_kp_per_row_sum * scale))
+            position.set(
+                "kp", _format_float(actuator_kp_per_row_sum * scale * kp_scale)
+            )
     return joint_scales
 
 

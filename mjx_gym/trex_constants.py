@@ -91,6 +91,7 @@ def trex_getup_mjcf(
     armature_per_row_sum: float = mjx_model_simplification.DEFAULT_ARMATURE_PER_ROW_SUM,
     actuated_joint_stiffness_scale: float = 1.0,
     tail_joint_stiffness_scale: float = 1.0,
+    actuator_kp_scale_overrides: dict[str, float] | None = None,
 ) -> ElementTree.Element:
     """Builds the simplified T-Rex getup scene MJCF."""
     node = mjx_model_simplification.urdf_to_mjx_mujoco(load_urdf())
@@ -110,6 +111,7 @@ def trex_getup_mjcf(
             joint_name: tail_joint_stiffness_scale
             for joint_name in TAIL_TENDON_JOINTS
         },
+        actuator_kp_scale_overrides=actuator_kp_scale_overrides,
     )
     return node
 
@@ -127,6 +129,7 @@ def trex_getup_xml(
     armature_per_row_sum: float = mjx_model_simplification.DEFAULT_ARMATURE_PER_ROW_SUM,
     actuated_joint_stiffness_scale: float = 1.0,
     tail_joint_stiffness_scale: float = 1.0,
+    actuator_kp_scale_overrides: dict[str, float] | None = None,
 ) -> str:
     return mujoco_parsing.to_string(
         trex_getup_mjcf(
@@ -136,6 +139,7 @@ def trex_getup_xml(
             armature_per_row_sum=armature_per_row_sum,
             actuated_joint_stiffness_scale=actuated_joint_stiffness_scale,
             tail_joint_stiffness_scale=tail_joint_stiffness_scale,
+            actuator_kp_scale_overrides=actuator_kp_scale_overrides,
         )
     )
 

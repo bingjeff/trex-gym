@@ -42,6 +42,7 @@ def default_config() -> config_dict.ConfigDict:
         passive_stiffness=1000.0,
         actuated_joint_passive_stiffness_scale=0.0,
         tail_joint_passive_stiffness_scale=1.0,
+        leg_actuator_kp_scale=[1.0] * len(consts.LEG_JOINTS),
         passive_damping=80.0,
         armature=0.2,
         episode_length=750,
@@ -108,6 +109,12 @@ class TrexGetup(mjx_env.MjxEnv):
                 tail_joint_stiffness_scale=(
                     self._config.tail_joint_passive_stiffness_scale
                 ),
+                actuator_kp_scale_overrides={
+                    joint_name: scale
+                    for joint_name, scale in zip(
+                        consts.LEG_JOINTS, self._config.leg_actuator_kp_scale
+                    )
+                },
                 passive_damping_per_row_sum=self._config.passive_damping,
                 armature_per_row_sum=self._config.armature,
             )

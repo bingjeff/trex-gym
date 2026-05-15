@@ -450,6 +450,7 @@ class TestMjxGym(unittest.TestCase):
         self.assertEqual(10.0, run._config.command_config.forward_max)
         self.assertTrue(run._config.apply_gait_prior_action)
         self.assertGreater(run._config.reward_config.scales.tracking_forward_vel, 0.0)
+        self.assertEqual(8, len(run._config.leg_actuator_kp_scale))
 
         for env in (balance, walk, joystick, run):
             state = env.reset(jax.random.PRNGKey(0))

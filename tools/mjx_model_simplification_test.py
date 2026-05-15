@@ -198,6 +198,42 @@ class TestMjxModelSimplification(unittest.TestCase):
                 * scales[joint_name],
             )
 
+    def test_mass_scaled_tuning_applies_actuator_kp_overrides(self):
+        urdf = urdf_parsing.Urdf.from_element(
+            urdf_parsing.read_root_node_from_urdf(str(_ASSET_DIR / "trex.urdf"))
+        )
+        mjcf = mjx_model_simplification.urdf_to_mjx_mujoco(urdf)
+        scales = mjx_model_simplification.apply_mass_scaled_joint_tuning(
+            mjcf,
+            actuator_kp_scale_overrides={
+                "joint_femur_right": 2.0,
+                "joint_tarsometatarsus_left": 3.0,
+            },
+        )
+        model = mjx_model_simplification.load_mujoco_from_xml_element(mjcf)
+
+        femur = model.actuator("actuator_hip_flexion_right").id
+        ankle = model.actuator("actuator_ankle_left").id
+        knee = model.actuator("actuator_knee_right").id
+
+        self.assertAlmostEqual(
+            model.actuator_gainprm[femur, 0],
+            2.0
+            * mjx_model_simplification.DEFAULT_PASSIVE_STIFFNESS_PER_ROW_SUM
+            * scales["joint_femur_right"],
+        )
+        self.assertAlmostEqual(
+            model.actuator_gainprm[ankle, 0],
+            3.0
+            * mjx_model_simplification.DEFAULT_PASSIVE_STIFFNESS_PER_ROW_SUM
+            * scales["joint_tarsometatarsus_left"],
+        )
+        self.assertAlmostEqual(
+            model.actuator_gainprm[knee, 0],
+            mjx_model_simplification.DEFAULT_PASSIVE_STIFFNESS_PER_ROW_SUM
+            * scales["joint_tibia_right"],
+        )
+
     def test_trex_complexity_comparison_reports_expected_reduction(self):
         urdf = urdf_parsing.Urdf.from_element(
             urdf_parsing.read_root_node_from_urdf(str(_ASSET_DIR / "trex.urdf"))
