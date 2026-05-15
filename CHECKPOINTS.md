@@ -1049,3 +1049,39 @@ Conclusion:
 - Both `4-6 m/s` continuations failed as command-tracking policies. The next
   expansion should be smaller (`3-5 m/s`) and should continue to use the
   explicit speed-error term.
+
+## TrexRun smaller expansion run26 Warp 20M
+
+- Remote path:
+  `/workspace/runs/TrexRun-20260515-164126-run26-speederr-gaitstrong-3to5-20m-from-run23/`
+- Warm start:
+  `/workspace/runs/TrexRun-20260515-155011-run23-termcost-gaitstrong-2to4-20m-from-run22/checkpoints/000026214400`
+- Config change: command range `3.0-5.0 m/s`, `forward_speed_error=-10`,
+  no forward-progress reward.
+
+Training eval rewards:
+
+- `0`: `20.620`
+- `6553600`: `-0.970`
+- `13107200`: `22.630`
+- `19660800`: `71.805`
+- `26214400`: `97.510`
+
+Fixed-command diagnostics, Warp, standing reset, seed 0, final 500 steps:
+
+- command `3.0 m/s`: no termination, mean forward `3.084 m/s`, mean lateral
+  `-0.055 m/s`, gait anti-phase `0.356`, torso height `2.459-2.522 m`,
+  orientation reward `0.985-0.999`.
+- command `4.0 m/s`: no termination, mean forward `4.340 m/s`, mean lateral
+  `0.089 m/s`, gait anti-phase `0.313`, torso height `2.492-2.591 m`,
+  orientation reward `0.982-0.998`.
+- command `5.0 m/s`: no termination, mean forward `7.189 m/s`, mean lateral
+  `0.009 m/s`, gait anti-phase `0.293`, torso height `2.091-2.844 m`,
+  orientation reward `0.789-1.000`.
+
+Conclusion:
+
+- Run26 is not a valid `5 m/s` bridge. It confirms the current curriculum is
+  stable to about `4 m/s`, but `5 m/s` still falls into the old overspeed
+  bounding mode. A targeted `4-5 m/s` run with stronger speed-error cost is the
+  next diagnostic.

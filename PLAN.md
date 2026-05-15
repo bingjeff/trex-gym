@@ -775,3 +775,7 @@ Conclusion:
   policies survived but oversped commands badly and lost gait quality. Added a
   `forward_speed_error` term for explicit overspeed penalties. The next staged
   attempt should back off to `3-5 m/s` from the run23 bridge.
+- The `3-5 m/s` attempt worked at `3-4 m/s` but still oversped the `5 m/s`
+  gate to more than `7 m/s`. The next diagnostic is a narrow `4-5 m/s` target
+  with a much stronger speed-error cost; if that still overspeeds, this is a
+  control/objective blocker rather than a simple curriculum-width issue.

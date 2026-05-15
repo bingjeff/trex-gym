@@ -1307,3 +1307,17 @@ May 15 failed 4-6 m/s expansions:
 - Conclusion: jumping directly from the run23 `2-4 m/s` bridge to `4-6 m/s`
   is too aggressive for the current curriculum. The next attempt should be a
   smaller `3-5 m/s` expansion from run23, using the explicit speed-error cost.
+
+May 15 smaller 3-5 m/s expansion:
+
+- Trained run26 from run23 over `3.0-5.0 m/s`, using
+  `forward_speed_error=-10` and no forward-progress reward:
+  `/workspace/runs/TrexRun-20260515-164126-run26-speederr-gaitstrong-3to5-20m-from-run23`.
+- This fixed the lower part of the range but failed at `5 m/s`:
+  - `3.0 m/s`: mean forward `3.084`, lateral `-0.055`, anti-phase `0.356`.
+  - `4.0 m/s`: mean forward `4.340`, lateral `0.089`, anti-phase `0.313`.
+  - `5.0 m/s`: mean forward `7.189`, lateral `0.009`, anti-phase `0.293`.
+- Conclusion: the current policy can bridge to about `4 m/s`, but commands
+  around `5 m/s` trigger the old overspeed/bounding mode. The next attempt
+  should directly target `4-5 m/s` with a much stronger symmetric speed-error
+  cost instead of broadening the command distribution.
