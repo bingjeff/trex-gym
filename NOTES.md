@@ -1158,3 +1158,20 @@ May 15 phase-center residual bridge:
 - Conclusion: scalar reward can be misleading for these bridge attempts. A
   walking-policy-derived phase center plus residual PPO did not preserve the
   stable walk behavior when moved into the stricter `TrexRun` task.
+
+May 15 black-box phase-center search:
+
+- Added `tools/search_phase_action_center.py`, a small CEM-style black-box
+  search over a low-dimensional symmetric sine phase-action-center table.
+- Remote search target:
+  `/workspace/runs/phase_centers/search_run_trexrun_f1p0_symmetric8.json`.
+- The best searched table is the first useful open-loop center found so far.
+  It did not terminate over 250-step search rollouts and reached mean forward
+  `0.606 m/s` for a `1.0 m/s` command, with mean orientation `0.897`.
+- Longer 750-step TrexRun replay:
+  - `0.5 m/s` command: no termination, mean forward `0.759 m/s`.
+  - `1.0 m/s` command: no termination, mean forward `0.590 m/s`.
+  - `1.5 m/s` command: no termination, mean forward `0.704 m/s`.
+- This is slow and not yet a policy, but it is a stabilizable phase center.
+  Unlike the policy-averaged tables, it is worth trying as the center for a
+  residual PPO curriculum.

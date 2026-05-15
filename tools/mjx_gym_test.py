@@ -16,6 +16,7 @@ from mjx_gym import trex_joystick
 from tools import analyze_open_loop_gait
 from tools import extract_phase_action_center
 from tools import mjx_model_simplification
+from tools import search_phase_action_center
 
 
 class TestMjxGym(unittest.TestCase):
@@ -50,6 +51,19 @@ class TestMjxGym(unittest.TestCase):
             extract_phase_action_center._action_center_from_bins(
                 np.zeros((2, 3)), np.array([1.0, 0.0])
             )
+
+    def test_search_phase_action_center_symmetric_table_shape_and_limits(self):
+        params = search_phase_action_center._initial_mean()
+        table = search_phase_action_center._symmetric_sine_table(params, bins=8)
+
+        self.assertEqual((8, 10), table.shape)
+        self.assertTrue(np.all(table <= 1.0))
+        self.assertTrue(np.all(table >= -1.0))
+        np.testing.assert_allclose(table[:, 8:].mean(axis=0), [0.0, 0.0], atol=1e-6)
+
+    def test_search_phase_action_center_rejects_wrong_parameter_count(self):
+        with self.assertRaises(ValueError):
+            search_phase_action_center._symmetric_sine_table(np.zeros(13), bins=8)
 
     def test_open_loop_phase_template_interpolates_and_wraps(self):
         template = np.asarray(

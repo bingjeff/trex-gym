@@ -730,6 +730,11 @@ Conclusion:
   but failed fixed-command gates: the final checkpoint terminated at steps
   `369`, `77`, and `65` for `1`, `2`, and `3 m/s` commands respectively.
   Do not treat scalar improvement alone as progress for this phase.
+- Added a black-box phase-center search over a compact symmetric sine gait
+  table. The first searched table is slow but stabilizable in `TrexRun`,
+  surviving 750-step open-loop probes at `0.5-1.5 m/s` commands and moving
+  about `0.6-0.75 m/s`. This is the best current candidate for a residual PPO
+  center.
 - The next step should be model/control debugging, not another blind PPO run:
   inspect actuator force/position limits, whether the leg/tail action space can
   generate the required stride impulse, whether the simplified collision feet
