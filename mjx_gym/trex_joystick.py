@@ -202,24 +202,24 @@ def walk_config() -> config_dict.ConfigDict:
     config.gait_swing_height = 0.14
     config.gait_prior_scale = 0.45
     config.reward_config.scales.tracking_lin_vel = 1.0
-    config.reward_config.scales.tracking_forward_vel = 2.0
+    config.reward_config.scales.tracking_forward_vel = 8.0
     config.reward_config.scales.tracking_ang_vel = 0.0
     config.reward_config.scales.forward_progress = 2.0
-    config.reward_config.scales.forward_speed_deficit = -2.0
+    config.reward_config.scales.forward_speed_deficit = -8.0
     config.reward_config.scales.low_torso_height = -8.0
-    config.reward_config.scales.feet_phase = 1.5
-    config.reward_config.scales.feet_phase_height = 1.0
-    config.reward_config.scales.phase_contact = 0.5
-    config.reward_config.scales.phase_contact_error = -0.25
-    config.reward_config.scales.phase_foot_clearance = 0.5
-    config.reward_config.scales.feet_air_time = 1.5
+    config.reward_config.scales.feet_phase = 0.5
+    config.reward_config.scales.feet_phase_height = 0.1
+    config.reward_config.scales.phase_contact = 0.1
+    config.reward_config.scales.phase_contact_error = -0.05
+    config.reward_config.scales.phase_foot_clearance = 0.1
+    config.reward_config.scales.feet_air_time = 0.5
     config.reward_config.scales.feet_slip = -0.5
-    config.reward_config.scales.foot_contact_balance = 0.5
+    config.reward_config.scales.foot_contact_balance = 0.1
     config.reward_config.scales.no_foot_contact = -2.0
-    config.reward_config.scales.gait_prior_tracking = 0.5
-    config.reward_config.scales.leg_action_alternation = 0.5
-    config.reward_config.scales.gait_anti_phase = 0.5
-    config.reward_config.scales.gait_symmetry = 0.25
+    config.reward_config.scales.gait_prior_tracking = 0.1
+    config.reward_config.scales.leg_action_alternation = 0.1
+    config.reward_config.scales.gait_anti_phase = 0.1
+    config.reward_config.scales.gait_symmetry = 0.05
     config.reward_config.scales.commanded_stand_still = 1.5
     config.reward_config.scales.action_rate = -0.02
     return config
@@ -555,18 +555,15 @@ class TrexJoystick(trex_getup.TrexGetup):
             ),
             "tracking_forward_vel": moving_gate
             * orientation
-            * clearance
             * self._reward_tracking_forward_vel(info["command"], local_linvel),
             "tracking_ang_vel": posture_gate * self._reward_tracking_ang_vel(
                 info["command"], local_angvel
             ),
             "forward_progress": moving_gate
             * orientation
-            * clearance
             * self._reward_forward_progress(info["command"], local_linvel),
             "forward_speed_deficit": moving_gate
             * orientation
-            * clearance
             * self._cost_forward_speed_deficit(info["command"], local_linvel),
             "orientation": jp.square(1.0 - orientation),
             "base_height": jp.square(1.0 - height),
