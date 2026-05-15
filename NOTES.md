@@ -1258,3 +1258,12 @@ May 15 lateral velocity and gait-discipline continuation:
   balance, leg-action alternation, gait anti-phase, and gait symmetry. The goal
   is to improve the current low-speed running mode before any further speed
   expansion.
+- Run21 improved scalar reward and deterministic gates but did not solve gait
+  alternation. Fixed gates all survived and tracking remained good:
+  `0.972`, `1.477`, `1.986`, and `2.527 m/s` for `1.0`, `1.5`, `2.0`, and
+  `2.5 m/s` commands. Lateral velocity improved versus run20, especially at
+  `2.0-2.5 m/s`, and orientation stayed near perfect.
+- The failure is gait quality: gait anti-phase dropped to `0.13-0.24`, and
+  rendered frames still show a low hopping/bounding mode. The next experiment
+  should use stronger contact/phase/anti-phase terms at the same speed band,
+  rather than expanding speed.

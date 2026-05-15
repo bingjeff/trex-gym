@@ -896,6 +896,38 @@ Conclusion:
   stronger lateral velocity, phase contact, contact duty, foot contact balance,
   leg-action alternation, gait anti-phase, and gait symmetry terms.
 
-This run is active on the L40S. Promotion requires fixed-command gates matching
-or beating run20 speed tracking while reducing lateral drift and improving
-visual gait quality.
+Training eval rewards:
+
+- `0`: `125.959`
+- `6553600`: `149.498`
+- `13107200`: `177.043`
+- `19660800`: `218.248`
+- `26214400`: `235.616`
+
+Fixed-command diagnostics, Warp, standing reset, seed 0, final 500 steps:
+
+- command `1.0 m/s`: no termination, mean forward `0.972 m/s`, mean lateral
+  `0.038 m/s`, gait anti-phase `0.133`, torso height `2.494-2.548 m`,
+  orientation reward `0.993-1.000`.
+- command `1.5 m/s`: no termination, mean forward `1.477 m/s`, mean lateral
+  `-0.085 m/s`, gait anti-phase `0.187`, torso height `2.511-2.549 m`,
+  orientation reward `0.997-1.000`.
+- command `2.0 m/s`: no termination, mean forward `1.986 m/s`, mean lateral
+  `-0.165 m/s`, gait anti-phase `0.200`, torso height `2.511-2.558 m`,
+  orientation reward `0.997-1.000`.
+- command `2.5 m/s`: no termination, mean forward `2.527 m/s`, mean lateral
+  `-0.117 m/s`, gait anti-phase `0.236`, torso height `2.535-2.584 m`,
+  orientation reward `0.997-1.000`.
+
+Videos on the remote:
+
+- `/workspace/runs/TrexRun-20260515-151406-run21-termcost-gaitdiscipline-1to2p5-20m-from-run20/videos/run21_f2p0.mp4`
+- `/workspace/runs/TrexRun-20260515-151406-run21-termcost-gaitdiscipline-1to2p5-20m-from-run20/videos/run21_f2p5.mp4`
+
+Conclusion:
+
+- Run21 is numerically better than run20 for lateral drift and upright posture,
+  but it did not improve the alternating gait metric. Rendered frames still
+  look like a low hopping/bounding mode. Do not expand speed from this yet;
+  first try stronger contact/phase/anti-phase discipline at the same command
+  range.
