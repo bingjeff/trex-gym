@@ -81,6 +81,7 @@ def default_config() -> config_dict.ConfigDict:
         0.35,
     ]
     config.gait_prior_scale = 0.35
+    config.apply_gait_prior_action = False
     config.gait_frequency_min = 1.25
     config.gait_frequency_per_mps = 0.025
     config.gait_frequency_max = 1.5
@@ -190,8 +191,8 @@ def walk_config() -> config_dict.ConfigDict:
     config.episode_length = 1000
     config.reset_standing_prob = 1.0
     config.curriculum_task = "walk"
-    config.walk_command_forward_min = 0.5
-    config.walk_command_forward_max = 1.5
+    config.walk_command_forward_min = 0.25
+    config.walk_command_forward_max = 0.8
     config.walk_command_turn_max = 0.0
     config.walk_command_zero_prob = 0.10
     config.walk_action_residual_scale = [0.25] * 8 + [0.5, 0.5]
@@ -201,12 +202,15 @@ def walk_config() -> config_dict.ConfigDict:
     config.gait_frequency_max = 1.4
     config.gait_swing_height = 0.14
     config.gait_prior_scale = 0.45
+    config.apply_gait_prior_action = True
     config.reward_config.scales.tracking_lin_vel = 1.0
-    config.reward_config.scales.tracking_forward_vel = 8.0
+    config.reward_config.scales.tracking_forward_vel = 6.0
     config.reward_config.scales.tracking_ang_vel = 0.0
     config.reward_config.scales.forward_progress = 2.0
-    config.reward_config.scales.forward_speed_deficit = -8.0
-    config.reward_config.scales.low_torso_height = -8.0
+    config.reward_config.scales.forward_speed_deficit = -4.0
+    config.reward_config.scales.orientation = -4.0
+    config.reward_config.scales.base_height = -1.0
+    config.reward_config.scales.low_torso_height = -10.0
     config.reward_config.scales.feet_phase = 0.5
     config.reward_config.scales.feet_phase_height = 0.1
     config.reward_config.scales.phase_contact = 0.1
@@ -425,8 +429,9 @@ class TrexJoystick(trex_getup.TrexGetup):
         clipped_action = jp.clip(action, -1.0, 1.0)
         standing_gate = self._standing_command_gate(state.info["command"])
         residual_scale = self._residual_scale(state.info["command"])
+        action_center = self._action_center(state.info)
         applied_action = jp.clip(
-            self._stand_pose_action + clipped_action * residual_scale,
+            action_center + clipped_action * residual_scale,
             -1.0,
             1.0,
         )
@@ -900,6 +905,14 @@ class TrexJoystick(trex_getup.TrexGetup):
         )
         return moving_gate * speed_gate * self._config.gait_prior_scale * gait
 
+    def _action_center(self, info: dict[str, Any]) -> jax.Array:
+        gait_prior = jp.where(
+            self._config.apply_gait_prior_action,
+            self._gait_prior_action(info),
+            jp.zeros(self.action_size),
+        )
+        return jp.clip(self._stand_pose_action + gait_prior, -1.0, 1.0)
+
     def _updated_gait_phase(
         self, info: dict[str, Any], standing_gate: jax.Array
     ) -> jax.Array:
@@ -1095,7 +1108,7 @@ class TrexJoystick(trex_getup.TrexGetup):
         self, action: jax.Array, info: dict[str, Any]
     ) -> jax.Array:
         target = jp.clip(
-            self._stand_pose_action + self._gait_prior_action(info),
+            self._action_center(info),
             -1.0,
             1.0,
         )

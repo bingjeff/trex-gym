@@ -549,6 +549,37 @@ class TestMjxGym(unittest.TestCase):
             np.asarray(run._config.running_action_residual_scale),
         )
 
+    def test_trex_walk_zero_residual_applies_gait_prior_for_moving_command(self):
+        config = trex_joystick.walk_config()
+        config.reset_standing_prob = 1.0
+        config.fixed_gait_phase = float(np.pi / 2.0)
+        env = trex_joystick.TrexWalk(config)
+        state = env.reset(jax.random.PRNGKey(0))
+        state.info["command"] = jp.array([0.5, 0.0])
+
+        next_state = env.step(state, jp.zeros(env.action_size))
+
+        expected = np.clip(
+            np.asarray(config.stand_pose_action)
+            + np.asarray(env._gait_prior_action(state.info)),
+            -1.0,
+            1.0,
+        )
+        np.testing.assert_allclose(
+            np.asarray(next_state.info["last_act"]),
+            expected,
+            atol=1e-6,
+        )
+        self.assertGreater(
+            float(
+                np.linalg.norm(
+                    np.asarray(next_state.info["last_act"])
+                    - np.asarray(config.stand_pose_action)
+                )
+            ),
+            0.1,
+        )
+
     def test_trex_joystick_humanoid_style_reward_terms(self):
         env = trex_joystick.TrexJoystick()
         expected_terms = {
