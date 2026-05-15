@@ -1,5 +1,7 @@
 """Joystick locomotion task for the simplified T-Rex MJX model."""
 
+import json
+from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 import jax
@@ -91,6 +93,7 @@ def default_config() -> config_dict.ConfigDict:
     config.fixed_gait_phase = -1.0
     config.random_initial_gait_phase = True
     config.phase_action_center = []
+    config.phase_action_center_path = ""
     config.running_gate_start = 0.05
     config.running_gate_full = 0.25
     config.gate_forward_rewards_by_support = False
@@ -366,6 +369,8 @@ class TrexJoystick(trex_getup.TrexGetup):
         )
 
     def _parse_phase_action_center(self, rows: list[Any]) -> jax.Array:
+        if not rows and self._config.phase_action_center_path:
+            rows = json.loads(Path(self._config.phase_action_center_path).read_text())
         if not rows:
             return jp.zeros((0, self.action_size))
         table = np.asarray(rows, dtype=np.float32)

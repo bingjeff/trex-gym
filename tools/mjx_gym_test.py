@@ -1,4 +1,6 @@
+import json
 import unittest
+from unittest import mock
 
 import jax
 import jax.numpy as jp
@@ -714,6 +716,16 @@ class TestMjxGym(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             trex_joystick.TrexRun(config)
+
+    def test_trex_phase_action_center_can_load_from_path(self):
+        config = trex_joystick.run_config()
+        config.phase_action_center_path = "/tmp/phase-center.json"
+        rows = [[0.1] * 10, [0.2] * 10]
+
+        with mock.patch("pathlib.Path.read_text", return_value=json.dumps(rows)):
+            env = trex_joystick.TrexRun(config)
+
+        np.testing.assert_allclose(np.asarray(env._phase_action_center), rows)
 
     def test_trex_joystick_humanoid_style_reward_terms(self):
         env = trex_joystick.TrexJoystick()
