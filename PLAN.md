@@ -749,12 +749,16 @@ Conclusion:
   survived fixed-command gates at `0.5`, `1.0`, and `1.5 m/s`, tracking
   `1.0 m/s` well and undertracking `1.5 m/s` moderately, though it still had
   lateral drift at `0.5 m/s` and a crouched/tilted posture in rendered frames.
-- The current active step is a staged expansion from that foothold to
-  `1.0-2.5 m/s`. If deterministic gates pass at `1.0`, `1.5`, `2.0`, and
-  `2.5 m/s`, continue expanding command speed gradually. If the gates fail or
-  frames show another exploit mode, pause PPO and return to model/control
-  debugging: inspect actuator force/position limits, whether the leg/tail
-  action space can generate the required stride impulse, whether the simplified
-  collision feet are giving enough traction/contact fidelity, and whether the
-  high-speed gait prior should be replaced with a better open-loop running
-  template.
+- A staged expansion from that foothold to `1.0-2.5 m/s` passed deterministic
+  fixed-command gates, but visual frames still show a crouched hopping/bounding
+  mode with weak gait anti-phase and nontrivial lateral drift at higher speeds.
+- The current active step is therefore a gait-discipline continuation over the
+  same `1.0-2.5 m/s` range, with a new `lateral_vel` cost and stronger
+  phase/contact/anti-phase terms. If this preserves speed tracking while
+  reducing lateral drift and improving rendered gait quality, expand command
+  speed gradually. If it collapses or keeps the same exploit mode, pause PPO
+  and return to model/control debugging: inspect actuator force/position
+  limits, whether the leg/tail action space can generate the required stride
+  impulse, whether the simplified collision feet are giving enough
+  traction/contact fidelity, and whether the high-speed gait prior should be
+  replaced with a better open-loop running template.

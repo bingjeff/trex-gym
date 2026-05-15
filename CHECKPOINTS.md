@@ -849,12 +849,53 @@ Conclusion:
 - Training backend: MuJoCo MJX Warp
 - Command range: `1.0-2.5 m/s`, straight-line only
 
-This run is active on the L40S. Early eval rewards are:
+Training eval rewards:
 
 - `0`: `-70.148`
 - `6553600`: `18.868`
 - `13107200`: `100.613`
+- `19660800`: `133.570`
+- `26214400`: `158.549`
 
-Do not promote this run from scalar reward alone. It needs deterministic
-fixed-command gates at `1.0`, `1.5`, `2.0`, and `2.5 m/s`, followed by
-rendered frame/video inspection.
+Fixed-command diagnostics, Warp, standing reset, seed 0, final 500 steps:
+
+- command `1.0 m/s`: no termination, mean forward `0.979 m/s`, mean lateral
+  `0.007 m/s`, gait anti-phase `0.211`, torso height `2.532-2.570 m`,
+  orientation reward `0.988-1.000`.
+- command `1.5 m/s`: no termination, mean forward `1.471 m/s`, mean lateral
+  `-0.187 m/s`, gait anti-phase `0.216`, torso height `2.554-2.586 m`,
+  orientation reward `0.987-1.000`.
+- command `2.0 m/s`: no termination, mean forward `1.986 m/s`, mean lateral
+  `-0.301 m/s`, gait anti-phase `0.234`, torso height `2.469-2.595 m`,
+  orientation reward `0.965-1.000`.
+- command `2.5 m/s`: no termination, mean forward `2.437 m/s`, mean lateral
+  `0.236 m/s`, gait anti-phase `0.297`, torso height `2.340-2.629 m`,
+  orientation reward `0.785-1.000`.
+
+Videos on the remote:
+
+- `/workspace/runs/TrexRun-20260515-143719-run20-termcost-searchedcenter-1to2p5-20m-from-run19/videos/run20_f2p0.mp4`
+- `/workspace/runs/TrexRun-20260515-143719-run20-termcost-searchedcenter-1to2p5-20m-from-run19/videos/run20_f2p5.mp4`
+
+Conclusion:
+
+- This is the current best low-speed straight-line `TrexRun` bridge. It passes
+  fixed-command gates up to `2.5 m/s`, but rendered frames show a crouched
+  hopping/bounding mode and gait anti-phase is still weak. It should be refined
+  at this speed range before expanding toward the original high-speed target.
+
+## TrexRun gait-discipline continuation run21 Warp 20M
+
+- Remote path:
+  `/workspace/runs/TrexRun-20260515-151406-run21-termcost-gaitdiscipline-1to2p5-20m-from-run20/`
+- Warm start:
+  `/workspace/runs/TrexRun-20260515-143719-run20-termcost-searchedcenter-1to2p5-20m-from-run19/checkpoints/000026214400`
+- Code change: added a default-disabled `lateral_vel` cost and enabled it for
+  `TrexRun`.
+- Config change: keeps `1.0-2.5 m/s` and the searched phase center, with
+  stronger lateral velocity, phase contact, contact duty, foot contact balance,
+  leg-action alternation, gait anti-phase, and gait symmetry terms.
+
+This run is active on the L40S. Promotion requires fixed-command gates matching
+or beating run20 speed tracking while reducing lateral drift and improving
+visual gait quality.

@@ -1227,7 +1227,34 @@ May 15 run20 expansion in progress:
   `/workspace/runs/TrexRun-20260515-143719-run20-termcost-searchedcenter-1to2p5-20m-from-run19`.
 - The curriculum expands fixed straight-line commands to `1.0-2.5 m/s`, keeps
   the searched phase-action center, and uses Warp on the L40S.
-- Early eval rewards improved from `-70.148` to `18.868` and then `100.613`
-  through checkpoint `000013107200`. This is promising but not sufficient:
-  the run still needs fixed-command gates at `1.0`, `1.5`, `2.0`, and
-  `2.5 m/s`, plus rendered frame checks before promotion.
+- Eval rewards improved from `-70.148` to `158.549`.
+- The final checkpoint passed deterministic fixed-command gates with no
+  terminations:
+  - `1.0 m/s`: mean forward `0.979 m/s`, lateral `0.007 m/s`, orientation
+    reward `0.988-1.000`.
+  - `1.5 m/s`: mean forward `1.471 m/s`, lateral `-0.187 m/s`, orientation
+    reward `0.987-1.000`.
+  - `2.0 m/s`: mean forward `1.986 m/s`, lateral `-0.301 m/s`, orientation
+    reward `0.965-1.000`.
+  - `2.5 m/s`: mean forward `2.437 m/s`, lateral `0.236 m/s`, orientation
+    reward `0.785-1.000`.
+- Rendered frames confirm this is useful but still not clean: the body is
+  crouched/tilted, the policy uses hopping/bounding phases, and gait anti-phase
+  is still low (`0.21-0.30`). This should not be expanded blindly to higher
+  speed before gait/contact discipline improves.
+
+May 15 lateral velocity and gait-discipline continuation:
+
+- Added a `lateral_vel` reward term to the joystick reward dictionary. It is
+  disabled by default and enabled for `TrexRun` with scale `-2.0`.
+- Local and remote focused tests passed:
+  `test_trex_joystick_humanoid_style_reward_terms`,
+  `test_trex_single_skill_task_configs`, and
+  `test_trex_run_gates_positive_forward_rewards_by_support_and_height`.
+- Started run21 from run20:
+  `/workspace/runs/TrexRun-20260515-151406-run21-termcost-gaitdiscipline-1to2p5-20m-from-run20`.
+- Run21 keeps the `1.0-2.5 m/s` range and uses the same searched phase center,
+  but tightens lateral velocity, phase contact, contact duty, foot contact
+  balance, leg-action alternation, gait anti-phase, and gait symmetry. The goal
+  is to improve the current low-speed running mode before any further speed
+  expansion.
