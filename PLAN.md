@@ -744,8 +744,17 @@ Conclusion:
   `-2` when the model fell. Increased the TrexRun termination scale to `-1000`
   so falling is much more visible to PPO and scalar eval should better match
   fixed-command survival gates.
-- The next step should be model/control debugging, not another blind PPO run:
-  inspect actuator force/position limits, whether the leg/tail action space can
-  generate the required stride impulse, whether the simplified collision feet
-  are giving enough traction/contact fidelity, and whether the high-speed gait
-  prior should be replaced with a better open-loop running template.
+- After the termination-cost fix, a searched-center residual run over
+  `0.5-1.5 m/s` produced the first useful low-speed `TrexRun` foothold. It
+  survived fixed-command gates at `0.5`, `1.0`, and `1.5 m/s`, tracking
+  `1.0 m/s` well and undertracking `1.5 m/s` moderately, though it still had
+  lateral drift at `0.5 m/s` and a crouched/tilted posture in rendered frames.
+- The current active step is a staged expansion from that foothold to
+  `1.0-2.5 m/s`. If deterministic gates pass at `1.0`, `1.5`, `2.0`, and
+  `2.5 m/s`, continue expanding command speed gradually. If the gates fail or
+  frames show another exploit mode, pause PPO and return to model/control
+  debugging: inspect actuator force/position limits, whether the leg/tail
+  action space can generate the required stride impulse, whether the simplified
+  collision feet are giving enough traction/contact fidelity, and whether the
+  high-speed gait prior should be replaced with a better open-loop running
+  template.

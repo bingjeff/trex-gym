@@ -789,3 +789,72 @@ Conclusion:
 - Positive scalar reward is still not a reliable success signal for this setup.
 - A searched stabilizable open-loop center was not enough to produce a
   deterministic residual PPO policy under the current TrexRun objective.
+
+## TrexRun searched-center residual with termination-cost fix Warp 20M
+
+- Remote path:
+  `/workspace/runs/TrexRun-20260515-142215-run19-termcost-searchedcenter-0p5to1p5-20m-scratch/`
+- Phase center:
+  `/workspace/runs/phase_centers/search_run_trexrun_f1p0_symmetric8.json`
+- Training backend: MuJoCo MJX Warp
+- Training length: 20M requested steps; final saved checkpoint at
+  `000026214400`
+- Code change: `TrexRun` fall termination scale increased from `-100` to
+  `-1000`, which is about `-20` after reward `dt` scaling.
+
+This is the current low-speed `TrexRun` foothold, but it has not been promoted
+as the final running checkpoint. It validates that making fall termination
+visible to PPO changes the searched-center residual result from collapse to
+survival.
+
+Training eval rewards:
+
+- `0`: `-47.382`
+- `6553600`: `-76.741`
+- `13107200`: `-76.352`
+- `19660800`: `-53.079`
+- `26214400`: `80.181`
+
+Fixed-command diagnostics, Warp, standing reset, seed 0, final 500 steps:
+
+- command `0.5 m/s`: no termination, mean forward `0.241 m/s`, mean lateral
+  `0.649 m/s`, torso height `2.553-2.602 m`, orientation reward
+  `0.792-0.857`.
+- command `1.0 m/s`: no termination, mean forward `0.990 m/s`, mean lateral
+  `0.163 m/s`, torso height `2.484-2.582 m`, orientation reward
+  `0.932-1.000`.
+- command `1.5 m/s`: no termination, mean forward `1.365 m/s`, mean lateral
+  `0.003 m/s`, torso height `2.408-2.583 m`, orientation reward
+  `0.749-0.999`.
+
+Videos on the remote:
+
+- `/workspace/runs/TrexRun-20260515-142215-run19-termcost-searchedcenter-0p5to1p5-20m-scratch/videos/run19_f1p0.mp4`
+- `/workspace/runs/TrexRun-20260515-142215-run19-termcost-searchedcenter-0p5to1p5-20m-scratch/videos/run19_f1p5.mp4`
+
+Conclusion:
+
+- This is useful as a low-speed bridge into expanded straight-line running, not
+  as a finished `TrexRun` policy. It still needs better lateral control at low
+  command speeds and staged curriculum expansion.
+
+## TrexRun searched-center expansion run20 Warp 20M
+
+- Remote path:
+  `/workspace/runs/TrexRun-20260515-143719-run20-termcost-searchedcenter-1to2p5-20m-from-run19/`
+- Warm start:
+  `/workspace/runs/TrexRun-20260515-142215-run19-termcost-searchedcenter-0p5to1p5-20m-scratch/checkpoints/000026214400`
+- Phase center:
+  `/workspace/runs/phase_centers/search_run_trexrun_f1p0_symmetric8.json`
+- Training backend: MuJoCo MJX Warp
+- Command range: `1.0-2.5 m/s`, straight-line only
+
+This run is active on the L40S. Early eval rewards are:
+
+- `0`: `-70.148`
+- `6553600`: `18.868`
+- `13107200`: `100.613`
+
+Do not promote this run from scalar reward alone. It needs deterministic
+fixed-command gates at `1.0`, `1.5`, `2.0`, and `2.5 m/s`, followed by
+rendered frame/video inspection.

@@ -1202,3 +1202,32 @@ May 15 termination-cost mismatch:
 - Increased the TrexRun termination scale to `-1000`, making the terminal
   penalty about `-20` before clipping. This should make PPO care more about
   survival and align scalar eval better with the gates.
+
+May 15 searched-center residual PPO after termination-cost fix:
+
+- Trained run19 from scratch with the searched stabilizable center, stricter
+  `TrexRun` termination cost, and commands from `0.5-1.5 m/s`:
+  `/workspace/runs/TrexRun-20260515-142215-run19-termcost-searchedcenter-0p5to1p5-20m-scratch`.
+- This was the first searched-center residual run where scalar reward and
+  deterministic fixed-command gates agreed on useful progress. Eval reward
+  improved from `-47.382` to `80.181`.
+- Fixed-command diagnostics on the final checkpoint:
+  - `0.5 m/s`: no termination, mean forward `0.241 m/s`, but large lateral
+    drift around `0.649 m/s`.
+  - `1.0 m/s`: no termination, mean forward `0.990 m/s`, lateral drift
+    `0.163 m/s`.
+  - `1.5 m/s`: no termination, mean forward `1.365 m/s`, lateral drift near
+    zero.
+- Rendered frames show an upright but crouched/tilted gait. This is not a final
+  running policy, but it is a usable low-speed `TrexRun` foothold.
+
+May 15 run20 expansion in progress:
+
+- Started run20 from the run19 final checkpoint:
+  `/workspace/runs/TrexRun-20260515-143719-run20-termcost-searchedcenter-1to2p5-20m-from-run19`.
+- The curriculum expands fixed straight-line commands to `1.0-2.5 m/s`, keeps
+  the searched phase-action center, and uses Warp on the L40S.
+- Early eval rewards improved from `-70.148` to `18.868` and then `100.613`
+  through checkpoint `000013107200`. This is promising but not sufficient:
+  the run still needs fixed-command gates at `1.0`, `1.5`, `2.0`, and
+  `2.5 m/s`, plus rendered frame checks before promotion.
