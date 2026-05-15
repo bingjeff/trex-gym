@@ -514,9 +514,9 @@ class TestMjxGym(unittest.TestCase):
         config.reset_standing_prob = 1.0
         env = trex_joystick.TrexJoystick(config)
         state = env.reset(jax.random.PRNGKey(0))
-        state.info["command"] = jp.array([0.5, 0.0])
+        state.info["command"] = jp.array([0.0, 0.0])
         other_state = env.reset(jax.random.PRNGKey(0))
-        other_state.info["command"] = jp.array([0.5, 0.0])
+        other_state.info["command"] = jp.array([0.0, 0.0])
 
         zero_state = env.step(state, jp.zeros(env.action_size))
         one_state = env.step(other_state, jp.ones(env.action_size))
@@ -533,6 +533,20 @@ class TestMjxGym(unittest.TestCase):
             np.asarray(one_state.info["last_act"]),
             np.clip(expected, -1.0, 1.0),
             atol=1e-6,
+        )
+
+    def test_trex_joystick_uses_task_specific_residual_scales(self):
+        walk = trex_joystick.TrexWalk()
+        run = trex_joystick.TrexRun()
+        command = jp.array([1.0, 0.0])
+
+        np.testing.assert_allclose(
+            np.asarray(walk._residual_scale(command)),
+            np.asarray(walk._config.walk_action_residual_scale),
+        )
+        np.testing.assert_allclose(
+            np.asarray(run._residual_scale(command)),
+            np.asarray(run._config.running_action_residual_scale),
         )
 
     def test_trex_joystick_humanoid_style_reward_terms(self):

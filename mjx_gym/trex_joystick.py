@@ -394,8 +394,9 @@ class TrexJoystick(trex_getup.TrexGetup):
     def step(self, state: mjx_env.State, action: jax.Array) -> mjx_env.State:
         clipped_action = jp.clip(action, -1.0, 1.0)
         standing_gate = self._standing_command_gate(state.info["command"])
+        residual_scale = self._residual_scale(state.info["command"])
         applied_action = jp.clip(
-            self._stand_pose_action + clipped_action * self._action_residual_scale,
+            self._stand_pose_action + clipped_action * residual_scale,
             -1.0,
             1.0,
         )
@@ -988,6 +989,14 @@ class TrexJoystick(trex_getup.TrexGetup):
             self._config.running_gate_full - self._config.running_gate_start, 1e-6
         )
         return jp.clip((speed - self._config.running_gate_start) / width, 0.0, 1.0)
+
+    def _residual_scale(self, command: jax.Array) -> jax.Array:
+        if self._is_walk_task():
+            return self._walk_action_residual_scale
+        speed_gate = self._running_speed_gate(command)
+        return (1.0 - speed_gate) * self._action_residual_scale + (
+            speed_gate * self._running_action_residual_scale
+        )
 
     def _achieved_running_speed_gate(
         self, command: jax.Array, local_linvel: jax.Array
