@@ -686,6 +686,9 @@ Conclusion:
 - Enhanced rollout diagnostics show that the current high-speed policy has
   frequent hip-flexion and ankle target saturation, high actuator forces, low
   gait anti-phase, and substantial phase/contact mismatch.
+- Directly replaying the best checkpoint with higher global `Kp` destabilized
+  the policy, so a global position-servo gain increase is not a safe shortcut.
+  Any actuator-authority change should be targeted and retrained.
 - The next step should be model/control debugging, not another blind PPO run:
   inspect actuator force/position limits, whether the leg/tail action space can
   generate the required stride impulse, whether the simplified collision feet

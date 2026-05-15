@@ -996,6 +996,16 @@ May 15 high-speed TrexRun phase:
   `feet_phase` weights. This failed: eval reward degraded from `11.551` to
   `-54.790`, and a final `10.0 m/s` gate terminated at step `635`, averaged
   only `2.346 m/s`, and dropped torso height to `0.419 m`.
+- Inspected the generated MuJoCo model. Action actuators are not force-limited,
+  hip/femur position actuator gains are around `0.9-1.1e6`, knee gains around
+  `0.53e6`, and ankle gains around `0.119e6`. Foot contact friction is already
+  high at `[3.0, 0.1, 0.1]`, so ordinary sliding friction is not the obvious
+  limiting parameter.
+- Replayed the best run12 policy with higher global `Kp` values as a model
+  sensitivity check. This failed immediately: `Kp=300` terminated at step `274`,
+  `Kp=400` at step `88`, and `Kp=600` at step `24`. A global position-gain
+  increase is not compatible with the learned policy and should not be treated
+  as a simple fix.
 - Current blocker: the high-speed policy has not met the original `10 m/s`
   target. It is a useful experimental checkpoint for roughly `8-9 m/s`
   straight-line high-speed locomotion, but the next step should be a
