@@ -1203,3 +1203,37 @@ Conclusion:
 - Run30 failed as a `5-7 m/s` expansion. The strict tracking setup preserves
   the `5 m/s` bridge but does not prevent the overspeed/bounding mode at
   `6-7 m/s`.
+
+## TrexRun failed speed-gated 5-6 m/s expansion run31
+
+- Remote path:
+  `/workspace/runs/TrexRun-20260515-181312-run31-gaitgate-5to6-20m-from-run29/`
+- Warm start:
+  `/workspace/runs/TrexRun-20260515-173053-run29-target5-stricter-4p5to5-20m-from-run28/checkpoints/000026214400`
+- Config change: command range `5.0-6.0 m/s`, strict tracking sigma,
+  `forward_speed_error=-100`, and positive gait/contact rewards gated by
+  forward speed tracking.
+
+Training eval rewards:
+
+- `0`: `-268.308`
+- `6553600`: `-304.364`
+- `13107200`: `-320.068`
+- `19660800`: `-301.575`
+- `26214400`: `-159.296`
+
+Fixed-command diagnostics, Warp, standing reset, seed 0, final 500 steps:
+
+- command `5.0 m/s`: no termination, mean forward `5.304 m/s`, mean lateral
+  `0.083 m/s`, gait anti-phase `0.283`, torso height `2.503-2.638 m`,
+  orientation reward `0.969-0.989`.
+- command `6.0 m/s`: no termination, mean forward `6.810 m/s`, mean lateral
+  `0.012 m/s`, gait anti-phase `0.260`, torso height `2.476-2.647 m`,
+  orientation reward `0.968-0.993`.
+
+Conclusion:
+
+- Run31 failed as a clean `5-6 m/s` expansion. Gating positive gait rewards by
+  speed tracking improved the final scalar but did not eliminate the
+  overspeed/bounding mode. Run29 remains the best current strict `5 m/s`
+  bridge.

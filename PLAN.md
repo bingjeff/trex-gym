@@ -796,3 +796,9 @@ Conclusion:
   `TrexRun` config so future runs do not accidentally reintroduce the permissive
   overspeed reward. Continue from model/control debugging rather than more
   speed-only PPO.
+- A `5-6 m/s` diagnostic that gated positive gait/contact rewards by speed
+  tracking also failed: the final policy tracked `5.0 m/s` at about
+  `5.30 m/s`, but tracked `6.0 m/s` at about `6.81 m/s`. This confirms that
+  the current direct expansion branch is blocked above the strict `5 m/s`
+  bridge. The next phase should inspect and change the model/control/gait
+  parameterization before spending more GPU time on high-speed PPO.

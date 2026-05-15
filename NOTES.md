@@ -1384,3 +1384,23 @@ May 15 TrexRun default reward update:
   `test_trex_single_skill_task_configs`,
   `test_trex_run_gates_positive_forward_rewards_by_support_and_height`, and
   `test_trex_joystick_humanoid_style_reward_terms`.
+
+May 15 speed-gated gait reward diagnostic:
+
+- Added `gate_gait_rewards_by_speed_tracking` so positive gait/contact rewards
+  can be multiplied by the forward speed tracking reward. This was intended to
+  stop the policy from earning gait/contact reward while running faster than
+  the command.
+- Trained run31 from the strict `5 m/s` bridge over `5.0-6.0 m/s`:
+  `/workspace/runs/TrexRun-20260515-181312-run31-gaitgate-5to6-20m-from-run29`.
+- Eval scalar improved from `-268.308` to `-159.296`, but fixed-command gates
+  show the `6 m/s` overspeed remains:
+  - `5.0 m/s`: no termination, mean forward `5.304 m/s`, lateral `0.083`,
+    anti-phase `0.283`, torso height `2.503-2.638 m`.
+  - `6.0 m/s`: no termination, mean forward `6.810 m/s`, lateral `0.012`,
+    anti-phase `0.260`, torso height `2.476-2.647 m`.
+- Conclusion: gating positive gait rewards by speed tracking is not enough to
+  solve the high-speed transition. The current branch is still blocked above
+  about `5 m/s`; further progress should come from model/control debugging or a
+  different action/gait parameterization rather than more direct speed-only PPO
+  expansion.
