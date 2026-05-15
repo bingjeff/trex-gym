@@ -703,6 +703,11 @@ Conclusion:
   anti-phase around `0.13`, and kept similar contact/height behavior, but the
   scalar reward stayed strongly negative once flight and vertical-motion costs
   were made dominant.
+- Added a structural TrexRun gate so positive forward tracking/progress rewards
+  are only paid when the body has foot support and is not above the running
+  height band. A 30M continuation from run14 did not solve the mode: the
+  least-bad run16 checkpoint averaged `8.477 m/s` on a `10.0 m/s` command and
+  still had low gait anti-phase around `0.15`.
 - The next step should be model/control debugging, not another blind PPO run:
   inspect actuator force/position limits, whether the leg/tail action space can
   generate the required stride impulse, whether the simplified collision feet

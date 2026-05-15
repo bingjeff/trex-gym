@@ -1055,3 +1055,29 @@ May 15 anti-flight reward rebalance:
   Further progress likely needs a better gait generator/template, different
   action parameterization, or model/contact changes rather than more PPO
   continuations from run12/run14.
+
+May 15 forward-reward support gate:
+
+- Added `gate_forward_rewards_by_support` and enabled it only for `TrexRun`.
+  When enabled, positive `tracking_lin_vel`, `tracking_forward_vel`, and
+  `forward_progress` rewards are multiplied by foot-support and running-height
+  gates. This prevents unsupported/too-high flight from earning the main
+  forward reward.
+- Added phase-binned raw and applied action means to
+  `tools/analyze_joystick_rollout.py`. On run14, the learned policy has
+  phase-dependent actions, but they remain asymmetric and frequently hit
+  applied hip/ankle limits; it is not simply ignoring the gait clock.
+- A small open-loop gait-center probe showed the current sinusoidal gait prior
+  is not itself a high-speed controller. Most tested variants fell within about
+  70-113 steps and moved under `0.5 m/s`; the only stable variant was a
+  double-support shuffle around `0.05 m/s`.
+- Trained run16 with the new support/height gate from run14:
+  `/workspace/runs/TrexRun-20260515-122319-run16-gatedforward-ankle1p5-30m-from-run14`.
+  Reward improved only from `-60.833` to `-50.749`, then stayed negative.
+- The least-bad run16 checkpoint averaged `9.073 m/s` for an `8.0 m/s` command
+  and `8.477 m/s` for a `10.0 m/s` command; gait anti-phase stayed low
+  (`0.130-0.154`).
+- Conclusion: support/height gating is probably a correct objective fix, but it
+  does not salvage the current high-speed checkpoint family. The next attempt
+  should develop a better high-speed gait template or action parameterization
+  before spending more PPO time.

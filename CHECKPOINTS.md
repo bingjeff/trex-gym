@@ -671,3 +671,44 @@ Conclusion:
   made the same behavior score worse.
 - Further work should change the control/model formulation or gait template
   instead of continuing scalar reward reweighting from the same checkpoint.
+
+## TrexRun forward-reward support gate experiment Warp 30M
+
+- Remote path:
+  `/workspace/runs/TrexRun-20260515-122319-run16-gatedforward-ankle1p5-30m-from-run14/`
+- Warm start:
+  `/workspace/runs/TrexRun-20260515-110344-run14-ankle1p5-8to10-60m-from-run12/checkpoints/000117964800`
+- Training backend: MuJoCo MJX Warp
+- Training length: 30M requested steps; final saved checkpoint at
+  `000032768000`
+- Code change: TrexRun now gates positive forward velocity/progress rewards by
+  foot support and running-height band. Ordinary walk/joystick tasks keep the
+  old ungated behavior.
+
+This was not promoted. It is a structural reward fix, but a short continuation
+from the existing high-speed policy did not escape the same solution family.
+
+Training eval rewards:
+
+- `0`: `-60.833`
+- `6553600`: `-50.749`
+- `13107200`: `-59.109`
+- `19660800`: `-55.833`
+- `26214400`: `-56.959`
+- `32768000`: `-57.682`
+
+Least-bad checkpoint `000006553600`, Warp, standing reset, seed 0, final 500
+steps:
+
+- command `8.0 m/s`: mean forward `9.073 m/s`, no termination, gait anti-phase
+  `0.130`, torso height `2.068-2.985 m`.
+- command `10.0 m/s`: mean forward `8.477 m/s`, no termination, gait anti-phase
+  `0.154`, torso height `2.035-2.869 m`.
+
+Conclusion:
+
+- Gating positive velocity rewards by support/height makes the objective less
+  exploitable, but does not by itself recover a physical `10 m/s` gait when
+  fine-tuned from run14.
+- The next high-speed attempt should start from a different control template or
+  curriculum, not from the same run12/run14 bounding family.
