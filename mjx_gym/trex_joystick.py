@@ -111,7 +111,10 @@ def default_config() -> config_dict.ConfigDict:
     config.reward_config.turn_tracking_sigma = 0.25
     config.reward_config.scales = config_dict.create(
         tracking_lin_vel=1.0,
+        tracking_forward_vel=0.0,
         tracking_ang_vel=0.5,
+        forward_progress=0.0,
+        forward_speed_deficit=0.0,
         orientation=-2.0,
         base_height=-0.5,
         low_torso_height=-5.0,
@@ -127,8 +130,18 @@ def default_config() -> config_dict.ConfigDict:
         lin_vel_z=-0.5,
         ang_vel_xy=-0.15,
         feet_phase=1.0,
+        feet_phase_height=0.0,
+        phase_contact=0.0,
+        phase_contact_error=0.0,
+        phase_foot_clearance=0.0,
         feet_air_time=1.0,
         feet_slip=-0.25,
+        foot_contact_balance=0.0,
+        no_foot_contact=0.0,
+        gait_prior_tracking=0.0,
+        leg_action_alternation=0.0,
+        gait_anti_phase=0.0,
+        gait_symmetry=0.0,
         stand_still=-1.0,
         commanded_stand_still=2.0,
         pose=-0.25,
@@ -181,15 +194,32 @@ def walk_config() -> config_dict.ConfigDict:
     config.walk_command_forward_max = 1.5
     config.walk_command_turn_max = 0.0
     config.walk_command_zero_prob = 0.10
+    config.walk_action_residual_scale = [0.25] * 8 + [0.5, 0.5]
+    config.locomotion_height_gate_fraction = 0.90
     config.gait_frequency_min = 0.9
     config.gait_frequency_per_mps = 0.20
     config.gait_frequency_max = 1.4
     config.gait_swing_height = 0.14
-    config.reward_config.scales.tracking_lin_vel = 1.5
+    config.gait_prior_scale = 0.45
+    config.reward_config.scales.tracking_lin_vel = 1.0
+    config.reward_config.scales.tracking_forward_vel = 2.0
     config.reward_config.scales.tracking_ang_vel = 0.0
+    config.reward_config.scales.forward_progress = 2.0
+    config.reward_config.scales.forward_speed_deficit = -2.0
+    config.reward_config.scales.low_torso_height = -8.0
     config.reward_config.scales.feet_phase = 1.5
+    config.reward_config.scales.feet_phase_height = 1.0
+    config.reward_config.scales.phase_contact = 0.5
+    config.reward_config.scales.phase_contact_error = -0.25
+    config.reward_config.scales.phase_foot_clearance = 0.5
     config.reward_config.scales.feet_air_time = 1.5
     config.reward_config.scales.feet_slip = -0.5
+    config.reward_config.scales.foot_contact_balance = 0.5
+    config.reward_config.scales.no_foot_contact = -2.0
+    config.reward_config.scales.gait_prior_tracking = 0.5
+    config.reward_config.scales.leg_action_alternation = 0.5
+    config.reward_config.scales.gait_anti_phase = 0.5
+    config.reward_config.scales.gait_symmetry = 0.25
     config.reward_config.scales.commanded_stand_still = 1.5
     config.reward_config.scales.action_rate = -0.02
     return config
@@ -523,9 +553,21 @@ class TrexJoystick(trex_getup.TrexGetup):
             "tracking_lin_vel": posture_gate * self._reward_tracking_lin_vel(
                 info["command"], local_linvel
             ),
+            "tracking_forward_vel": moving_gate
+            * orientation
+            * clearance
+            * self._reward_tracking_forward_vel(info["command"], local_linvel),
             "tracking_ang_vel": posture_gate * self._reward_tracking_ang_vel(
                 info["command"], local_angvel
             ),
+            "forward_progress": moving_gate
+            * orientation
+            * clearance
+            * self._reward_forward_progress(info["command"], local_linvel),
+            "forward_speed_deficit": moving_gate
+            * orientation
+            * clearance
+            * self._cost_forward_speed_deficit(info["command"], local_linvel),
             "orientation": jp.square(1.0 - orientation),
             "base_height": jp.square(1.0 - height),
             "low_torso_height": self._cost_low_torso_height(torso_height),
@@ -550,12 +592,42 @@ class TrexJoystick(trex_getup.TrexGetup):
             "feet_phase": moving_gate
             * posture_gate
             * self._reward_feet_phase(data, info["gait_phase"]),
+            "feet_phase_height": moving_gate
+            * orientation
+            * self._reward_feet_phase_height(
+                data, info["gait_phase"], info["command"]
+            ),
+            "phase_contact": moving_gate
+            * orientation
+            * self._reward_phase_contact(data, info),
+            "phase_contact_error": moving_gate
+            * orientation
+            * self._cost_phase_contact_error(data, info),
+            "phase_foot_clearance": moving_gate
+            * orientation
+            * self._reward_phase_foot_clearance(data, info),
             "feet_air_time": moving_gate
             * posture_gate
             * self._reward_feet_air_time(
                 feet_air_time, first_contact, info["command"]
             ),
             "feet_slip": self._cost_foot_slip(data, info),
+            "foot_contact_balance": moving_gate
+            * orientation
+            * self._reward_foot_contact_balance(data),
+            "no_foot_contact": moving_gate * self._cost_no_foot_contact(data),
+            "gait_prior_tracking": moving_gate
+            * orientation
+            * self._reward_gait_prior_tracking(action, info),
+            "leg_action_alternation": moving_gate
+            * orientation
+            * self._reward_leg_action_alternation(action),
+            "gait_anti_phase": moving_gate
+            * orientation
+            * self._reward_gait_anti_phase(data),
+            "gait_symmetry": moving_gate
+            * orientation
+            * self._reward_gait_symmetry(data),
             "stand_still": self._cost_stand_still(info["command"], data.qpos[7:]),
             "commanded_stand_still": posture_gate
             * self._reward_commanded_stand_still(
