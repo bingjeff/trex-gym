@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>T-Rex WASM</title>
+    <link rel="stylesheet" href="./app.css" />
+  </head>
+  <body>
+    <main id="app">
+      <canvas id="viewport"></canvas>
+      <section id="hud" aria-label="T-Rex telemetry">
+        <div class="hud-row">
+          <span>Runtime</span>
+          <output id="runtime">loading</output>
+        </div>
+        <div class="hud-row">
+          <span>Status</span>
+          <output id="status">starting</output>
+        </div>
+        <div class="hud-row">
+          <span>Forward</span>
+          <output id="forward">0.00</output>
+        </div>
+        <div class="hud-row">
+          <span>Turn</span>
+          <output id="turn">0.00</output>
+        </div>
+        <div class="hud-row">
+          <span>Control</span>
+          <output id="control-rate">50 Hz</output>
+        </div>
+        <div class="hud-row">
+          <span>Physics</span>
+          <output id="physics-rate">250 Hz</output>
+        </div>
+        <div class="hud-row">
+          <span>Step</span>
+          <output id="step">0</output>
+        </div>
+        <div class="hud-actions">
+          <button id="reset" type="button">Reset</button>
+          <button id="camera" type="button">Follow</button>
+        </div>
+        <div
+          id="joystick"
+          role="application"
+          aria-label="Drive joystick"
+          tabindex="0"
+        >
+          <div id="joystick-knob"></div>
+        </div>
+      </section>
+      <div id="loading">Loading MuJoCo WASM...</div>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

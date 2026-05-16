@@ -1,0 +1,240 @@
+<mujoco model="stan_t_rex">
+  <compiler angle="radian"/>
+
+  <option timestep="0.004"/>
+
+  <size nkey="2"/>
+
+  <visual>
+    <global azimuth="120" elevation="-20"/>
+    <headlight ambient="0.2 0.2 0.2" diffuse="0.8 0.8 0.8"/>
+  </visual>
+
+  <default>
+    <default class="visual">
+      <geom contype="0" conaffinity="0" group="1"/>
+    </default>
+    <default class="contact">
+      <geom contype="0" condim="4" group="2" friction="3 0.1 0.1" rgba="0.5 0.8 1 0.5"/>
+    </default>
+  </default>
+
+  <asset>
+    <texture type="2d" colorspace="auto" name="groundplane" builtin="checker" rgb1="1 1 1" rgb2="0.85 0.85 0.85" width="300" height="300"/>
+    <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5"/>
+  </asset>
+
+  <worldbody>
+    <geom name="floor" size="0 0 0.01" type="plane" conaffinity="0" condim="4" priority="1" friction="3 0.1 0.1" material="groundplane"/>
+    <light name="key" pos="0 -6 8" dir="0 0.514496 -0.857493" type="directional" diffuse="0.85 0.85 0.8" specular="0.2 0.2 0.2"/>
+    <body name="link_vertebrae_sacral">
+      <inertial pos="1.21312 -0.313018 0.00137338" quat="0.988175 -0.0195015 0.00215386 -0.152072" mass="2184" diaginertia="460.17 1802.03 1827.63"/>
+      <joint name="joint_world_to_sacrum" type="free"/>
+      <geom name="link_vertebrae_sacral_collision_00" class="contact" size="0.607781 0.3527" pos="0.826185 -0.459992 6.27511e-05" quat="-0.486442 0.513027 -0.486449 -0.513367" type="capsule"/>
+      <geom name="link_vertebrae_sacral_collision_01" class="contact" size="0.702694 0.251643" pos="1.27986 -0.486766 5.65748e-05" quat="-0.0437575 0.0506774 0.705078 -0.705962" type="capsule"/>
+      <geom name="link_vertebrae_sacral_collision_02" class="contact" size="0.696878 0.328837" pos="1.78274 -0.526325 0.00104907" quat="-0.0910751 0.0921909 0.700758 -0.70153" type="capsule"/>
+      <site name="imu" pos="0 0 0"/>
+      <camera name="track" pos="0 -18 6" quat="0.812163 0.58343 0 0" mode="trackcom"/>
+      <body name="link_femur_right" pos="0.0171967 -0.22077 0.249246" quat="7.47632e-08 -0.990268 -0.139173 1.05073e-08">
+        <inertial pos="0.0595957 0.564937 -0.17089" quat="0.838519 -2.85352e-07 9.32863e-07 -0.544872" mass="390.746" diaginertia="19.3481 65.7975 68.5767"/>
+        <joint name="joint_hip_adduction_right" pos="0 0 0" axis="1 0 0" limited="true" range="-0.785398 0.261799" armature="890.405" damping="356162" frictionloss="0.01"/>
+        <joint name="joint_femur_right" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 1.5708" armature="1137.25" damping="454899" frictionloss="0.01"/>
+        <geom name="link_femur_right_collision_00" class="contact" size="0.214518 0.556795" pos="0.0318889 0.567064 -0.180948" quat="0.647922 -0.721799 -0.190279 -0.151645" type="capsule"/>
+        <body name="link_tibia_right" pos="0.000265156 1.06577 -0.145267" quat="0.956305 0 0 0.292372">
+          <inertial pos="0.0732767 0.619265 -0.0703217" quat="-0.611794 -3.00534e-07 -9.90547e-07 0.791017" mass="219.728" diaginertia="9.16453 22.7758 27.968"/>
+          <joint name="joint_tibia_right" pos="0 0 0" axis="0 0 1" limited="true" range="-0.593412 1.5708" armature="533.425" damping="213370" frictionloss="0.01"/>
+          <body name="link_tarsometatarsus_right" pos="0.000432153 1.11552 -0.0558443">
+            <inertial pos="0.018665 0.355162 -0.0207543" quat="-0.385315 -0.459876 0.590881 0.539357" mass="76.2595" diaginertia="1.67526 2.91473 3.33952"/>
+            <joint name="joint_tarsometatarsus_right" pos="0 0 0" axis="0 0 1" limited="true" range="-2.0944 0.349066" armature="118.913" damping="47565.3" frictionloss="0.01"/>
+            <geom name="link_tarsometatarsus_right_collision_00" class="contact" size="0.112571 0.252384" pos="-0.0161042 0.361946 -0.139057" quat="0.517162 0.527844 0.432903 -0.516255" type="capsule"/>
+            <geom name="link_tarsometatarsus_right_collision_01" class="contact" size="0.136283 0.253035" pos="0.00340553 0.369177 -0.0176562" quat="0.453305 0.472842 0.501255 -0.565402" type="capsule"/>
+            <geom name="link_tarsometatarsus_right_collision_02" class="contact" size="0.124018 0.244687" pos="0.00688365 0.356091 0.0990183" quat="0.473401 0.516055 0.482461 -0.526127" type="capsule"/>
+            <geom name="link_tarsometatarsus_right_collision_03" class="contact" size="0.033343 0.0475833" pos="-0.0570813 0.448724 0.226724" quat="0.931862 -0.193392 -0.142741 0.27177" type="capsule"/>
+            <geom name="link_tarsometatarsus_right_collision_04" class="contact" size="0.028362 0.0588139" pos="-0.0688996 0.452255 0.330666" quat="-0.29516 0.874924 0.374866 0.0828511" type="capsule"/>
+            <body name="link_toe_02_a_right" pos="0.00909185 0.643101 0.0893701" quat="0.979827 0.162113 -0.0735904 0.0907904">
+              <inertial pos="0.0147853 0.0814085 -0.00967986" quat="-0.502477 0.154823 0.0878952 0.846062" mass="8.56807" diaginertia="0.0502756 0.06677 0.0681447"/>
+              <joint name="joint_toe_02_a_right" pos="0 0 0" axis="0 0 1" stiffness="27426.6" limited="true" range="-0.785398 0.785398" armature="5.48532" damping="2194.13" frictionloss="0.01"/>
+              <geom name="link_toe_02_a_right_collision_00" class="contact" size="0.0916302 0.0778342" pos="0.011275 0.0992318 -0.00715853" quat="0.71617 0.693162 0.0376701 -0.0721629" type="capsule"/>
+              <body name="link_toe_02_b_right" pos="1.56462e-07 0.158649 -5.84114e-08">
+                <inertial pos="-0.0154471 0.152657 0.00165576" quat="-0.116208 0.603882 0.783924 -0.0853566" mass="5.20653" diaginertia="0.0182187 0.0424637 0.0449215"/>
+                <joint name="joint_toe_02_b_right" pos="0 0 0" axis="0 0 1" stiffness="9681.5" limited="true" range="-0.785398 0.785398" armature="1.9363" damping="774.52" frictionloss="0.01"/>
+                <geom name="link_toe_02_b_right_collision_00" class="contact" size="0.060618 0.0612124" pos="0.00205091 0.112831 0.000565781" quat="0.660804 0.713359 0.163511 -0.166495" type="capsule"/>
+                <geom name="link_toe_02_b_right_collision_01" class="contact" size="0.0394 0.0614701" pos="-0.0345079 0.259887 0.0187485" quat="0.241155 -0.476906 0.362256 0.763659" type="capsule"/>
+              </body>
+            </body>
+            <body name="link_toe_03_a_right" pos="0.0330297 0.610174 -0.0396302" quat="0.99981 -0.00872521 -0.000152299 0.0174517">
+              <inertial pos="-0.00332758 0.204792 0.00372508" quat="0.023774 0.716701 0.696969 0.00286763" mass="10.1654" diaginertia="0.0446378 0.137133 0.147505"/>
+              <joint name="joint_toe_03_a_right" pos="0 0 0" axis="0 0 1" stiffness="42294.3" limited="true" range="-0.785398 0.785398" armature="8.45887" damping="3383.55" frictionloss="0.01"/>
+              <geom name="link_toe_03_a_right_collision_00" class="contact" size="0.0817621 0.0702842" pos="-0.00245971 0.154413 0.00269454" quat="0.696881 0.693408 0.119705 -0.138611" type="capsule"/>
+              <geom name="link_toe_03_a_right_collision_01" class="contact" size="0.0655983 0.0472511" pos="-0.00749199 0.33635 -0.000398682" quat="0.697732 0.705282 0.111209 -0.0581309" type="capsule"/>
+              <body name="link_toe_03_c_right" pos="-0.0129442 0.388236 0.00259236" quat="0.993173 0.0270484 -0.00692299 0.113257">
+                <inertial pos="0.0156839 0.136671 -0.00317707" quat="-0.00985439 0.814915 0.57948 -0.00434973" mass="2.89596" diaginertia="0.0053898 0.0214789 0.0229493"/>
+                <joint name="joint_toe_03_c_right" pos="0 0 0" axis="0 0 1" stiffness="5105.69" limited="true" range="-0.785398 0.785398" armature="1.02114" damping="408.456" frictionloss="0.01"/>
+                <geom name="link_toe_03_c_right_collision_00" class="contact" size="0.053458 0.0570303" pos="0.0011071 0.0886454 0.00120698" quat="0.717543 -0.681897 0.0482289 -0.133501" type="capsule"/>
+                <geom name="link_toe_03_c_right_collision_01" class="contact" size="0.0441679 0.0458561" pos="0.0371651 0.226117 -0.00066893" quat="0.513463 -0.510102 0.487692 0.488168" type="capsule"/>
+              </body>
+            </body>
+            <body name="link_toe_04_a_right" pos="-0.00682644 0.58667 -0.14669" quat="0.983495 -0.166741 0.0544253 0.0444264">
+              <inertial pos="0.0172329 0.198665 0.0143072" quat="-0.532788 -0.459698 0.383531 0.598096" mass="8.46925" diaginertia="0.0314272 0.11588 0.1185"/>
+              <joint name="joint_toe_04_a_right" pos="0 0 0" axis="0 0 1" stiffness="30748.5" limited="true" range="-0.785398 0.785398" armature="6.14971" damping="2459.88" frictionloss="0.01"/>
+              <geom name="link_toe_04_a_right_collision_00" class="contact" size="0.0837599 0.0551393" pos="0.00630333 0.136273 -0.000923693" quat="0.710788 0.681034 0.0678441 -0.162392" type="capsule"/>
+              <geom name="link_toe_04_a_right_collision_01" class="contact" size="0.0674528 0.0181647" pos="0.0111032 0.280209 0.0182228" quat="0.577992 0.814605 -0.0123019 -0.0468171" type="capsule"/>
+              <geom name="link_toe_04_a_right_collision_02" class="contact" size="0.0691817 0.00890138" pos="0.00730526 0.387184 0.038952" quat="0.981858 0.0987401 -0.158512 0.0328412" type="capsule"/>
+              <body name="link_toe_04_d_right" pos="0.000835589 0.409246 0.0445163" quat="0.986364 0.138325 -0.045053 0.0769553">
+                <inertial pos="-0.00827861 0.124301 0.00350416" quat="0.0185577 0.620445 0.783781 0.0197853" mass="1.81881" diaginertia="0.00300785 0.0115257 0.0126079"/>
+                <joint name="joint_toe_04_d_right" pos="0 0 0" axis="0 0 1" stiffness="2797.89" limited="true" range="-0.785398 0.785398" armature="0.559578" damping="223.831" frictionloss="0.01"/>
+                <geom name="link_toe_04_d_right_collision_00" class="contact" size="0.0527143 0.0178278" pos="-0.00181929 0.0723804 0.00486225" quat="0.637231 0.764672 -0.0526461 0.0802587" type="capsule"/>
+                <geom name="link_toe_04_d_right_collision_01" class="contact" size="0.0342527 0.0538313" pos="-0.0174964 0.204079 0.00129659" quat="-0.197502 0.551691 -0.465742 -0.66311" type="capsule"/>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="link_vertebra_cervical_09" pos="2.23474 -0.171243 5.89388e-08" quat="0.564721 0.425547 0.564721 -0.425548">
+        <inertial pos="0.000404814 0.295613 -0.140102" quat="-0.606042 -0.366589 0.60749 0.359558" mass="141.182" diaginertia="2.64417 5.5484 5.87559"/>
+        <joint name="joint_vertebra_cervical_09" pos="0 0 0" axis="1 0 0" stiffness="9.01886e+06" limited="true" range="-0.349066 0.349066" armature="1803.77" damping="721509" frictionloss="0.01"/>
+        <geom name="link_vertebra_cervical_09_collision_00" class="contact" size="0.362431 0.591284" pos="0.0125853 0.282472 -0.101" quat="0.467766 -0.563783 0.523579 0.434982" type="capsule"/>
+        <body name="link_vertebra_cervical_03" pos="8.44487e-09 0.585291 -0.119872" quat="0.999048 -0.0436194 0 0">
+          <inertial pos="6.8316e-05 0.157548 -0.074258" quat="-0.681527 -0.188565 0.681721 0.187671" mass="45.0396" diaginertia="0.581883 0.727497 0.766012"/>
+          <joint name="joint_vertebra_cervical_03" pos="0 0 0" axis="1 0 0" stiffness="6.52556e+06" limited="true" range="-0.349066 0.349066" armature="1305.11" damping="522045" frictionloss="0.01"/>
+          <body name="link_atlas_axis" pos="-2.21099e-08 0.239541 0.0793894" quat="0.870356 0.492424 0 0">
+            <inertial pos="-7.23943e-06 -0.011386 -0.119745" quat="0.635544 0.309975 -0.309975 0.635543" mass="12.0989" diaginertia="0.0891542 0.114052 0.134444"/>
+            <joint name="joint_atlas_axis" pos="0 0 0" axis="1 0 0" stiffness="5.01721e+06" limited="true" range="-0.349066 0.349066" armature="1003.44" damping="401377" frictionloss="0.01"/>
+            <body name="link_cranium" pos="-1.77311e-09 0.130331 1.05438e-07" quat="0.999391 -0.0348995 0 0">
+              <inertial pos="-0.00530691 0.54022 0.429507" quat="-0.671953 0.2165 0.21209 0.67574" mass="947.701" diaginertia="113.079 169.726 171.188"/>
+              <joint name="joint_cranium" pos="0 0 0" axis="0 1 0" stiffness="2.35477e+06" limited="true" range="-0.349066 0.349066" armature="470.953" damping="188381" frictionloss="0.01"/>
+              <geom name="link_cranium_collision_00" class="contact" size="0.581243 0.434752" pos="-0.00669254 0.489722 0.189838" quat="0.517918 -0.482728 0.480062 0.517952" type="capsule"/>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="link_vertebra_caudal_02" pos="-0.842928 -0.213934 -4.40416e-08" quat="0.477714 0.521334 -0.477714 0.521334">
+        <inertial pos="-6.1334e-05 0.0857775 -0.150383" quat="-0.477715 0.521333 -0.521333 -0.477715" mass="47.6395" diaginertia="0.789287 1.3243 1.64256"/>
+        <joint name="joint_vertebra_caudal_02" pos="0 0 0" axis="1 0 0" stiffness="3.19165e+06" limited="true" range="-0.349066 0.349066" armature="638.33" damping="255332" frictionloss="0.01"/>
+        <body name="link_vertebra_caudal_03" pos="-1.39533e-08 0.177778 -9.2178e-09">
+          <inertial pos="0.000484851 0.579897 -0.119633" quat="-0.4919 -0.507277 0.492689 0.5079" mass="233.674" diaginertia="5.81126 32.6392 34.4168"/>
+          <joint name="joint_vertebra_caudal_03" pos="0 0 0" axis="0 0 1" stiffness="2.82112e+06" limited="true" range="-0.349066 0.349066" armature="564.225" damping="225690" frictionloss="0.01"/>
+          <geom name="link_vertebra_caudal_03_collision_00" class="contact" size="0.429234 0.845942" pos="-3.40917e-05 0.423596 0.00279877" quat="0.720179 -0.693788 0.000267646 0.000582087" type="capsule"/>
+          <body name="link_vertebra_caudal_10" pos="-1.04746e-07 1.26695 -0.0303436" quat="0.999048 -0.0436194 0 0">
+            <inertial pos="-0.000177817 0.0858667 -0.0870004" quat="-0.5 0.5 0.5 0.5" mass="20.0175" diaginertia="0.201548 0.278517 0.359171"/>
+            <joint name="joint_vertebra_caudal_10" pos="0 0 0" axis="1 0 0" stiffness="1.14944e+06" limited="true" range="-0.349066 0.349066" armature="229.888" damping="91955.2" frictionloss="0.01"/>
+            <body name="link_vertebra_caudal_11" pos="-1.6323e-08 0.175526 -2.75228e-09" quat="0.999048 -0.0436194 0 0">
+              <inertial pos="0.00216054 0.747812 -0.0211552" quat="0.460077 0.536065 -0.464886 -0.533708" mass="91.5619" diaginertia="0.882879 29.8704 30.2443"/>
+              <joint name="joint_vertebra_caudal_11" pos="0 0 0" axis="0 0 1" stiffness="975321" limited="true" range="-0.349066 0.349066" armature="195.064" damping="78025.7" frictionloss="0.01"/>
+              <geom name="link_vertebra_caudal_11_collision_00" class="contact" size="0.285022 0.902846" pos="-0.000148045 0.955592 0.130624" quat="-0.00119283 0.000841709 0.644031 0.764998" type="capsule"/>
+              <body name="link_vertebra_caudal_24" pos="-1.49557e-08 2.05929 0.329455" quat="0.978148 0.207912 0 0">
+                <inertial pos="0.00247878 0.0723531 -0.029799" quat="0.116705 0.69741 -0.116705 -0.697409" mass="1.91906" diaginertia="0.00489249 0.00508351 0.00816952"/>
+                <joint name="joint_vertebra_caudal_24" pos="0 0 0" axis="1 0 0" stiffness="77003.9" limited="true" range="-0.349066 0.349066" armature="15.4008" damping="6160.31" frictionloss="0.01"/>
+                <body name="link_vertebra_caudal_25" pos="-1.70112e-08 0.133804 -1.1872e-07" quat="0.999048 0.0436194 0 0">
+                  <inertial pos="0.00194095 0.359868 1.57603e-05" quat="0.470027 0.528903 -0.469462 -0.528149" mass="8.36592" diaginertia="0.0157867 0.470057 0.480892"/>
+                  <joint name="joint_vertebra_caudal_25" pos="0 0 0" axis="0 0 1" stiffness="59733.4" limited="true" range="-0.349066 0.349066" armature="11.9467" damping="4778.67" frictionloss="0.01"/>
+                  <geom name="link_vertebra_caudal_25_collision_00" class="contact" size="0.101909 0.446119" pos="-0.00109035 0.362029 0.0465009" quat="0.0171839 0.0182138 0.746072 -0.665395" type="capsule"/>
+                  <body name="link_vertebra_caudal_34" pos="-1.83006e-07 0.869153 0.094321" quat="0.987688 0.156434 0 0">
+                    <inertial pos="0.00108175 0.168414 -0.0121471" quat="0.497445 0.503302 -0.496737 -0.502481" mass="1.00482" diaginertia="0.000557174 0.0159434 0.0163717"/>
+                    <joint name="joint_vertebra_caudal_34" pos="0 0 0" axis="0 0 1" stiffness="2863.82" limited="true" range="-0.349066 0.349066" armature="0.572765" damping="229.106" frictionloss="0.01"/>
+                    <geom name="link_vertebra_caudal_34_collision_00" class="contact" size="0.0293967 0.263672" pos="0.000700735 0.263582 -0.000583491" quat="-0.00770373 0.00665055 0.69672 0.717271" type="capsule"/>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="link_femur_left" pos="0.0171967 -0.22077 -0.249247" quat="7.47632e-08 0.990268 0.139173 1.05073e-08">
+        <inertial pos="0.0596058 0.564222 0.170268" quat="0.836483 -2.38356e-07 1.00732e-06 -0.547992" mass="388.14" diaginertia="19.0769 65.3888 68.1471"/>
+        <joint name="joint_hip_adduction_left" pos="0 0 0" axis="1 0 0" limited="true" range="-0.261799 0.785398" armature="891.869" damping="356748" frictionloss="0.01"/>
+        <joint name="joint_femur_left" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 1.5708" armature="1138.25" damping="455301" frictionloss="0.01"/>
+        <geom name="link_femur_left_collision_00" class="contact" size="0.216146 0.551932" pos="0.0312246 0.567355 0.181651" quat="0.183523 -0.14621 -0.64875 -0.723924" type="capsule"/>
+        <body name="link_tibia_left" pos="-0.000128338 1.06577 0.145267" quat="0.956305 0 0 0.292372">
+          <inertial pos="0.0740429 0.619739 0.0704671" quat="-0.583882 -3.40656e-07 -1.10293e-06 0.811839" mass="220.549" diaginertia="9.23066 22.8197 28.0312"/>
+          <joint name="joint_tibia_left" pos="0 0 0" axis="0 0 1" limited="true" range="-0.593412 1.5708" armature="534.49" damping="213796" frictionloss="0.01"/>
+          <body name="link_tarsometatarsus_left" pos="0.000315699 1.11551 0.0558451">
+            <inertial pos="0.0187975 0.354963 0.0203979" quat="-0.446636 -0.370996 0.546053 0.603908" mass="76.5164" diaginertia="1.68523 2.92343 3.34657"/>
+            <joint name="joint_tarsometatarsus_left" pos="0 0 0" axis="0 0 1" limited="true" range="-2.0944 0.349066" armature="118.918" damping="47567.1" frictionloss="0.01"/>
+            <geom name="link_tarsometatarsus_left_collision_00" class="contact" size="0.110625 0.250847" pos="-0.0148433 0.362735 0.137706" quat="-0.431114 -0.519509 -0.515735 0.527511" type="capsule"/>
+            <geom name="link_tarsometatarsus_left_collision_01" class="contact" size="0.131134 0.254915" pos="0.00345368 0.369164 0.0151472" quat="0.502761 0.563407 0.452173 -0.474704" type="capsule"/>
+            <geom name="link_tarsometatarsus_left_collision_02" class="contact" size="0.124779 0.23586" pos="0.005896 0.355716 -0.0977376" quat="0.491455 0.530619 0.467278 -0.508493" type="capsule"/>
+            <geom name="link_tarsometatarsus_left_collision_03" class="contact" size="0.0333044 0.0471361" pos="-0.0569281 0.449083 -0.226616" quat="0.933168 0.196617 0.136981 0.267909" type="capsule"/>
+            <geom name="link_tarsometatarsus_left_collision_04" class="contact" size="0.0284881 0.0582309" pos="-0.0690341 0.451865 -0.330832" quat="0.865531 -0.295559 0.0885537 0.394536" type="capsule"/>
+            <body name="link_toe_02_a_left" pos="0.00909191 0.643099 -0.0893701" quat="0.977292 -0.14327 -0.105687 0.114911">
+              <inertial pos="0.0179428 0.0812521 0.00368567" quat="-0.481471 0.00129007 -0.178031 0.858189" mass="8.45436" diaginertia="0.049145 0.065468 0.0665067"/>
+              <joint name="joint_toe_02_a_left" pos="0 0 0" axis="0 0 1" stiffness="26687.3" limited="true" range="-0.785398 0.785398" armature="5.33745" damping="2134.98" frictionloss="0.01"/>
+              <geom name="link_toe_02_a_left_collision_00" class="contact" size="0.0926855 0.0712897" pos="0.0125636 0.0992225 0.000794455" quat="0.699504 0.705702 0.0636107 -0.0929112" type="capsule"/>
+              <body name="link_toe_02_b_left" pos="-1.49012e-07 0.158649 -1.49012e-08">
+                <inertial pos="-0.0151147 0.153802 0.00385999" quat="0.790195 -0.0274518 0.026541 -0.611665" mass="5.20389" diaginertia="0.0181067 0.0427964 0.0452571"/>
+                <joint name="joint_toe_02_b_left" pos="0 0 0" axis="0 0 1" stiffness="9104.29" limited="true" range="-0.785398 0.785398" armature="1.82086" damping="728.343" frictionloss="0.01"/>
+                <geom name="link_toe_02_b_left_collision_00" class="contact" size="0.0606563 0.0609832" pos="0.00185785 0.11253 -0.00176594" quat="0.735246 0.675359 -0.0347252 0.0458043" type="capsule"/>
+                <geom name="link_toe_02_b_left_collision_01" class="contact" size="0.0395126 0.0614435" pos="-0.0385099 0.260673 -0.00565499" quat="-0.316586 0.669155 -0.301533 -0.600902" type="capsule"/>
+              </body>
+            </body>
+            <body name="link_toe_03_a_left" pos="0.0330298 0.610172 0.0396302" quat="0.99981 0.00872521 0.000152299 0.0174517">
+              <inertial pos="-0.00324581 0.205244 -0.00397383" quat="-0.696252 0.00274455 -0.023596 0.717404" mass="10.1098" diaginertia="0.0441945 0.135686 0.145984"/>
+              <joint name="joint_toe_03_a_left" pos="0 0 0" axis="0 0 1" stiffness="42293.2" limited="true" range="-0.785398 0.785398" armature="8.45864" damping="3383.45" frictionloss="0.01"/>
+              <geom name="link_toe_03_a_left_collision_00" class="contact" size="0.0777788 0.0839381" pos="-0.00184666 0.154414 -0.00415609" quat="0.690265 -0.700206 -0.117632 -0.139317" type="capsule"/>
+              <geom name="link_toe_03_a_left_collision_01" class="contact" size="0.0656656 0.0501767" pos="-0.00705487 0.336675 -8.24709e-05" quat="0.691744 -0.708824 -0.121068 -0.0663347" type="capsule"/>
+              <body name="link_toe_03_c_left" pos="-0.0129442 0.388236 -0.00259243" quat="0.993212 -0.0250731 -0.0104172 0.113106">
+                <inertial pos="0.0154624 0.136706 0.00246322" quat="-0.580883 0.0125559 0.00359346 0.813882" mass="2.9075" diaginertia="0.00544402 0.0215669 0.0230565"/>
+                <joint name="joint_toe_03_c_left" pos="0 0 0" axis="0 0 1" stiffness="5045.6" limited="true" range="-0.785398 0.785398" armature="1.00912" damping="403.648" frictionloss="0.01"/>
+                <geom name="link_toe_03_c_left_collision_00" class="contact" size="0.0544494 0.0528316" pos="0.00128035 0.0884543 -0.00130005" quat="0.722662 0.675789 -0.0453896 -0.13787" type="capsule"/>
+                <geom name="link_toe_03_c_left_collision_01" class="contact" size="0.044418 0.045789" pos="0.0368475 0.226319 -0.00277294" quat="0.478871 -0.488837 0.521182 0.509991" type="capsule"/>
+              </body>
+            </body>
+            <body name="link_toe_04_a_left" pos="-0.00682626 0.586669 0.14669" quat="0.982202 0.159508 0.072951 0.0671939">
+              <inertial pos="0.0201382 0.198532 -0.00924809" quat="-0.371381 -0.581757 0.655792 0.305896" mass="8.52725" diaginertia="0.031828 0.11709 0.119646"/>
+              <joint name="joint_toe_04_a_left" pos="0 0 0" axis="0 0 1" stiffness="33541.5" limited="true" range="-0.785398 0.785398" armature="6.7083" damping="2683.32" frictionloss="0.01"/>
+              <geom name="link_toe_04_a_left_collision_00" class="contact" size="0.084975 0.0533822" pos="0.00510873 0.137548 0.00230563" quat="0.696679 -0.653443 -0.167901 -0.243843" type="capsule"/>
+              <geom name="link_toe_04_a_left_collision_01" class="contact" size="0.0679391 0.0165386" pos="0.0154783 0.280475 -0.0141809" quat="0.559795 -0.81299 -0.0611023 -0.148134" type="capsule"/>
+              <geom name="link_toe_04_a_left_collision_02" class="contact" size="0.0691673 0.00937221" pos="0.0187165 0.386204 -0.034854" quat="0.994448 -0.102169 0.0248119 -0.00447599" type="capsule"/>
+              <body name="link_toe_04_d_left" pos="0.0128645 0.409425 -0.0418466" quat="0.98807 -0.14755 -0.0154793 0.041313">
+                <inertial pos="-0.0074166 0.125302 -0.00464719" quat="0.784057 0.0256511 -0.0348076 -0.619181" mass="1.80836" diaginertia="0.00298593 0.0114079 0.0124884"/>
+                <joint name="joint_toe_04_d_left" pos="0 0 0" axis="0 0 1" stiffness="2995.38" limited="true" range="-0.785398 0.785398" armature="0.599077" damping="239.631" frictionloss="0.01"/>
+                <geom name="link_toe_04_d_left_collision_00" class="contact" size="0.0509856 0.0202958" pos="-0.00186066 0.0719497 -0.00471937" quat="0.763031 0.645671 0.0125345 0.0271136" type="capsule"/>
+                <geom name="link_toe_04_d_left_collision_01" class="contact" size="0.0341297 0.0538311" pos="-0.0171702 0.204132 -0.00352327" quat="0.487745 -0.70713 0.149404 0.489643" type="capsule"/>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <tendon>
+    <fixed name="tail_sagittal">
+      <joint joint="joint_vertebra_caudal_02" coef="1"/>
+      <joint joint="joint_vertebra_caudal_10" coef="0.75"/>
+      <joint joint="joint_vertebra_caudal_24" coef="0.5"/>
+    </fixed>
+    <fixed name="tail_mediolateral">
+      <joint joint="joint_vertebra_caudal_03" coef="1"/>
+      <joint joint="joint_vertebra_caudal_11" coef="0.75"/>
+      <joint joint="joint_vertebra_caudal_25" coef="0.5"/>
+      <joint joint="joint_vertebra_caudal_34" coef="0.25"/>
+    </fixed>
+  </tendon>
+
+  <actuator>
+    <general name="actuator_hip_adduction_right" joint="joint_hip_adduction_right" ctrllimited="true" ctrlrange="-0.785398 0.261799" biastype="affine" gainprm="890405" biasprm="0 -890405"/>
+    <general name="actuator_hip_adduction_left" joint="joint_hip_adduction_left" ctrllimited="true" ctrlrange="-0.261799 0.785398" biastype="affine" gainprm="891869" biasprm="0 -891869"/>
+    <general name="actuator_hip_flexion_right" joint="joint_femur_right" ctrllimited="true" ctrlrange="-1.5708 1.5708" biastype="affine" gainprm="1.13725e+06" biasprm="0 -1.13725e+06"/>
+    <general name="actuator_hip_flexion_left" joint="joint_femur_left" ctrllimited="true" ctrlrange="-1.5708 1.5708" biastype="affine" gainprm="1.13825e+06" biasprm="0 -1.13825e+06"/>
+    <general name="actuator_knee_right" joint="joint_tibia_right" ctrllimited="true" ctrlrange="-0.593412 1.5708" biastype="affine" gainprm="533425" biasprm="0 -533425"/>
+    <general name="actuator_knee_left" joint="joint_tibia_left" ctrllimited="true" ctrlrange="-0.593412 1.5708" biastype="affine" gainprm="534490" biasprm="0 -534490"/>
+    <general name="actuator_ankle_right" joint="joint_tarsometatarsus_right" ctrllimited="true" ctrlrange="-2.0944 0.349066" biastype="affine" gainprm="118913" biasprm="0 -118913"/>
+    <general name="actuator_ankle_left" joint="joint_tarsometatarsus_left" ctrllimited="true" ctrlrange="-2.0944 0.349066" biastype="affine" gainprm="118918" biasprm="0 -118918"/>
+    <general name="actuator_tail_sagittal" tendon="tail_sagittal" ctrllimited="true" ctrlrange="-0.785398 0.785398" biastype="affine" gainprm="818447" biasprm="0 -818447"/>
+    <general name="actuator_tail_mediolateral" tendon="tail_mediolateral" ctrllimited="true" ctrlrange="-0.872665 0.872665" biastype="affine" gainprm="716639" biasprm="0 -716639"/>
+  </actuator>
+
+  <sensor>
+    <gyro site="imu" name="gyro"/>
+    <accelerometer site="imu" name="accelerometer"/>
+    <framezaxis objtype="site" objname="imu" name="upvector"/>
+    <framelinvel objtype="site" objname="imu" name="global_linvel"/>
+    <frameangvel objtype="site" objname="imu" name="global_angvel"/>
+  </sensor>
+
+  <keyframe>
+    <key name="zero_upright" qpos="0 0 1.5 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"/>
+    <key name="side_lying_zero" qpos="0 0 3 0.707107 0.707107 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"/>
+  </keyframe>
+</mujoco>
